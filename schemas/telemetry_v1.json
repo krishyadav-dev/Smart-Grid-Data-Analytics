@@ -1,0 +1,268 @@
+{
+  "$defs": {
+    "Measurements": {
+      "additionalProperties": false,
+      "description": "Measured values.  A key is present only if the register map serves it\nand the read succeeded.",
+      "properties": {
+        "active_power_kw": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "a",
+                  "b",
+                  "c",
+                  "total"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Active power per phase and total, kW",
+          "title": "Active Power Kw"
+        },
+        "current_a": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "a",
+                  "b",
+                  "c"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Current per phase, A (see docs: Layer 1 serves the largest connected line current, not the load's own)",
+          "title": "Current A"
+        },
+        "energy_import_kwh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Cumulative active energy import, kWh",
+          "title": "Energy Import Kwh"
+        },
+        "frequency_hz": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Frequency, Hz (not served by Layer 1)",
+          "title": "Frequency Hz"
+        },
+        "reactive_power_kvar": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "a",
+                  "b",
+                  "c",
+                  "total"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Reactive power per phase and total, kvar (signed)",
+          "title": "Reactive Power Kvar"
+        },
+        "voltage_v": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "a",
+                  "b",
+                  "c"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Line-to-neutral voltage per phase, V",
+          "title": "Voltage V"
+        }
+      },
+      "title": "Measurements",
+      "type": "object"
+    },
+    "MeterRole": {
+      "enum": [
+        "consumer",
+        "dt",
+        "feeder_head"
+      ],
+      "title": "MeterRole",
+      "type": "string"
+    },
+    "Quality": {
+      "additionalProperties": false,
+      "properties": {
+        "flags": {
+          "items": {
+            "$ref": "#/$defs/QualityFlag"
+          },
+          "title": "Flags",
+          "type": "array"
+        },
+        "gap_steps": {
+          "default": 0,
+          "description": "Missed simulated steps before this one",
+          "minimum": 0,
+          "title": "Gap Steps",
+          "type": "integer"
+        }
+      },
+      "title": "Quality",
+      "type": "object"
+    },
+    "QualityFlag": {
+      "enum": [
+        "GAP",
+        "NO_SIM_TIME",
+        "OUT_OF_ORDER",
+        "STALE",
+        "ENERGY_DECREASE",
+        "SUSPECT_RANGE",
+        "PARTIAL_READ",
+        "TORN_READ"
+      ],
+      "title": "QualityFlag",
+      "type": "string"
+    }
+  },
+  "$id": "https://smart-grid-data-analytics/schemas/telemetry_v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One meter reading, as published by the gateway.",
+  "properties": {
+    "feeder_id": {
+      "minLength": 1,
+      "title": "Feeder Id",
+      "type": "string"
+    },
+    "load_id": {
+      "minLength": 1,
+      "title": "Load Id",
+      "type": "string"
+    },
+    "measurements": {
+      "$ref": "#/$defs/Measurements"
+    },
+    "meter_id": {
+      "pattern": "^m\\d{2,}$",
+      "title": "Meter Id",
+      "type": "string"
+    },
+    "meter_role": {
+      "$ref": "#/$defs/MeterRole"
+    },
+    "quality": {
+      "$ref": "#/$defs/Quality"
+    },
+    "run_id": {
+      "format": "uuid",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "pattern": "^1\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "seq": {
+      "minimum": 0,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "t_poll_utc": {
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+      "title": "T Poll Utc",
+      "type": "string"
+    },
+    "t_pub_utc": {
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+      "title": "T Pub Utc",
+      "type": "string"
+    },
+    "t_sim": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$",
+      "title": "T Sim"
+    },
+    "unit_id": {
+      "maximum": 247,
+      "minimum": 1,
+      "title": "Unit Id",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "feeder_id",
+    "meter_id",
+    "unit_id",
+    "load_id",
+    "meter_role",
+    "run_id",
+    "seq",
+    "t_sim",
+    "t_poll_utc",
+    "t_pub_utc",
+    "measurements"
+  ],
+  "title": "Telemetry v1.0",
+  "type": "object"
+}

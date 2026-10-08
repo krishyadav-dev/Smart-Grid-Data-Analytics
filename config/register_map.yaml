@@ -1,0 +1,28 @@
+# Register map of the Layer 1 meter server (src/data_source/meter_server.py).
+# Verified live with scripts/dump_registers.py (see docs/ingestion_step0.md).
+#
+# address        : zero-based register offset within its function-code table
+# address_base   : on-wire PDU address of offset 0 (wire = address + address_base)
+# scale          : canonical_value = raw_int * scale  (canonical unit in `unit`)
+# measurement    : key in the telemetry payload; `t_sim` is the time register
+# phase          : a | b | c | total | null
+# obis           : conceptual DLMS/COSEM object (documentation only)
+address_base: 0
+max_registers_per_read: 125
+registers:
+  - {name: voltage_a,  measurement: voltage_v,  phase: a, function_code: 4, address: 0,  width_registers: 2, word_order: big, signed: false, scale: 0.01,  raw_unit: "V*100", unit: V,  obis: "1-1:32.7.0"}
+  - {name: voltage_b,  measurement: voltage_v,  phase: b, function_code: 4, address: 2,  width_registers: 2, word_order: big, signed: false, scale: 0.01,  raw_unit: "V*100", unit: V,  obis: "1-1:52.7.0"}
+  - {name: voltage_c,  measurement: voltage_v,  phase: c, function_code: 4, address: 4,  width_registers: 2, word_order: big, signed: false, scale: 0.01,  raw_unit: "V*100", unit: V,  obis: "1-1:72.7.0"}
+  - {name: current_a,  measurement: current_a,  phase: a, function_code: 4, address: 6,  width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: mA,      unit: A,  obis: "1-1:31.7.0"}
+  - {name: current_b,  measurement: current_a,  phase: b, function_code: 4, address: 8,  width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: mA,      unit: A,  obis: "1-1:51.7.0"}
+  - {name: current_c,  measurement: current_a,  phase: c, function_code: 4, address: 10, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: mA,      unit: A,  obis: "1-1:71.7.0"}
+  - {name: power_a,    measurement: active_power_kw, phase: a, function_code: 4, address: 12, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: W, unit: kW, obis: "1-1:21.7.0"}
+  - {name: power_b,    measurement: active_power_kw, phase: b, function_code: 4, address: 14, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: W, unit: kW, obis: "1-1:41.7.0"}
+  - {name: power_c,    measurement: active_power_kw, phase: c, function_code: 4, address: 16, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: W, unit: kW, obis: "1-1:61.7.0"}
+  - {name: frequency,  measurement: frequency_hz, phase: null, function_code: 4, address: 18, width_registers: 2, word_order: big, signed: false, scale: 0.01, raw_unit: "Hz*100", unit: Hz, obis: "1-1:14.7.0"}
+  - {name: reactive_a, measurement: reactive_power_kvar, phase: a, function_code: 4, address: 20, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:23.7.0"}
+  - {name: reactive_b, measurement: reactive_power_kvar, phase: b, function_code: 4, address: 22, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:43.7.0"}
+  - {name: reactive_c, measurement: reactive_power_kvar, phase: c, function_code: 4, address: 24, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:63.7.0"}
+  - {name: reactive_total, measurement: reactive_power_kvar, phase: total, function_code: 4, address: 26, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:3.7.0"}
+  - {name: sim_time,   measurement: t_sim,      phase: null, function_code: 4, address: 28, width_registers: 2, word_order: big, signed: false, scale: 1, raw_unit: "unix s", unit: "unix s", obis: "0-0:1.0.0"}
+  - {name: energy_import, measurement: energy_import_kwh, phase: null, function_code: 3, address: 0, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: Wh, unit: kWh, obis: "1-1:1.8.0"}

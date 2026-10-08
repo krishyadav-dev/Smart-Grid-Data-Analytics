@@ -4,3 +4,16 @@ pandas>=2.1
 numpy>=1.24
 requests>=2.31
 pytest>=7.0
+
+# --- Layer 2: ingestion & broker (pinned versions actually used; Python 3.14.6) ---
+# meter_server uses the pymodbus 3.15 SimDevice/SimData API (see docs/contract_issues.md CI-1)
+pymodbus==3.15.0
+aiomqtt==2.5.1
+paho-mqtt==2.1.0
+fastapi==0.142.4
+uvicorn==0.54.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+PyYAML==6.0.3
+httpx==0.28.1
+jsonschema==4.26.0

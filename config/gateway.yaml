@@ -1,0 +1,27 @@
+# Gateway configuration.  Paths are relative to the project root.
+feeder_id: ieee13_11kv
+meters_file: config/meters.yaml
+register_map_file: config/register_map.yaml
+
+modbus:
+  host: 127.0.0.1
+  port: 5020
+  timeout_s: 1.0
+
+mqtt:
+  host: 127.0.0.1
+  port: 1883
+  keepalive_s: 10          # LWT fires within ~1.5x this after a silent death
+  client_id_prefix: sg-gateway
+
+poll_interval_s: 0.25
+expected_step_s: 900       # simulated seconds between meter updates
+playback_speed: 10.0       # informational: used only for the startup sampling warning
+torn_read_retries: 3
+
+backoff:
+  initial_s: 0.5
+  max_s: 15.0
+  jitter: 0.3              # +/- fraction of the delay
+
+buffer_max_messages: 10000 # in-memory buffer while the broker is down (drop-oldest)

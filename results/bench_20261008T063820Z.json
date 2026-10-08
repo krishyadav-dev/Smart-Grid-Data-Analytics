@@ -1,0 +1,101 @@
+{
+  "created_utc": "20261008T063820Z",
+  "metadata": {
+    "python": "3.14.6",
+    "os": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "versions": {
+      "pymodbus": "3.15.0",
+      "aiomqtt": "2.5.1",
+      "paho-mqtt": "2.1.0",
+      "fastapi": "0.142.4",
+      "uvicorn": "0.54.0",
+      "pydantic": "2.13.5",
+      "pydantic-settings": "2.15.0",
+      "pandapower": "3.5.6",
+      "pandas": "2.3.3",
+      "numpy": "2.4.6",
+      "mosquitto": "mosquitto version 2.1.2"
+    },
+    "profiles": "sgcc",
+    "simulated_window": "2024-01-01 00:00 .. 23:45 (one day)",
+    "steps": 96,
+    "meters": 8,
+    "run_timeseries_solve_s": 3.36,
+    "gateway_poll_interval_s": 0.25,
+    "speeds": [
+      3600.0
+    ],
+    "LATENCY_BUDGET_MS": null,
+    "clock_note": "gateway and listener on the same host; wall clocks comparable"
+  },
+  "results": [
+    {
+      "playback_speed": 3600.0,
+      "wall_s_per_step": 0.25,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 29.04,
+      "expected_messages": 768,
+      "gateway_published": 768,
+      "listener_received": 768,
+      "accepted": 768,
+      "validated_delivered": 768,
+      "unique_meter_steps": 768,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 29.89,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 768,
+          "p50": 0.591,
+          "p95": 1.127,
+          "p99": 1.409,
+          "max": 1.844
+        },
+        "pub_to_recv": {
+          "n": 768,
+          "p50": 0.908,
+          "p95": 1.479,
+          "p99": 1.769,
+          "max": 6.87
+        },
+        "total": {
+          "n": 768,
+          "p50": 1.511,
+          "p95": 2.169,
+          "p99": 2.57,
+          "max": 7.695
+        },
+        "recv_to_validated_subscriber": {
+          "n": 768,
+          "p50": 0.5879402160644531,
+          "p95": 0.8378028869628906,
+          "p99": 1.4510154724121094,
+          "max": 6.601095199584961
+        }
+      }
+    }
+  ]
+}
