@@ -48,7 +48,12 @@ load-bus meter will not reach this in the simulation window.
 |  12–13   | Active Power Ph A   | W        | 1-1:21.7.0   | IR (4)   | u32   |
 |  14–15   | Active Power Ph B   | W        | 1-1:41.7.0   | IR (4)   | u32   |
 |  16–17   | Active Power Ph C   | W        | 1-1:61.7.0   | IR (4)   | u32   |
-|  18–19   | Total Energy Import | Wh       | 1-1:1.8.0    | HR (3)   | u32   |
+|  18–19   | Frequency           | Hz × 100 | 1-1:14.7.0   | IR (4)   | u32   |
+|  20–21   | Reactive Power Ph A | var      | 1-1:23.7.0   | IR (4)   | u32   |
+|  22–23   | Reactive Power Ph B | var      | 1-1:43.7.0   | IR (4)   | u32   |
+|  24–25   | Reactive Power Ph C | var      | 1-1:63.7.0   | IR (4)   | u32   |
+|  26–27   | Total Reactive Power| var      | 1-1:3.7.0    | IR (4)   | u32   |
+|  28–29   | Total Energy Import | Wh       | 1-1:1.8.0    | HR (3)   | u32   |
 +----------+---------------------+----------+--------------+----------+-------+
 
 Notes on 32-bit word order: high word at base address, low word at base+1.
@@ -94,14 +99,19 @@ REG_CURRENT_C   = 10   # OBIS 1-1:71.7.0  — Phase C current
 REG_POWER_A     = 12   # OBIS 1-1:21.7.0  — Phase A active power
 REG_POWER_B     = 14   # OBIS 1-1:41.7.0  — Phase B active power
 REG_POWER_C     = 16   # OBIS 1-1:61.7.0  — Phase C active power
-REG_ENERGY      = 18   # OBIS 1-1:1.8.0   — Total energy import (holding)
+REG_FREQUENCY   = 18   # OBIS 1-1:14.7.0  — Frequency
+REG_REACTIVE_A  = 20   # OBIS 1-1:23.7.0  — Phase A reactive power
+REG_REACTIVE_B  = 22   # OBIS 1-1:43.7.0  — Phase B reactive power
+REG_REACTIVE_C  = 24   # OBIS 1-1:63.7.0  — Phase C reactive power
+REG_REACTIVE_TOT= 26   # OBIS 1-1:3.7.0   — Total reactive power
+REG_ENERGY      = 28   # OBIS 1-1:1.8.0   — Total energy import (holding)
 
-TOTAL_REGISTERS = 20   # 10 measurements × 2 registers each
+TOTAL_REGISTERS = 30   # 15 measurements × 2 registers each
 
 # IR (input register) count and HR (holding register) start/count
-IR_COUNT        = 18   # registers 0–17  (voltage, current, power)
+IR_COUNT        = 28   # registers 0–27  (voltage, current, power, freq, reactive)
 HR_START        = 0    # holding registers start from address 0
-HR_COUNT        = 2    # registers 18–19 (energy accumulator stored in HR 0–1)
+HR_COUNT        = 2    # registers 0–1 (energy accumulator stored in HR 0–1)
 
 # Load point → unit_id mapping (stable — Part B contract)
 LOAD_BUS_UNIT_MAP = {
@@ -161,20 +171,17 @@ class MeterState:
     registers (fc=4).
     """
 
-    def __init__(self, unit_id: int, load_id: str, ir_values: list, hr_values: list):
+    def __init__(self, unit_id: int, load_id: str):
         self.unit_id = unit_id
         self.load_id = load_id
         # Derive bus_name from load_id (format: "load_<bus>_<phase>")
         parts = load_id.split("_")
         self.bus_name = parts[1] if len(parts) >= 2 else load_id
         self.energy_wh: float = 0.0  # monotonically increasing
-        # Direct references to the underlying register value lists
-        self._ir_values = ir_values   # input registers (fc=4)
-        self._hr_values = hr_values   # holding registers (fc=3)
 
-    def update_registers(
+    async def update_registers(
         self,
-        slave_ctx: Any = None,          # kept for backward-compat; ignored
+        server_ctx: Any,
         voltage_a: float = 0.0,
         voltage_b: float = 0.0,
         voltage_c: float = 0.0,
@@ -184,16 +191,18 @@ class MeterState:
         power_a_kw: float = 0.0,
         power_b_kw: float = 0.0,
         power_c_kw: float = 0.0,
+        reactive_a_kvar: float = 0.0,
+        reactive_b_kvar: float = 0.0,
+        reactive_c_kvar: float = 0.0,
+        frequency_hz: float = 50.0,
         interval_hours: float = 0.25,
     ) -> None:
-        """Write measurement values directly into the raw register value lists.
+        """Write measurement values via the server context's async_setValues.
 
         Parameters
         ----------
-        slave_ctx : any, optional
-            Kept for backward-compatibility with callers that pass the device
-            context.  Not used in pymodbus 3.15+; data is written via the
-            ``_ir_values`` / ``_hr_values`` lists stored at construction.
+        server_ctx : SimCore
+            The SimCore context from ModbusTcpServer.context.
         voltage_a/b/c : float
             Phase voltages in volts (V).
         current_a/b/c : float
@@ -205,9 +214,10 @@ class MeterState:
         """
         # Accumulate energy (monotonically increasing — never decreases)
         total_power_kw = power_a_kw + power_b_kw + power_c_kw
+        total_reactive_kvar = reactive_a_kvar + reactive_b_kvar + reactive_c_kvar
         self.energy_wh += total_power_kw * 1000.0 * interval_hours  # kW → Wh
 
-        # Build the 18 input-register values (9 measurements × 2 regs each)
+        # Build the input-register values (14 measurements × 2 regs each = 28 regs)
         ir_flat: list[int] = []
         for raw_val in [
             voltage_a * 100,        # V → V×100      (OBIS 32/52/72.7.0)
@@ -219,26 +229,21 @@ class MeterState:
             power_a_kw * 1000,      # kW → W         (OBIS 21/41/61.7.0)
             power_b_kw * 1000,
             power_c_kw * 1000,
+            frequency_hz * 100,     # Hz → Hz×100    (OBIS 14.7.0)
+            reactive_a_kvar * 1000, # kvar → var     (OBIS 23.7.0)
+            reactive_b_kvar * 1000,
+            reactive_c_kvar * 1000,
+            total_reactive_kvar * 1000, # kvar → var (OBIS 3.7.0)
         ]:
             hi, lo = _encode_u32(raw_val)
             ir_flat.extend([hi, lo])
 
-        # Write input registers.
-        # In pymodbus 3.15 with a block created at address=1, a Modbus client
-        # reading at address N receives values[N].  values[0] is unreachable.
-        # We therefore write data starting at index 1 so that:
-        #   Modbus address 1 → values[1] = hi word of register pair 0
-        #   Modbus address 2 → values[2] = lo word of register pair 0  ... etc.
-        for i, v in enumerate(ir_flat):
-            idx = i + 1   # skip values[0] (unreachable)
-            if idx < len(self._ir_values):
-                self._ir_values[idx] = v
+        # Write input registers (fc=4) at address 0
+        await server_ctx.async_setValues(self.unit_id, 4, 0, ir_flat)
 
-        # Write energy accumulator to holding registers at index 1 & 2
+        # Write energy accumulator to holding registers (fc=3) at address 0
         hi_e, lo_e = _encode_u32(self.energy_wh)
-        if len(self._hr_values) >= 3:
-            self._hr_values[1] = hi_e
-            self._hr_values[2] = lo_e
+        await server_ctx.async_setValues(self.unit_id, 3, 0, [hi_e, lo_e])
 
 
 # ---------------------------------------------------------------------------
@@ -248,60 +253,38 @@ class MeterState:
 def build_server_context():
     """Create a Modbus server context with one device per load point.
 
-    In pymodbus 3.15 the ``ModbusDeviceContext`` wraps a ``SimDevice`` whose
-    ``simdata`` tuple is ordered ``(coils, discrete_inputs, holding_regs,
-    input_regs)`` (indices 0–3).  We grab direct references to the
-    ``SimData.values`` lists at construction so that ``MeterState`` can write
-    without calling the removed ``setValues`` method.
+    Uses pymodbus 3.15+ SimDevice and SimData APIs. Address 0 is properly
+    usable without +1 hacks.
 
     Returns
     -------
-    (server_context, devices, meter_states)
-        - ``server_context`` — ``ModbusServerContext`` for passing to
-          ``StartAsyncTcpServer``.
-        - ``devices`` — ``dict[unit_id, ModbusDeviceContext]`` — the per-device
-          datastores keyed by unit_id.
+    (devices_list, devices_dict, meter_states)
+        - ``devices_list`` — List of ``SimDevice`` for passing to
+          ``ModbusTcpServer(context=...)``.
+        - ``devices_dict`` — (Deprecated dict, returned for backwards compat).
         - ``meter_states`` — ``dict[unit_id, MeterState]``.
     """
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
+    from pymodbus.simulator import DataType
+    from pymodbus.simulator.simdevice import SimDevice
+    from pymodbus.simulator.simdata import SimData
 
-        from pymodbus.datastore import (
-            ModbusSequentialDataBlock,
-            ModbusServerContext,
-            ModbusDeviceContext,
-        )
+    devices_list: list[SimDevice] = []
+    devices_dict: dict[int, Any] = {}
+    meters: dict[int, MeterState] = {}
 
-        devices: dict[int, Any] = {}
-        meters: dict[int, MeterState] = {}
+    for load_id, unit_id in _load_id_unit_map().items():
+        ir = SimData(0, values=[0] * TOTAL_REGISTERS, datatype=DataType.REGISTERS)
+        hr = SimData(0, values=[0] * TOTAL_REGISTERS, datatype=DataType.REGISTERS)
+        co = SimData(0, values=[False], datatype=DataType.BITS)
+        di = SimData(0, values=[False], datatype=DataType.BITS)
 
-        for load_id, unit_id in _load_id_unit_map().items():
-            # Blocks start at address=1 (pymodbus 3.15 requires address >= 1).
-            # In this layout Modbus address N maps to values[N], so values[0]
-            # is unreachable.  We allocate TOTAL_REGISTERS+1 entries so that
-            # useful data at values[1..TOTAL_REGISTERS] maps to Modbus
-            # addresses 1..TOTAL_REGISTERS.  The +1 extra entry is consumed
-            # by the holding-register energy pair which also starts at index 1.
-            n = TOTAL_REGISTERS + 1
-            ir = ModbusSequentialDataBlock(1, [0] * n)
-            hr = ModbusSequentialDataBlock(1, [0] * n)
-            co = ModbusSequentialDataBlock(1, [0])
-            di = ModbusSequentialDataBlock(1, [0])
-            device = ModbusDeviceContext(ir=ir, hr=hr, co=co, di=di)
-            devices[unit_id] = device
+        device = SimDevice(unit_id, simdata=([co], [di], [hr], [ir]))
+        devices_list.append(device)
+        devices_dict[unit_id] = device
 
-            # Extract raw value lists from SimDevice.simdata:
-            #   simdata[0] = coils, [1] = discrete inputs,
-            #   [2] = holding regs (fc=3), [3] = input regs (fc=4)
-            sd = device.simdevice
-            ir_values: list = sd.simdata[3][0].values   # input regs
-            hr_values: list = sd.simdata[2][0].values   # holding regs
+        meters[unit_id] = MeterState(unit_id, load_id)
 
-            meters[unit_id] = MeterState(unit_id, load_id, ir_values, hr_values)
-
-        ctx = ModbusServerContext(devices=devices, single=False)
-
-    return ctx, devices, meters
+    return devices_list, devices_dict, meters
 
 
 def _load_id_unit_map() -> dict[str, int]:
@@ -321,7 +304,7 @@ def _load_id_unit_map() -> dict[str, int]:
 # ---------------------------------------------------------------------------
 
 async def _update_loop(
-    devices: dict[int, Any],
+    server_ctx: Any,
     meters: dict[int, MeterState],
     timeseries_data: pd.DataFrame,
     playback_speed: float,
@@ -331,8 +314,8 @@ async def _update_loop(
 
     Parameters
     ----------
-    devices : dict[unit_id, ModbusDeviceContext]
-        Per-device datastores (returned by ``build_server_context``).
+    server_ctx : SimCore
+        The ModbusTcpServer context (SimCore) used to push updates via async_setValues.
     meters : dict[unit_id, MeterState]
         Meter state objects.
     timeseries_data : DataFrame
@@ -353,10 +336,6 @@ async def _update_loop(
         ts_data = timeseries_data[timeseries_data["timestamp"] == ts]
 
         for unit_id, meter in meters.items():
-            slave_ctx = devices.get(unit_id)
-            if slave_ctx is None:
-                continue
-
             # Match by load_id
             rows = ts_data[ts_data["load_id"] == meter.load_id]
             if rows.empty:
@@ -367,8 +346,8 @@ async def _update_loop(
                 row = rows[rows["phase"] == ph]
                 return float(row[col].iloc[0]) if not row.empty else 0.0
 
-            meter.update_registers(
-                slave_ctx,
+            await meter.update_registers(
+                server_ctx,
                 voltage_a=_phase_val("voltage_v", "a"),
                 voltage_b=_phase_val("voltage_v", "b"),
                 voltage_c=_phase_val("voltage_v", "c"),
@@ -378,6 +357,10 @@ async def _update_loop(
                 power_a_kw=_phase_val("active_power_kw", "a"),
                 power_b_kw=_phase_val("active_power_kw", "b"),
                 power_c_kw=_phase_val("active_power_kw", "c"),
+                reactive_a_kvar=_phase_val("reactive_power_kvar", "a"),
+                reactive_b_kvar=_phase_val("reactive_power_kvar", "b"),
+                reactive_c_kvar=_phase_val("reactive_power_kvar", "c"),
+                frequency_hz=50.0,
                 interval_hours=interval_hours,
             )
 
@@ -405,18 +388,19 @@ async def start_meter_server(
     if playback_speed is None:
         playback_speed = config.PLAYBACK_SPEED
 
-    ctx, devices, meters = build_server_context()
-
-    if timeseries_data is not None and not timeseries_data.empty:
-        asyncio.create_task(
-            _update_loop(devices, meters, timeseries_data, playback_speed)
-        )
+    devices_list, _, meters = build_server_context()
 
     logger.info(
         "Starting Modbus TCP server on %s:%d with %d meters",
         host, port, len(meters),
     )
-    server = ModbusTcpServer(context=ctx, address=(host, port))
+    server = ModbusTcpServer(context=devices_list, address=(host, port))
+    
+    if timeseries_data is not None and not timeseries_data.empty:
+        asyncio.create_task(
+            _update_loop(server.context, meters, timeseries_data, playback_speed)
+        )
+
     await server.serve_forever()
 
 

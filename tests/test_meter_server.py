@@ -72,80 +72,71 @@ class TestMeterState:
 
     @pytest.fixture
     def ctx_and_meter(self):
-        """Build a server context and return (meter,) for unit 1.
-
-        In pymodbus 3.15 the ``slave_ctx`` arg to ``update_registers`` is
-        ignored; data is written into the raw _ir_values / _hr_values lists
-        stored in the MeterState at construction.  We pass ``None`` for
-        backward-compat.
-        """
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            ctx, devices, meters = build_server_context()
-        meter = meters[1]   # unit_id 1 = first load point
-        slave_ctx = devices[1]   # still passed for interface compat
-        return slave_ctx, meter
+        """Build a server context and return (server_ctx, meter) for unit 1."""
+        from pymodbus.simulator.simcore import SimCore
+        devices_list, devices_dict, meters = build_server_context()
+        server_ctx = SimCore(devices_list)
+        meter = meters[1]
+        return server_ctx, meter
 
     def test_energy_accumulates(self, ctx_and_meter):
         """B6 — energy register is monotonically increasing."""
-        slave_ctx, meter = ctx_and_meter
+        server_ctx, meter = ctx_and_meter
 
         # First update: 10 kW for 0.25 h = 2500 Wh
-        meter.update_registers(
-            slave_ctx,
+        asyncio.run(meter.update_registers(
+            server_ctx,
             voltage_a=6351.0, voltage_b=6351.0, voltage_c=6351.0,
             current_a=5.0, current_b=5.0, current_c=5.0,
             power_a_kw=10.0, power_b_kw=0.0, power_c_kw=0.0,
             interval_hours=0.25,
-        )
+        ))
         assert pytest.approx(meter.energy_wh) == 2500.0
 
         # Second update: energy only increases
-        meter.update_registers(
-            slave_ctx,
+        asyncio.run(meter.update_registers(
+            server_ctx,
             voltage_a=6351.0, voltage_b=6351.0, voltage_c=6351.0,
             power_a_kw=10.0, power_b_kw=0.0, power_c_kw=0.0,
             interval_hours=0.25,
-        )
+        ))
         assert pytest.approx(meter.energy_wh) == 5000.0
 
     def test_energy_never_decreases(self, ctx_and_meter):
         """B6 — even with zero power, energy does not decrease."""
-        slave_ctx, meter = ctx_and_meter
+        server_ctx, meter = ctx_and_meter
 
-        meter.update_registers(slave_ctx, power_a_kw=5.0, interval_hours=0.25)
+        asyncio.run(meter.update_registers(server_ctx, power_a_kw=5.0, interval_hours=0.25))
         e1 = meter.energy_wh
-        meter.update_registers(slave_ctx, power_a_kw=0.0, interval_hours=0.25)
+        asyncio.run(meter.update_registers(server_ctx, power_a_kw=0.0, interval_hours=0.25))
         e2 = meter.energy_wh
         assert e2 >= e1, "Energy accumulator decreased!"
 
     def test_energy_monotonic_across_many_steps(self, ctx_and_meter):
         """B6 — monotonic over multiple updates."""
-        slave_ctx, meter = ctx_and_meter
+        server_ctx, meter = ctx_and_meter
         prev = meter.energy_wh
         for kw in [5.0, 0.0, 10.0, 3.0, 0.0, 7.0]:
-            meter.update_registers(slave_ctx, power_a_kw=kw, interval_hours=0.25)
+            asyncio.run(meter.update_registers(server_ctx, power_a_kw=kw, interval_hours=0.25))
             assert meter.energy_wh >= prev, f"Energy decreased at kw={kw}"
             prev = meter.energy_wh
 
     def test_register_values_match_voltage(self, ctx_and_meter):
         """B1 — input registers reflect the written voltage within scaling."""
-        slave_ctx, meter = ctx_and_meter
+        server_ctx, meter = ctx_and_meter
 
         voltage_a = 6351.0   # V (11 kV / \u221a3 ≈ 6350.9)
-        meter.update_registers(
-            slave_ctx,
+        asyncio.run(meter.update_registers(
+            server_ctx,
             voltage_a=voltage_a,
             voltage_b=6300.0,
             voltage_c=6400.0,
-        )
+        ))
 
-        # Input registers (fc=4) are in _ir_values list.
-        # With block base address=1: Modbus address N → values[N].
-        # Voltage Phase A (REG_VOLTAGE_A = 0) is at Modbus addresses 1 & 2
-        # → values[1] (hi) and values[2] (lo).
-        hi = meter._ir_values[1]
-        lo = meter._ir_values[2]
+        # Read back from server context (address=0 for REG_VOLTAGE_A)
+        # async_getValues returns a list of words.
+        vals = asyncio.run(server_ctx.async_getValues(meter.unit_id, 4, 0, 2))
+        hi, lo = vals[0], vals[1]
         decoded_v = _decode_u32(hi, lo)
         expected = int(round(voltage_a * 100))   # scaling: V × 100
         assert decoded_v == expected, (
@@ -153,20 +144,18 @@ class TestMeterState:
         )
 
     def test_energy_register_in_holding(self, ctx_and_meter):
-        """Energy accumulator is in holding registers (_hr_values), not input."""
-        slave_ctx, meter = ctx_and_meter
+        """Energy accumulator is in holding registers (fc=3), not input."""
+        server_ctx, meter = ctx_and_meter
 
-        meter.update_registers(
-            slave_ctx, power_a_kw=4.0, interval_hours=0.25
-        )
+        asyncio.run(meter.update_registers(
+            server_ctx, power_a_kw=4.0, interval_hours=0.25
+        ))
         # 4 kW × 0.25 h × 1000 = 1000 Wh
         assert pytest.approx(meter.energy_wh) == 1000.0
 
-        # Read holding register values directly.
-        # Energy is written at _hr_values[1] (hi) and _hr_values[2] (lo)
-        # (offset 1 because values[0] is unreachable with block address=1).
-        hi = meter._hr_values[1]
-        lo = meter._hr_values[2]
+        # Read back from server context
+        vals = asyncio.run(server_ctx.async_getValues(meter.unit_id, 3, 0, 2))
+        hi, lo = vals[0], vals[1]
         decoded_e = _decode_u32(hi, lo)
         assert decoded_e == 1000, (
             f"Energy holding register {decoded_e} \u2260 expected 1000 Wh"
@@ -179,17 +168,13 @@ class TestMeterState:
 
 class TestServerContext:
     def test_has_all_units(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            ctx, devices, meters = build_server_context()
-        for unit_id in devices:
+        devices_list, devices_dict, meters = build_server_context()
+        for unit_id in devices_dict:
             assert unit_id in meters
 
     def test_unit_count(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            _, devices, meters = build_server_context()
-        assert len(meters) == len(devices)
+        devices_list, devices_dict, meters = build_server_context()
+        assert len(meters) == len(devices_dict)
         assert len(meters) >= 8  # at least one per IEEE-13 load bus
 
 
@@ -212,21 +197,20 @@ class TestModbusClientIntegration:
         port = _find_free_port()
 
         # Build context and write known voltage before starting server
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            ctx, devices, meters = build_server_context()
-        slave_ctx = devices[1]
+        devices_list, devices_dict, meters = build_server_context()
+        from pymodbus.simulator.simcore import SimCore
+        server_ctx = SimCore(devices_list)
         meter = meters[1]
 
         target_voltage_a = 6351.0   # V
-        meter.update_registers(
-            slave_ctx,
+        asyncio.run(meter.update_registers(
+            server_ctx,
             voltage_a=target_voltage_a,
             voltage_b=6300.0,
             voltage_c=6400.0,
             power_a_kw=5.0,
             interval_hours=0.25,
-        )
+        ))
 
         # Run the server in a background thread using serve_forever(background=True)
         server_started = threading.Event()
@@ -234,7 +218,10 @@ class TestModbusClientIntegration:
 
         async def _run_server():
             from pymodbus.server import ModbusTcpServer
-            server = ModbusTcpServer(context=ctx, address=("127.0.0.1", port))
+            # Pass our pre-filled context
+            server = ModbusTcpServer(context=devices_list, address=("127.0.0.1", port))
+            # Manually inject our updated SimCore context so it has the modified values!
+            server.context = server_ctx
             server_holder.append(server)
             server_started.set()
             await server.serve_forever()
@@ -253,9 +240,8 @@ class TestModbusClientIntegration:
             connected = client.connect()
             assert connected, "Failed to connect to Modbus server"
 
-            # Read input registers (fc=4) for unit_id=1, address=1, count=2
-            # pymodbus 3.15 uses device_id= instead of slave=
-            result = client.read_input_registers(address=1, count=2, device_id=1)
+            # Read input registers (fc=4) for unit_id=1, address=0 (base 0!), count=2
+            result = client.read_input_registers(address=0, count=2, device_id=1)
             assert not result.isError(), (
                 f"Modbus read error: {result}"
             )
