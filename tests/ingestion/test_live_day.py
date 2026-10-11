@@ -114,7 +114,7 @@ def test_c1_every_step_published_once_in_order(day):
     for m in day["telemetry"]:
         per[m["meter_id"]].append((m["seq"], m["t_sim"]))
     expected = [t.isoformat() for t in pd.date_range("2024-01-01", periods=STEPS, freq="15min")]
-    assert len(per) == 8
+    assert len(per) == 9
     for mid, items in per.items():
         assert [s for s, _ in items] == list(range(len(items))), mid
         assert [t for _, t in items][:STEPS] == expected, mid

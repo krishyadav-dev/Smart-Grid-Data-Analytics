@@ -20,7 +20,6 @@ import pandas as pd
 import pytest
 
 from src.data_source.meter_server import (
-    LOAD_BUS_UNIT_MAP,
     MeterState,
     REG_VOLTAGE_A,
     TOTAL_REGISTERS,

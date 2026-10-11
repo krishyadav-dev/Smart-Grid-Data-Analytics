@@ -166,7 +166,7 @@ def test_d7_listener_restart(frame_csv, persistent):
 
         stop(st.listener)                          # graceful (SIGTERM)
         n_tel_down = len(rec.snapshot(suffix="/telemetry"))
-        time.sleep(5.0)                            # ~5 steps x 8 meters published meanwhile
+        time.sleep(5.0)                            # ~5 steps x 9 meters published meanwhile
         n_tel_up = len(rec.snapshot(suffix="/telemetry"))
         st.start_listener(persistent=persistent, client_id=cid)
         time.sleep(3.0)

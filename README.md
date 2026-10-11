@@ -34,7 +34,7 @@ Smart Grid Data Analytics is a robust framework designed to bridge unbalanced po
 ---
 
 ## Tech Stack
-- **Python 3.8+**
+- **Python 3.11+**
 - **Simulation**: `pandapower` (Unbalanced load flow & short circuit analysis)
 - **Data Engineering**: `pandas`, `numpy` (Vectorized attack injections and time-series manipulation)
 - **Networking**: `pymodbus` (Modbus TCP server implementation)
@@ -71,7 +71,7 @@ Smart Grid Data Analytics/
 ## Getting Started
 
 ### Prerequisites
-1. Python 3.8 or higher.
+1. Python 3.11 or higher.
 2. Ensure you have `pip` and a virtual environment set up.
 
 ### Installation

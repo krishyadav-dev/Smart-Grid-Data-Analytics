@@ -34,9 +34,10 @@ for p in (ROOT, ROOT / "scripts"):
         sys.path.insert(0, str(p))
 
 from devstack import Recorder, Stack, find_mosquitto, stop, wait_for  # noqa: E402
+from src.ingestion.config import load_meters  # noqa: E402
 
 STEP_S = 900.0
-N_METERS = 8
+N_METERS = len(load_meters().meters)
 
 
 def percentiles(vals: list[float]) -> dict:

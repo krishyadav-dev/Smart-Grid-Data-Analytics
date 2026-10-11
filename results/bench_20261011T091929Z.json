@@ -1,0 +1,169 @@
+{
+  "created_utc": "20261011T091929Z",
+  "metadata": {
+    "python": "3.14.0",
+    "os": "Windows-11-10.0.26300-SP0",
+    "machine": "AMD64",
+    "versions": {
+      "pymodbus": "3.15.0",
+      "aiomqtt": "2.5.1",
+      "paho-mqtt": "2.1.0",
+      "fastapi": "0.142.4",
+      "uvicorn": "0.54.0",
+      "pydantic": "2.13.5",
+      "pydantic-settings": "2.15.0",
+      "pandapower": "3.5.4",
+      "pandas": "2.3.3",
+      "numpy": "2.4.6",
+      "mosquitto": "mosquitto version 2.1.2"
+    },
+    "profiles": "synthetic",
+    "simulated_window": "2024-01-01 00:00 .. 23:45 (one day)",
+    "steps": 96,
+    "meters": 9,
+    "run_timeseries_solve_s": 23.14,
+    "gateway_poll_interval_s": 0.25,
+    "speeds": [
+      900.0,
+      3600.0
+    ],
+    "LATENCY_BUDGET_MS": null,
+    "clock_note": "gateway and listener on the same host; wall clocks comparable"
+  },
+  "results": [
+    {
+      "playback_speed": 900.0,
+      "wall_s_per_step": 1.0,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 106.01,
+      "expected_messages": 864,
+      "gateway_published": 864,
+      "listener_received": 864,
+      "accepted": 864,
+      "validated_delivered": 864,
+      "unique_meter_steps": 864,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 8.47,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 864,
+          "p50": 3.434,
+          "p95": 8.693,
+          "p99": 12.983,
+          "max": 37.536
+        },
+        "pub_to_recv": {
+          "n": 864,
+          "p50": 1.997,
+          "p95": 4.403,
+          "p99": 11.327,
+          "max": 19.794
+        },
+        "total": {
+          "n": 864,
+          "p50": 5.459,
+          "p95": 12.051,
+          "p99": 21.684,
+          "max": 39.549
+        },
+        "recv_to_validated_subscriber": {
+          "n": 864,
+          "p50": 1.4908313751220703,
+          "p95": 3.0295848846435547,
+          "p99": 5.846500396728516,
+          "max": 14.617919921875
+        }
+      }
+    },
+    {
+      "playback_speed": 3600.0,
+      "wall_s_per_step": 0.25,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 32.01,
+      "expected_messages": 864,
+      "gateway_published": 864,
+      "listener_received": 864,
+      "accepted": 864,
+      "validated_delivered": 864,
+      "unique_meter_steps": 864,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 30.09,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 864,
+          "p50": 1.069,
+          "p95": 3.218,
+          "p99": 5.204,
+          "max": 10.661
+        },
+        "pub_to_recv": {
+          "n": 864,
+          "p50": 1.6,
+          "p95": 2.605,
+          "p99": 3.578,
+          "max": 11.096
+        },
+        "total": {
+          "n": 864,
+          "p50": 2.744,
+          "p95": 5.042,
+          "p99": 7.908,
+          "max": 18.24
+        },
+        "recv_to_validated_subscriber": {
+          "n": 864,
+          "p50": 1.1143684387207031,
+          "p95": 1.8434524536132812,
+          "p99": 3.5734176635742188,
+          "max": 6.637811660766602
+        }
+      }
+    }
+  ]
+}

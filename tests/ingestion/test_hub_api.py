@@ -63,7 +63,7 @@ def test_rest_shapes_and_404(client):
     for i in range(3):
         feed(svc, valid_doc(seq=i, t_sim=T0 + timedelta(minutes=15 * i)))
     meters = c.get("/api/v1/meters").json()
-    assert len(meters) == 8 and {m["meter_id"] for m in meters} >= {"m01", "m08"}
+    assert len(meters) == 9 and {m["meter_id"] for m in meters} >= {"m01", "m09"}
     m05 = next(m for m in meters if m["meter_id"] == "m05")
     assert m05["messages"] == 3 and m05["last_t_sim"] == "2024-01-01T00:45:00"
     latest = c.get("/api/v1/meters/m05/latest").json()
