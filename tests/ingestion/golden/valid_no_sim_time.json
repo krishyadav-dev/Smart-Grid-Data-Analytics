@@ -1,0 +1,1 @@
+{"schema_version":"1.0","feeder_id":"ieee13_11kv","meter_id":"m04","unit_id":4,"load_id":"load_652_a","meter_role":"consumer","run_id":"3f2b8c1e-5d4a-4e6b-9c7d-0a1b2c3d4e5f","seq":0,"t_sim":null,"t_poll_utc":"2026-10-08T10:15:00Z","t_pub_utc":"2026-10-08T10:15:00Z","measurements":{"voltage_v":{"a":6011.0}},"quality":{"flags":["NO_SIM_TIME"],"gap_steps":0}}

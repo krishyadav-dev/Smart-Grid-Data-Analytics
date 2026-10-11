@@ -114,6 +114,17 @@ from src.data_source.meter_server import start_meter_server
 asyncio.run(start_meter_server(timeseries_data=timeseries_df, playback_speed=1.0))
 ```
 
+### Ingestion Layer (Layer 2)
+Gateway (Modbus → MQTT) → Mosquitto → FastAPI listener (validate, enrich, hand off).
+```bash
+docker compose up -d mosquitto                       # or a native Mosquitto 2.x
+python -m src.ingestion.listener --port 8000         # REST: /health, /api/v1/stats, /api/v1/meters/...
+python -m src.ingestion.gateway --config config/gateway.yaml
+python scripts/run_meter_server.py --port 5020 --speed 10   # add --profiles sgcc for SGCC load shapes
+```
+Validated stream: MQTT `sg/v1/ieee13_11kv/validated/+`, or the in-process `TelemetryHub`.
+Details: `docs/telemetry_schema.md`, `docs/ingestion_ops.md`, `docs/build_report_C.md`, `docs/build_report_D.md`.
+
 ### Testing
 To run the full suite of 79 integration and unit tests:
 ```bash

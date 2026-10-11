@@ -256,3 +256,27 @@ class TestModbusClientIntegration:
             client.close()
         except Exception as exc:
             pytest.skip(f"Modbus client test skipped: {exc}")
+
+
+class TestSimTimeRegister:
+    """Layer 2 contract: IR 28–29 hold the simulated time (Unix seconds)."""
+
+    def test_sim_time_written_with_frame(self):
+        from pymodbus.simulator.simcore import SimCore
+        from src.data_source.meter_server import REG_SIM_TIME, _sim_time_seconds
+
+        devices_list, _, meters = build_server_context()
+        ctx = SimCore(devices_list)
+
+        async def go():
+            before = await ctx.async_getValues(1, 4, REG_SIM_TIME, 2)
+            await meters[1].update_registers(ctx, voltage_a=6351.0, power_a_kw=4.0,
+                                             t_sim="2024-01-01 00:15:00")
+            after = await ctx.async_getValues(1, 4, REG_SIM_TIME, 2)
+            energy = await ctx.async_getValues(1, 3, 0, 2)
+            return before, after, energy
+
+        before, after, energy = asyncio.run(go())
+        assert _decode_u32(*before) == 0
+        assert _decode_u32(*after) == _sim_time_seconds("2024-01-01 00:15:00") == 1704068100
+        assert _decode_u32(*energy) == 1000

@@ -177,3 +177,57 @@ class TestAssignTheftLabels:
         pd.testing.assert_frame_equal(
             t1.reset_index(drop=True), t2.reset_index(drop=True)
         )
+
+
+# ===================================================================== #
+#  SGCC profile rescaling (CI-8 / CI-9 / CI-10 regressions)              #
+# ===================================================================== #
+
+class TestProfileRescaling:
+    def test_typical_day_averages_nominal(self, sgcc_df, load_points):
+        """Factors are ~1 on average, not ~0.001 (household kWh vs load kW)."""
+        from src.data_source.dataset_loader import sample_load_profiles
+
+        p = sample_load_profiles(load_points, sgcc_df, start="2014-01-01 00:00",
+                                 end="2014-01-01 23:45", seed=42)
+        means = p.mean()
+        assert (means > 0.2).all() and (means <= config.SGCC_MAX_DAILY_RATIO * 1.5).all(), means
+
+    def test_index_includes_end_like_run_timeseries(self, sgcc_df, load_points):
+        from src.data_source.dataset_loader import sample_load_profiles
+
+        p = sample_load_profiles(load_points, sgcc_df, start="2014-01-01 00:00",
+                                 end="2014-01-01 23:45", seed=42)
+        expected = pd.date_range("2014-01-01 00:00", "2014-01-01 23:45", freq="15min")
+        assert p.index.equals(expected)
+        # last step keeps the daily shape: no jump back to nominal
+        assert (p.iloc[-1] < p.max()).all()
+
+    def test_intraday_shape_applied_every_day(self, sgcc_df, load_points):
+        """Even with no reading for a day the double-hump shape is present."""
+        from src.data_source.dataset_loader import sample_load_profiles
+
+        p = sample_load_profiles(load_points, sgcc_df, start="2014-03-01 00:00",
+                                 end="2014-03-01 23:45", seed=42)   # outside small set
+        for col in p.columns:
+            assert p[col].max() / p[col].min() > 1.5, col
+
+    def test_dates_outside_sgcc_use_sgcc_calendar(self, sgcc_df, load_points):
+        """A 2024 window maps to the same month/day of an SGCC year."""
+        from src.data_source.dataset_loader import sample_load_profiles
+
+        p24 = sample_load_profiles(load_points, sgcc_df, start="2024-01-03 00:00",
+                                   end="2024-01-03 23:45", seed=42)
+        p14 = sample_load_profiles(load_points, sgcc_df, start="2014-01-03 00:00",
+                                   end="2014-01-03 23:45", seed=42)
+        assert np.allclose(p24.values, p14.values)   # small set spans 2014 only
+
+    def test_ratio_capped(self, load_points):
+        from src.data_source.dataset_loader import sample_load_profiles
+
+        days = pd.date_range("2014-01-01", periods=5, freq="D")
+        df = pd.DataFrame({"consumer_id": "C1", "date": days,
+                           "kwh": [10, 10, 10, 10, 1000.0], "is_theft": False})
+        p = sample_load_profiles(load_points, df, start="2014-01-05 00:00",
+                                 end="2014-01-05 23:45", seed=1)
+        assert p.mean().max() == pytest.approx(config.SGCC_MAX_DAILY_RATIO, rel=1e-6)

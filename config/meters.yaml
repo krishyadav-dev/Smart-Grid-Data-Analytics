@@ -1,0 +1,16 @@
+# Meter inventory.  Checked against feeder_model.get_load_points() and the live
+# server by tests/ingestion/test_config_contract.py.
+# unit_id follows meter_server._load_id_unit_map() (row order of get_load_points).
+# v_base_ln_v = bus vn_kv * 1000 / sqrt(3) from feeder_model.build_ieee13_network().
+# i_rated_a: Layer 1 has no rating data -> null.
+# role: Layer 1 only serves load-point (consumer) meters; no DT / feeder-head meter exists.
+feeder_id: ieee13_11kv
+meters:
+  - {meter_id: m01, unit_id: 1, load_id: load_634_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 732.79,  i_rated_a: null}
+  - {meter_id: m02, unit_id: 2, load_id: load_645_b,   role: consumer, phases_present: [b],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m03, unit_id: 3, load_id: load_646_b,   role: consumer, phases_present: [b],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m04, unit_id: 4, load_id: load_652_a,   role: consumer, phases_present: [a],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m05, unit_id: 5, load_id: load_671_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m06, unit_id: 6, load_id: load_675_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m07, unit_id: 7, load_id: load_692_c,   role: consumer, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m08, unit_id: 8, load_id: load_611_c,   role: consumer, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}

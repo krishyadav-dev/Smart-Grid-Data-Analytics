@@ -66,3 +66,9 @@ LOAD_TOLERANCE_FRACTION = 0.15    # Total load must be within ±15 % of publishe
 # Theft injection
 # ---------------------------------------------------------------------------
 THEFT_FRACTION = 0.2              # 20 % of simulated consumers get theft labels
+
+# SGCC profile rescaling: a household's daily kWh is divided by its own median
+# day, so 1.0 = a typical day for that household = the load point's nominal.
+# Ratios are capped so a single metering outlier cannot drive a load point to
+# many times its rating (the feeder is sized for nominal demand).
+SGCC_MAX_DAILY_RATIO = 3.0

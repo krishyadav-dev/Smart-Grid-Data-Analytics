@@ -1,0 +1,16 @@
+# Layer 2 broker.  Dev only: no TLS, no auth; port published on localhost only.
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    container_name: sg-mosquitto
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./config/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:

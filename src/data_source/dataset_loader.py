@@ -24,12 +24,26 @@ Resolution is bridged as follows:
     ``feeder_model._synthetic_daily_profile``).  This gives 96 values per day
     (15-min steps) that sum to 1.0.
 
-  - For each day d, the scaling factor at timestep t is:
-      ``factor[t] = (daily_kwh[d] / nominal_daily_kwh) × shape[t] × 96``
-    where ``nominal_daily_kwh`` is the feeder load point's nominal kW × 24 h,
-    and ``shape[t]`` is the normalized 15-min shape value.
+  - Each sampled household is first normalised to **its own median daily
+    kWh**, so the SGCC magnitude (a few kWh/day) is rescaled to the load
+    point's nominal demand (hundreds of kW).  For each day d and step t:
+      ``factor[t] = min(daily_kwh[d] / median_daily_kwh, SGCC_MAX_DAILY_RATIO)
+                    × rel_shape[t]``
+    where ``rel_shape`` is the double-hump intra-day shape scaled to a daily
+    mean of 1.0.  A typical day therefore averages the nominal load, and the
+    household's real day-to-day variation is preserved.
 
-  - If a day has no SGCC reading (missing), the factor defaults to 1.0 (flat).
+  - Simulation dates outside the SGCC range (2014-01-01..2016-10-31) are
+    mapped to the same month/day of an SGCC year
+    (``year = first_year + (sim_year - first_year) mod n_years``), so e.g.
+    2024-01-01 uses 2015-01-01.
+
+  - If a mapped day has no reading, the daily ratio is 1.0 but the intra-day
+    shape is still applied.  Households with readings on every mapped day of
+    the window are preferred when sampling.
+
+  - The profile index includes ``end`` (same convention as
+    ``run_timeseries``), so every simulated step gets a factor.
 
 This approach preserves daily energy totals from SGCC while injecting a
 realistic intra-day shape from the power system model.  The deviation from a
@@ -267,31 +281,41 @@ def load_sgcc(path: Optional[Path | str] = None) -> pd.DataFrame:
 
 
 # ===================================================================== #
-#                   INTRA-DAY SHAPE GENERATION                           #
-# ===================================================================== #
-
-def _normalized_intraday_shape(timestamps: pd.DatetimeIndex) -> np.ndarray:
-    """Compute a normalized double-hump intra-day shape for 15-min steps.
-
-    Returns an array of shape values that sum to 1.0 over one day
-    (96 steps × shape[t]).  Values follow the same synthetic double-hump
-    profile as ``feeder_model._synthetic_daily_profile``.
-    """
-    hour = np.asarray(timestamps.hour, dtype=float) + np.asarray(timestamps.minute, dtype=float) / 60.0
-    raw = (
-        0.4
-        + 0.3 * np.exp(-0.5 * ((hour - 8.0) / 2.0) ** 2)
-        + 0.3 * np.exp(-0.5 * ((hour - 19.0) / 2.0) ** 2)
-    )
-    # Normalize so that sum over 96 steps = 1.0 (so total energy is preserved)
-    if raw.sum() > 0:
-        raw = raw / raw.sum()
-    return raw
-
-
-# ===================================================================== #
 #                       PROFILE SAMPLING                                 #
 # ===================================================================== #
+
+def _relative_intraday_shape(timestamps: pd.DatetimeIndex, freq: str) -> np.ndarray:
+    """Double-hump intra-day shape at each timestamp, scaled so that its mean
+    over one full day (at ``freq``) is 1.0."""
+    def raw(hour: np.ndarray) -> np.ndarray:
+        return (
+            0.4
+            + 0.3 * np.exp(-0.5 * ((hour - 8.0) / 2.0) ** 2)
+            + 0.3 * np.exp(-0.5 * ((hour - 19.0) / 2.0) ** 2)
+        )
+    day = pd.date_range("2000-01-01", periods=int(pd.Timedelta("1D") / pd.Timedelta(freq)),
+                        freq=freq)
+    day_mean = raw(np.asarray(day.hour + day.minute / 60.0, dtype=float)).mean()
+    hour = np.asarray(timestamps.hour + timestamps.minute / 60.0, dtype=float)
+    return raw(hour) / day_mean
+
+
+def _map_to_sgcc_calendar(days: pd.DatetimeIndex, lo: pd.Timestamp,
+                          hi: pd.Timestamp) -> pd.DatetimeIndex:
+    """Map simulation days onto SGCC dates (same month/day, cycled years)."""
+    n_years = hi.year - lo.year + 1
+    out = []
+    for d in days:
+        if lo <= d <= hi:
+            out.append(d)
+            continue
+        year = lo.year + (d.year - lo.year) % n_years
+        try:
+            out.append(d.replace(year=year))
+        except ValueError:          # 29 Feb into a non-leap year
+            out.append(d.replace(year=year, day=28))
+    return pd.DatetimeIndex(out)
+
 
 def sample_load_profiles(
     load_points: pd.DataFrame,
@@ -303,19 +327,19 @@ def sample_load_profiles(
 ) -> pd.DataFrame:
     """Sample one normal SGCC household per load point and build a profiles DataFrame.
 
-    For each load point, samples a normal (is_theft=False) SGCC consumer and
-    rescales its daily kWh to match the load point's nominal demand.  Bridges
-    the SGCC daily resolution to the feeder's 15-min step (see module docstring).
+    For each load point, samples a normal (is_theft=False) SGCC consumer,
+    normalises its daily kWh to its own median day and applies the intra-day
+    shape, so a typical day averages the load point's nominal demand (see the
+    module docstring for the formula and the calendar mapping).
 
     Parameters
     ----------
     load_points : DataFrame
-        Output of ``get_load_points()`` — must have ``load_id`` and
-        ``nominal_kw`` columns.
+        Output of ``get_load_points()`` — must have a ``load_id`` column.
     sgcc_df : DataFrame
         Output of ``load_sgcc()``.
     start, end : str
-        Simulation window bounds (same as ``run_timeseries``).
+        Simulation window bounds, inclusive (same as ``run_timeseries``).
     freq : str
         Time-step frequency string (default ``"15min"``).
     seed : int or None
@@ -332,41 +356,48 @@ def sample_load_profiles(
         seed = config.RANDOM_SEED
 
     rng = np.random.default_rng(seed)
-    normal_consumers = sgcc_df[~sgcc_df["is_theft"]]["consumer_id"].unique()
-
-    if len(normal_consumers) == 0:
+    normal = sgcc_df[~sgcc_df["is_theft"]]
+    if normal.empty:
         raise ValueError("No normal consumers in SGCC data")
 
-    timestamps = pd.date_range(start=start, end=end, freq=freq, inclusive="left")
-    shape = _normalized_intraday_shape(timestamps)
+    timestamps = pd.date_range(start=start, end=end, freq=freq)
+    shape = _relative_intraday_shape(timestamps, freq)
 
+    sim_days = timestamps.normalize()
+    lo, hi = normal["date"].min().normalize(), normal["date"].max().normalize()
+    mapped = _map_to_sgcc_calendar(sim_days, lo, hi)
+    window_days = set(mapped.unique())
+
+    # Daily kWh per consumer (wide: consumer x date) and each consumer's median.
+    daily = normal.assign(date=normal["date"].dt.normalize()).pivot_table(
+        index="consumer_id", columns="date", values="kwh", aggfunc="first")
+    medians = daily.median(axis=1)
+    usable = medians[medians > 0].index
+    in_window = [d for d in window_days if d in daily.columns]
+    if len(in_window) == len(window_days):
+        complete = daily.loc[usable, in_window].notna().all(axis=1)
+        candidates = np.asarray(sorted(complete[complete].index.astype(str)))
+    else:
+        candidates = np.asarray([])
+    if len(candidates) == 0:
+        candidates = np.asarray(sorted(usable.astype(str)))
+    if len(candidates) == 0:
+        raise ValueError("No normal SGCC consumer with positive readings")
+    daily.index = daily.index.astype(str)
+    medians.index = medians.index.astype(str)
+
+    cap = config.SGCC_MAX_DAILY_RATIO
     profiles: dict[str, np.ndarray] = {}
-
     for _, lp_row in load_points.iterrows():
-        load_id = lp_row["load_id"]
-        nominal_kw = float(lp_row["nominal_kw"])
-        nominal_kwh_per_day = nominal_kw * 24.0  # kW × 24h
-
-        # Sample a normal consumer
-        chosen = str(rng.choice(normal_consumers))
-        consumer_data = sgcc_df[
-            (sgcc_df["consumer_id"] == chosen) & (~sgcc_df["is_theft"])
-        ].set_index("date")["kwh"]
-
-        # Build a daily lookup
-        factors = np.ones(len(timestamps), dtype=float)
-
-        for i, ts in enumerate(timestamps):
-            day = ts.normalize()
-            if day in consumer_data.index:
-                daily_kwh = float(consumer_data[day])
-                if nominal_kwh_per_day > 0:
-                    # Scale factor: shape × (daily_kwh / nominal_kwh_per_day) × n_steps_per_day
-                    n_steps_per_day = 24 * 60 // int(pd.Timedelta(freq).total_seconds() // 60)
-                    factors[i] = shape[i] * (daily_kwh / nominal_kwh_per_day) * n_steps_per_day
-            # else: missing day → default 1.0 (flat)
-
-        profiles[load_id] = factors
+        chosen = str(rng.choice(candidates))
+        row = daily.loc[chosen]
+        med = float(medians[chosen])
+        ratio_by_day = {}
+        for d in window_days:
+            v = row.get(d, np.nan)
+            ratio_by_day[d] = min(float(v) / med, cap) if pd.notna(v) and v > 0 else 1.0
+        ratios = np.array([ratio_by_day[d] for d in mapped], dtype=float)
+        profiles[lp_row["load_id"]] = ratios * shape
 
     return pd.DataFrame(profiles, index=timestamps)
 

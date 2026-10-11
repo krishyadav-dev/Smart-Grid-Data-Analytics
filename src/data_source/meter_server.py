@@ -53,8 +53,15 @@ load-bus meter will not reach this in the simulation window.
 |  22–23   | Reactive Power Ph B | var      | 1-1:43.7.0   | IR (4)   | u32   |
 |  24–25   | Reactive Power Ph C | var      | 1-1:63.7.0   | IR (4)   | u32   |
 |  26–27   | Total Reactive Power| var      | 1-1:3.7.0    | IR (4)   | u32   |
-|  28–29   | Total Energy Import | Wh       | 1-1:1.8.0    | HR (3)   | u32   |
+|  28–29   | Simulated time      | Unix s   | 0-0:1.0.0    | IR (4)   | u32   |
+|   0–1    | Total Energy Import | Wh       | 1-1:1.8.0    | HR (3)   | u32   |
 +----------+---------------------+----------+--------------+----------+-------+
+
+Simulated time (added for the Layer 2 ingestion contract): the timezone-naive
+``run_timeseries`` timestamp interpreted as UTC, in whole seconds since
+1970-01-01.  It is 0 until the first update.  Each update writes the energy
+holding register first and then the whole input-register block (time
+included), so a reader that sees a new time also sees that step's energy.
 
 Notes on 32-bit word order: high word at base address, low word at base+1.
 Client reads 2 registers; decode as ``value = (regs[0] << 16) | regs[1]``.
@@ -104,12 +111,13 @@ REG_REACTIVE_A  = 20   # OBIS 1-1:23.7.0  — Phase A reactive power
 REG_REACTIVE_B  = 22   # OBIS 1-1:43.7.0  — Phase B reactive power
 REG_REACTIVE_C  = 24   # OBIS 1-1:63.7.0  — Phase C reactive power
 REG_REACTIVE_TOT= 26   # OBIS 1-1:3.7.0   — Total reactive power
+REG_SIM_TIME    = 28   # OBIS 0-0:1.0.0   — Simulated time (Unix s, IR)
 REG_ENERGY      = 28   # OBIS 1-1:1.8.0   — Total energy import (holding)
 
 TOTAL_REGISTERS = 30   # 15 measurements × 2 registers each
 
 # IR (input register) count and HR (holding register) start/count
-IR_COUNT        = 28   # registers 0–27  (voltage, current, power, freq, reactive)
+IR_COUNT        = 30   # registers 0–29  (voltage, current, power, freq, reactive, sim time)
 HR_START        = 0    # holding registers start from address 0
 HR_COUNT        = 2    # registers 0–1 (energy accumulator stored in HR 0–1)
 
@@ -140,6 +148,14 @@ def _encode_u32(value: float) -> tuple[int, int]:
     hi = (clamped >> 16) & 0xFFFF
     lo = clamped & 0xFFFF
     return hi, lo
+
+
+def _sim_time_seconds(ts: Any) -> int:
+    """Convert a timezone-naive simulated timestamp to Unix seconds (as UTC)."""
+    t = pd.Timestamp(ts)
+    if t.tzinfo is not None:
+        t = t.tz_convert("UTC").tz_localize(None)
+    return int((t - pd.Timestamp("1970-01-01")) // pd.Timedelta(seconds=1))
 
 
 def _decode_u32(hi: int, lo: int) -> int:
@@ -196,6 +212,7 @@ class MeterState:
         reactive_c_kvar: float = 0.0,
         frequency_hz: float = 50.0,
         interval_hours: float = 0.25,
+        t_sim: Any = None,
     ) -> None:
         """Write measurement values via the server context's async_setValues.
 
@@ -211,6 +228,8 @@ class MeterState:
             Phase active powers in kilowatts (kW).
         interval_hours : float
             Time since last update (hours), used for energy accumulation.
+        t_sim : timestamp, optional
+            Simulated time of this frame (written to REG_SIM_TIME).
         """
         # Accumulate energy (monotonically increasing — never decreases)
         total_power_kw = power_a_kw + power_b_kw + power_c_kw
@@ -234,16 +253,16 @@ class MeterState:
             reactive_b_kvar * 1000,
             reactive_c_kvar * 1000,
             total_reactive_kvar * 1000, # kvar → var (OBIS 3.7.0)
+            _sim_time_seconds(t_sim) if t_sim is not None else 0,  # (OBIS 0-0:1.0.0)
         ]:
             hi, lo = _encode_u32(raw_val)
             ir_flat.extend([hi, lo])
 
-        # Write input registers (fc=4) at address 0
-        await server_ctx.async_setValues(self.unit_id, 4, 0, ir_flat)
-
-        # Write energy accumulator to holding registers (fc=3) at address 0
+        # Energy (fc=3) first, then the input-register block with the new
+        # simulated time, so a new time always comes with its energy.
         hi_e, lo_e = _encode_u32(self.energy_wh)
         await server_ctx.async_setValues(self.unit_id, 3, 0, [hi_e, lo_e])
+        await server_ctx.async_setValues(self.unit_id, 4, 0, ir_flat)
 
 
 # ---------------------------------------------------------------------------
@@ -362,6 +381,7 @@ async def _update_loop(
                 reactive_c_kvar=_phase_val("reactive_power_kvar", "c"),
                 frequency_hz=50.0,
                 interval_hours=interval_hours,
+                t_sim=ts,
             )
 
         logger.debug("Updated meters for timestamp %s", ts)

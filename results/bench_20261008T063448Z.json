@@ -1,0 +1,305 @@
+{
+  "created_utc": "20261008T063448Z",
+  "metadata": {
+    "python": "3.14.6",
+    "os": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "versions": {
+      "pymodbus": "3.15.0",
+      "aiomqtt": "2.5.1",
+      "paho-mqtt": "2.1.0",
+      "fastapi": "0.142.4",
+      "uvicorn": "0.54.0",
+      "pydantic": "2.13.5",
+      "pydantic-settings": "2.15.0",
+      "pandapower": "3.5.6",
+      "pandas": "2.3.3",
+      "numpy": "2.4.6",
+      "mosquitto": "mosquitto version 2.1.2"
+    },
+    "profiles": "synthetic",
+    "simulated_window": "2024-01-01 00:00 .. 23:45 (one day)",
+    "steps": 96,
+    "meters": 8,
+    "run_timeseries_solve_s": 2.9,
+    "gateway_poll_interval_s": 0.25,
+    "speeds": [
+      900.0,
+      1800.0,
+      3600.0,
+      7200.0
+    ],
+    "LATENCY_BUDGET_MS": null,
+    "clock_note": "gateway and listener on the same host; wall clocks comparable"
+  },
+  "results": [
+    {
+      "playback_speed": 900.0,
+      "wall_s_per_step": 1.0,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 100.02,
+      "expected_messages": 768,
+      "gateway_published": 768,
+      "listener_received": 768,
+      "accepted": 768,
+      "validated_delivered": 768,
+      "unique_meter_steps": 768,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 7.92,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 768,
+          "p50": 0.244,
+          "p95": 0.865,
+          "p99": 1.127,
+          "max": 1.17
+        },
+        "pub_to_recv": {
+          "n": 768,
+          "p50": 0.843,
+          "p95": 1.311,
+          "p99": 1.557,
+          "max": 1.977
+        },
+        "total": {
+          "n": 768,
+          "p50": 1.144,
+          "p95": 1.92,
+          "p99": 2.188,
+          "max": 2.362
+        },
+        "recv_to_validated_subscriber": {
+          "n": 768,
+          "p50": 0.5600452423095703,
+          "p95": 0.8227825164794922,
+          "p99": 1.2042522430419922,
+          "max": 5.965232849121094
+        }
+      }
+    },
+    {
+      "playback_speed": 1800.0,
+      "wall_s_per_step": 0.5,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 53.02,
+      "expected_messages": 768,
+      "gateway_published": 768,
+      "listener_received": 768,
+      "accepted": 768,
+      "validated_delivered": 768,
+      "unique_meter_steps": 768,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 15.55,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 768,
+          "p50": 0.246,
+          "p95": 1.082,
+          "p99": 1.267,
+          "max": 1.932
+        },
+        "pub_to_recv": {
+          "n": 768,
+          "p50": 0.773,
+          "p95": 1.316,
+          "p99": 1.527,
+          "max": 1.732
+        },
+        "total": {
+          "n": 768,
+          "p50": 1.149,
+          "p95": 1.939,
+          "p99": 2.351,
+          "max": 2.753
+        },
+        "recv_to_validated_subscriber": {
+          "n": 768,
+          "p50": 0.5509853363037109,
+          "p95": 0.78582763671875,
+          "p99": 1.1320114135742188,
+          "max": 2.0570755004882812
+        }
+      }
+    },
+    {
+      "playback_speed": 3600.0,
+      "wall_s_per_step": 0.25,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 29.04,
+      "expected_messages": 768,
+      "gateway_published": 768,
+      "listener_received": 768,
+      "accepted": 768,
+      "validated_delivered": 768,
+      "unique_meter_steps": 768,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 30.1,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 768,
+          "p50": 0.284,
+          "p95": 0.777,
+          "p99": 0.968,
+          "max": 1.865
+        },
+        "pub_to_recv": {
+          "n": 768,
+          "p50": 0.819,
+          "p95": 1.361,
+          "p99": 1.571,
+          "max": 3.918
+        },
+        "total": {
+          "n": 768,
+          "p50": 1.228,
+          "p95": 1.729,
+          "p99": 2.145,
+          "max": 4.421
+        },
+        "recv_to_validated_subscriber": {
+          "n": 768,
+          "p50": 0.530242919921875,
+          "p95": 0.7719993591308594,
+          "p99": 1.1348724365234375,
+          "max": 3.7910938262939453
+        }
+      }
+    },
+    {
+      "playback_speed": 7200.0,
+      "wall_s_per_step": 0.125,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 17.03,
+      "expected_messages": 768,
+      "gateway_published": 441,
+      "listener_received": 441,
+      "accepted": 441,
+      "validated_delivered": 441,
+      "unique_meter_steps": 441,
+      "loss_steps": 327,
+      "loss_fraction": 0.4258,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 322,
+      "gap_steps_total": 322,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 322,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 31.82,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 441,
+          "p50": 0.217,
+          "p95": 0.459,
+          "p99": 0.536,
+          "max": 0.691
+        },
+        "pub_to_recv": {
+          "n": 441,
+          "p50": 0.702,
+          "p95": 1.195,
+          "p99": 1.362,
+          "max": 1.427
+        },
+        "total": {
+          "n": 441,
+          "p50": 0.929,
+          "p95": 1.537,
+          "p99": 1.646,
+          "max": 1.729
+        },
+        "recv_to_validated_subscriber": {
+          "n": 441,
+          "p50": 0.5168914794921875,
+          "p95": 0.7638931274414062,
+          "p99": 0.9739398956298828,
+          "max": 2.5949478149414062
+        }
+      }
+    }
+  ]
+}
