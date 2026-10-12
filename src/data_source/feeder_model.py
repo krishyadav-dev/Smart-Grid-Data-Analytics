@@ -8,7 +8,7 @@ Two modelling stages (docs/Phase_2_Modeling_Decisions_Brief.md):
   published power flow (Phase 2A, docs/build_report_2A.md).
 - **Stage B** — the Indian 11 kV feeder, derived from Stage A by the
   documented transformations B1–B9 in :mod:`stage_b` (Phase 2B): 11 kV, line
-  lengths x (11/4.16)^2, 50 Hz, 115/11 kV substation transformer with a
+  lengths x (11/4.16)^2, 50 Hz, 66/11 kV substation transformer with a
   controlled OLTC and line-drop compensation (:mod:`oltc`), three-phase
   laterals and capacitors, constant-PQ loads.  This is the network the meters,
   :func:`run_timeseries` and Layer 2 use.

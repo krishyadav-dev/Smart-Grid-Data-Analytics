@@ -42,6 +42,15 @@ REG_STANDIN_VK_PERCENT_B4 = 0.5
 SUB_TAP_STEP_PERCENT = ieee.REGULATOR_STEP_PU * 100         # IEEE regulator step
 SUB_TAP_RANGE = 16                                          # IEEE regulator +/-16
 MONITORED_LINE = "Line_RG60_632"                            # leaves the regulated bus
+# B4 (brief v2 §2X, X.1): 66/11 kV substation.  CEA Manual on Transmission
+# Planning Criteria 2025, §5.1.5 (PDF p. 35): 66 kV equipment rated 31.5 kA,
+# maximum short-circuit level <= 80 % of it -> 25.2 kA at 66 kV.  The IEEE
+# transformer data (5 MVA, R 1 %, X 8 %) is kept; only the HV voltage changes.
+SUB_HV_KV = 66.0
+GRID_IK_MAX_KA = 0.8 * 31.5                                 # 25.2 kA
+GRID_S_SC_MAX_MVA = math.sqrt(3) * SUB_HV_KV * GRID_IK_MAX_KA  # 2880.7 MVA
+GRID_RX_MAX = 0.1                                           # as in 2B (verify)
+# Minimum short-circuit level: verify (kept at the Stage A value).
 STEPS = ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9")
 
 
@@ -79,15 +88,18 @@ def b3_frequency(net) -> str:
 
 def b4_substation_transformer(net) -> str:
     st = ieee.SUBSTATION_TRANSFORMER
-    sb = pp.create_bus(net, vn_kv=st["kv_high"], name="sourcebus")
-    net.ext_grid.at[net.ext_grid.index[0], "bus"] = sb
-    net.ext_grid.at[net.ext_grid.index[0], "name"] = "Grid_115kV"
+    sb = pp.create_bus(net, vn_kv=SUB_HV_KV, name="sourcebus")
+    eg = net.ext_grid.index[0]
+    net.ext_grid.at[eg, "bus"] = sb
+    net.ext_grid.at[eg, "name"] = "Grid_66kV"
+    net.ext_grid.at[eg, "s_sc_max_mva"] = GRID_S_SC_MAX_MVA
+    net.ext_grid.at[eg, "rx_max"] = GRID_RX_MAX
     vk = math.hypot(st["r_pct"], st["x_pct"])
     b650 = int(net.bus.index[net.bus.name == "650"][0])
     # Zero-sequence data is not published: vk0 = vk, mag0 100 % (verify).
     pp.create_transformer_from_parameters(
         net, hv_bus=sb, lv_bus=b650, sn_mva=st["kva"] / 1e3,
-        vn_hv_kv=st["kv_high"], vn_lv_kv=V_STAGE_B_KV,
+        vn_hv_kv=SUB_HV_KV, vn_lv_kv=V_STAGE_B_KV,
         vkr_percent=st["r_pct"], vk_percent=vk, pfe_kw=0.0, i0_percent=0.0,
         vector_group="Dyn", vk0_percent=vk, vkr0_percent=st["r_pct"],
         mag0_percent=100.0, mag0_rx=0.0, si0_hv_partial=0.9, shift_degree=30,
@@ -97,7 +109,8 @@ def b4_substation_transformer(net) -> str:
     )
     reg = net.trafo.name == "Regulator_650_RG60"
     net.trafo.loc[reg, ["vk_percent", "vk0_percent"]] = REG_STANDIN_VK_PERCENT_B4
-    return (f"115 kV sourcebus -> Sub_XFMR {st['kva']} kVA Dyn vk {vk:.3f} % -> 650; "
+    return (f"{SUB_HV_KV:.0f} kV sourcebus (S_sc {GRID_S_SC_MAX_MVA:.1f} MVA) -> Sub_XFMR "
+            f"{st['kva']} kVA Dyn vk {vk:.3f} % -> 650; "
             f"regulator stand-in vk {REG_STANDIN_VK_PERCENT_B4} %")
 
 

@@ -52,7 +52,7 @@ class TestNetworkConstruction:
     def test_bus_650_is_11kv(self, net):
         vn = net.bus.set_index("name").vn_kv
         assert vn["650"] == config.FEEDER_VOLTAGE_KV
-        assert vn["sourcebus"] == 115.0
+        assert vn["sourcebus"] == 66.0   # 66/11 kV substation (brief v2 §2X, CP1)
         assert net.ext_grid.bus.iloc[0] == net.bus.index[net.bus.name == "sourcebus"][0]
 
     def test_total_load(self, net):

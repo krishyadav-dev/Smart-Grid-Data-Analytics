@@ -110,9 +110,13 @@ def test_b4_substation_transformer(steps):
     b3, b4 = steps["B3"], steps["B4"]
     names = dict(zip(b4.bus.index, b4.bus.name))
     assert names[b4.ext_grid.bus.iloc[0]] == "sourcebus"
-    assert b4.bus.vn_kv[b4.bus.name == "sourcebus"].iloc[0] == 115.0
+    assert b4.bus.vn_kv[b4.bus.name == "sourcebus"].iloc[0] == 66.0
+    # CEA TPC 2025 §5.1.5: 0.8 x 31.5 kA at 66 kV
+    eg = b4.ext_grid.iloc[0]
+    assert eg.s_sc_max_mva == pytest.approx(math.sqrt(3) * 66.0 * 25.2)
+    assert eg.rx_max == 0.1
     t = b4.trafo[b4.trafo.name == "Sub_XFMR"].iloc[0]
-    assert (t.vector_group, t.sn_mva, t.vn_hv_kv, t.vn_lv_kv) == ("Dyn", 5.0, 115.0, 11.0)
+    assert (t.vector_group, t.sn_mva, t.vn_hv_kv, t.vn_lv_kv) == ("Dyn", 5.0, 66.0, 11.0)
     assert t.vk_percent == pytest.approx(math.hypot(1, 8))
     assert t.vkr_percent == 1.0
     d = 100 * (_named_v(b4).loc[_named_v(b3).index] - _named_v(b3)) / _named_v(b3)

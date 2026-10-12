@@ -90,7 +90,7 @@ def nominal_metrics(net) -> dict:
            "xfm1_loading_pct": lp["XFM-1"],
            "oltc_tap": float(net.trafo.at[int(net["oltc"].trafo.iloc[0]), "tap_pos"]),
            "v_relay_pu": oltc.relay_voltage(net)[0]}
-    for b in ("632", "634", "675"):
+    for b in ("650", "632", "634", "675"):
         out[f"v_{b}"] = v.loc[b].round(4).tolist()
     sc.calc_sc(net, fault="3ph", case="max")
     names = net.bus.name
