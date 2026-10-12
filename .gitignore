@@ -18,6 +18,8 @@ htmlcov/
 
 # Data & Output (exclude generated data files)
 data/
+# Simulated year cache (regenerable from the master seed: scripts/run_year.py)
+results/year_2024*/
 
 # Environment variables & secrets
 .env
@@ -36,4 +38,5 @@ Thumbs.db
 # Logs
 *.log
 
-/docs/*
+# docs/ is local only and never tracked (includes the copyrighted References)
+/docs/
