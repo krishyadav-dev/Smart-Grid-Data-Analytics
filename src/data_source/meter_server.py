@@ -121,19 +121,6 @@ IR_COUNT        = 30   # registers 0–29  (voltage, current, power, freq, react
 HR_START        = 0    # holding registers start from address 0
 HR_COUNT        = 2    # registers 0–1 (energy accumulator stored in HR 0–1)
 
-# Load point → unit_id mapping (stable — Part B contract)
-LOAD_BUS_UNIT_MAP = {
-    "634": 1,
-    "645": 2,
-    "646": 3,
-    "652": 4,
-    "671": 5,
-    "675": 6,
-    "692": 7,
-    "611": 8,
-}
-
-
 # ---------------------------------------------------------------------------
 # 32-bit encoding helpers
 # ---------------------------------------------------------------------------
@@ -307,15 +294,15 @@ def build_server_context():
 
 
 def _load_id_unit_map() -> dict[str, int]:
-    """Map load_id → unit_id.  Tries feeder model; falls back to static map."""
-    try:
-        from .feeder_model import get_load_points
-        lp = get_load_points()
-        return {row["load_id"]: i + 1
-                for i, (_, row) in enumerate(lp.iterrows())}
-    except Exception:
-        # Fallback: derive from LOAD_BUS_UNIT_MAP
-        return {f"load_{bus}_?": uid for bus, uid in LOAD_BUS_UNIT_MAP.items()}
+    """Map load_id → unit_id (row order of ``get_load_points()``, 1-based).
+
+    Raises if the feeder model cannot be built: a silent fallback would
+    serve meters with fake load_ids that never receive data.
+    """
+    from .feeder_model import get_load_points
+    lp = get_load_points()
+    return {row["load_id"]: i + 1
+            for i, (_, row) in enumerate(lp.iterrows())}
 
 
 # ---------------------------------------------------------------------------
@@ -440,6 +427,6 @@ def run_server(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     print(f"Starting meter server on {config.MODBUS_HOST}:{config.MODBUS_PORT}")
-    print(f"Unit IDs: {LOAD_BUS_UNIT_MAP}")
+    print(f"Unit IDs: {_load_id_unit_map()}")
     print("Press Ctrl+C to stop.\n")
     run_server()

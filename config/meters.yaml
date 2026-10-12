@@ -14,3 +14,4 @@ meters:
   - {meter_id: m06, unit_id: 6, load_id: load_675_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
   - {meter_id: m07, unit_id: 7, load_id: load_692_c,   role: consumer, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}
   - {meter_id: m08, unit_id: 8, load_id: load_611_c,   role: consumer, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m09, unit_id: 9, load_id: load_670_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}

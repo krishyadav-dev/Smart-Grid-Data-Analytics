@@ -7,8 +7,8 @@ Acceptance criteria verified:
         runpp_3ph results exist (catches accidental runpp()).
     A3. inject_fault returns fault current ≥ 2× pre-fault current for
         at least one bus/fault-type combination; all three fault types work.
-    A4. Total connected load ≈ 3.5 MW build-time assertion exists, passes,
-        and fails when a load is deliberately perturbed.
+    A4. Total connected load = 3.466 MW / 2.102 Mvar (±0.5 %) build-time
+        assertion exists, passes, and fails when deliberately perturbed.
     A5. get_load_points() ids are consistent with run_timeseries output.
 """
 
@@ -46,16 +46,24 @@ class TestNetworkConstruction:
     """Verify the IEEE 13-bus network is built correctly."""
 
     def test_bus_count(self, net):
-        assert len(net.bus) == 13
+        # 13 IEEE nodes + distributed-load bus 670 + 115 kV sourcebus
+        assert len(net.bus) == 15
+
+    def test_bus_650_is_11kv(self, net):
+        vn = net.bus.set_index("name").vn_kv
+        assert vn["650"] == config.FEEDER_VOLTAGE_KV
+        assert vn["sourcebus"] == 115.0
+        assert net.ext_grid.bus.iloc[0] == net.bus.index[net.bus.name == "sourcebus"][0]
 
     def test_total_load(self, net):
         total_p = (
             net.asymmetric_load[["p_a_mw", "p_b_mw", "p_c_mw"]].sum().sum()
         )
-        tol = config.LOAD_TOLERANCE_FRACTION * config.TOTAL_LOAD_MW_ASSERTION
-        assert abs(total_p - config.TOTAL_LOAD_MW_ASSERTION) < tol, (
-            f"Total load {total_p:.3f} MW outside expected range"
+        total_q = (
+            net.asymmetric_load[["q_a_mvar", "q_b_mvar", "q_c_mvar"]].sum().sum()
         )
+        assert total_p == pytest.approx(3.466, rel=0.005)
+        assert total_q == pytest.approx(2.102, rel=0.005)
 
     def test_total_load_assertion_fails_on_perturbation(self):
         """A4 — the build-time assertion must fail if a load is perturbed.
@@ -69,11 +77,17 @@ class TestNetworkConstruction:
         # Monkey-patch config so that the expected total is wildly wrong
         original = config.TOTAL_LOAD_MW_ASSERTION
         try:
-            config.TOTAL_LOAD_MW_ASSERTION = 0.1  # far from real ≈3.5 MW
+            config.TOTAL_LOAD_MW_ASSERTION = 0.1  # far from real 3.466 MW
             with pytest.raises(AssertionError, match="deviates"):
                 _build()
         finally:
             config.TOTAL_LOAD_MW_ASSERTION = original
+
+    def test_total_mvar_assertion_fails_on_perturbation(self, monkeypatch):
+        # 2.102 Mvar ±0.5 % rejects a 1 % error
+        monkeypatch.setattr(config, "TOTAL_LOAD_MVAR_ASSERTION", 2.102 * 1.01)
+        with pytest.raises(AssertionError, match="reactive load"):
+            build_ieee13_network()
 
     def test_has_asymmetric_loads(self, net):
         assert len(net.asymmetric_load) >= 6  # at least 6 spot loads
@@ -124,17 +138,33 @@ class TestRunSnapshot:
     """A1 — power flow converges without warnings."""
 
     def test_snapshot_convergence_no_warnings(self, net):
-        """Power flow must converge without pandapower warnings."""
+        """Power flow must converge; non-convergence fails the test.
+
+        Library FutureWarnings/DeprecationWarnings are not convergence
+        problems; any other warning is escalated to an error and is never
+        retried.
+        """
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            try:
-                result = run_snapshot(net)
-            except Warning:
-                # Retry without strict mode — some pandapower versions emit
-                # informational UserWarnings that aren't convergence issues.
-                result = run_snapshot(net)
-        assert result is not None
+            warnings.simplefilter("ignore", FutureWarning)
+            warnings.simplefilter("ignore", DeprecationWarning)
+            result = run_snapshot(net)
+        assert result["net"].converged
         assert isinstance(result, dict)
+
+    def test_snapshot_partial_scaling_resets_others(self, net):
+        """A partial dict must not leave stale scaling on other loads."""
+        lp = get_load_points(net)
+        first, second = lp["load_id"].iloc[0], lp["load_id"].iloc[1]
+        run_snapshot(net, load_scaling={first: 0.5, second: 0.5})
+        run_snapshot(net, load_scaling={first: 0.7})
+        scaling = net.asymmetric_load.set_index("name")["scaling"]
+        assert scaling[first] == 0.7
+        assert scaling[second] == 1.0
+
+    def test_snapshot_unknown_load_id_raises(self, net):
+        with pytest.raises(KeyError):
+            run_snapshot(net, load_scaling={"load_999_a": 1.0})
 
     def test_snapshot_returns_voltages(self, net):
         result = run_snapshot(net)
@@ -237,6 +267,45 @@ class TestRunTimeseries:
             profiles=profiles,
         )
         assert len(df) > 0
+
+    def test_timeseries_no_nan_values(self, net):
+        """Every load point (incl. 634, fed only by XFM-1) gets real values."""
+        df = run_timeseries(start="2024-01-01 00:00", end="2024-01-01 00:15",
+                            net=net)
+        assert set(df["load_id"]) == set(get_load_points(net)["load_id"])
+        assert not df.isna().any().any()
+        assert (df.loc[df.bus == "634", "current_a"] > 0).all()
+
+    def test_timeseries_missing_timestamp_raises(self, net):
+        lp = get_load_points(net)
+        timestamps = pd.date_range("2024-01-01", periods=2, freq="30min")
+        profiles = pd.DataFrame(
+            {lid: [1.0, 1.0] for lid in lp["load_id"]}, index=timestamps,
+        )
+        with pytest.raises(KeyError, match="timestamp"):
+            run_timeseries(start="2024-01-01 00:00", end="2024-01-01 01:00",
+                           freq="30min", net=net, profiles=profiles)
+
+    def test_timeseries_missing_column_raises(self, net):
+        lp = get_load_points(net)
+        timestamps = pd.date_range("2024-01-01", periods=3, freq="30min")
+        profiles = pd.DataFrame(
+            {lid: [1.0] * 3 for lid in lp["load_id"].iloc[1:]}, index=timestamps,
+        )
+        with pytest.raises(KeyError, match="load_id"):
+            run_timeseries(start="2024-01-01 00:00", end="2024-01-01 01:00",
+                           freq="30min", net=net, profiles=profiles)
+
+    def test_timeseries_power_flow_failure_raises(self, net, monkeypatch):
+        from src.data_source import feeder_model
+
+        def boom(*a, **k):
+            raise ValueError("forced non-convergence")
+
+        monkeypatch.setattr(feeder_model.pp, "runpp_3ph", boom)
+        with pytest.raises(RuntimeError, match="Power flow failed"):
+            run_timeseries(start="2024-01-01 00:00", end="2024-01-01 00:15",
+                           net=net)
 
 
 # ===================================================================== #

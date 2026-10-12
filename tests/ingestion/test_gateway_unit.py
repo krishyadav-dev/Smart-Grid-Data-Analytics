@@ -243,7 +243,7 @@ def test_one_failing_unit_does_not_stop_others():
 
     run(go())
     tel = {json.loads(p)["meter_id"] for t, p, q, r in sink if t.endswith("/telemetry")}
-    assert tel == {f"m0{i}" for i in range(2, 9)}
+    assert tel == {f"m0{i}" for i in range(2, 10)}
     m01 = [json.loads(p) for t, p, q, r in sink if t.endswith("/m01/status")]
     assert m01[-1]["state"] == "unreachable" and "decoder bug" in m01[-1]["last_error"]
     gw_status = [json.loads(p) for t, p, q, r in sink if t.endswith("/gateway/status")]

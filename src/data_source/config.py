@@ -19,8 +19,9 @@ FEEDER_VOLTAGE_KV = 11.0          # Target primary-feeder voltage (line-to-line)
 ORIGINAL_VOLTAGE_KV = 4.16        # Original IEEE 13-bus voltage
 VOLTAGE_SCALE_FACTOR = FEEDER_VOLTAGE_KV / ORIGINAL_VOLTAGE_KV  # ≈ 2.644
 
-# Build-time sanity check: total connected load must be within ±15 % of this
-TOTAL_LOAD_MW_ASSERTION = 3.5     # MW — published IEEE 13-bus summary figure
+# Build-time sanity check: IEEE 13-bus spot + distributed load (Kersting 1991)
+TOTAL_LOAD_MW_ASSERTION = 3.466   # MW
+TOTAL_LOAD_MVAR_ASSERTION = 2.102 # Mvar
 
 # ---------------------------------------------------------------------------
 # SGCC theft dataset — primary (GitHub) then fallback (local)
@@ -60,7 +61,7 @@ RANDOM_SEED = 42                  # Reproducible random number generation
 # ---------------------------------------------------------------------------
 # Feeder — build-time validation
 # ---------------------------------------------------------------------------
-LOAD_TOLERANCE_FRACTION = 0.15    # Total load must be within ±15 % of published
+LOAD_TOLERANCE_FRACTION = 0.005   # Total P and Q must be within ±0.5 % of published
 
 # ---------------------------------------------------------------------------
 # Theft injection
