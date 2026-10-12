@@ -49,6 +49,8 @@ import pandas as pd
 import pandapower as pp
 
 from . import config
+from . import ieee13_data as ieee
+from .line_sequence import sequence_params
 
 logger = logging.getLogger(__name__)
 
@@ -374,6 +376,206 @@ def build_ieee13_network() -> pp.pandapowerNet:
 
 
 # ===================================================================== #
+#              STAGE A: IEEE 13-NODE FEEDER AS PUBLISHED (2A)            #
+# ===================================================================== #
+
+FT_TO_KM = 0.0003048
+
+# Regulator 650 -> RG60 as one YNyn transformer.  runpp_3ph has one tap per
+# transformer, so the published per-phase taps 10/8/11 (ieee13_data,
+# l. 259-261) are replaced by their mean: ratio 1 + 0.00625 * 29/3 = 1.0604.
+# The IEEE regulator has no impedance (published loss 0, l. 275), but
+# pandapower needs vk > 0: numerical stand-in for an ideal regulator.
+REG_STANDIN_SN_MVA = 5.0       # numerical stand-in for an ideal regulator
+REG_STANDIN_VK_PERCENT = 0.01  # numerical stand-in for an ideal regulator
+
+
+def build_network(stage: str = "B") -> pp.pandapowerNet:
+    """Build the feeder for one modelling stage.
+
+    ``"A"``: the IEEE 13-node feeder as published (4.16 kV, 60 Hz), the
+    validation base.  ``"B"``: the Indian 11 kV feeder used by the meters and
+    the time series (Phase 2B derives it from stage A; until then it is the
+    Phase 1 network, also returned by :func:`build_ieee13_network`).
+    """
+    if stage == "A":
+        return _build_stage_a()
+    if stage == "B":
+        return build_ieee13_network()
+    raise ValueError(f"stage must be 'A' or 'B', got {stage!r}")
+
+
+def _phase_str(p: tuple, q: tuple) -> str:
+    return "".join(ph for ph, pv, qv in zip("abc", p, q) if pv or qv) or "abc"
+
+
+def _add_modelled_load(net, bus: int, name: str, conn: str, model: str,
+                       p_kw: tuple, q_kvar: tuple) -> int:
+    """Asymmetric load with nominal values and model kept for 2A.2."""
+    idx = pp.create_asymmetric_load(
+        net, bus=bus,
+        p_a_mw=p_kw[0] / 1e3, p_b_mw=p_kw[1] / 1e3, p_c_mw=p_kw[2] / 1e3,
+        q_a_mvar=q_kvar[0] / 1e3, q_b_mvar=q_kvar[1] / 1e3,
+        q_c_mvar=q_kvar[2] / 1e3,
+        type="wye" if conn == "Y" else "delta", name=name,
+    )
+    for ph, pv, qv in zip("abc", p_kw, q_kvar):
+        net.asymmetric_load.at[idx, f"p0_{ph}_mw"] = pv / 1e3
+        net.asymmetric_load.at[idx, f"q0_{ph}_mvar"] = qv / 1e3
+    net.asymmetric_load.at[idx, "load_model"] = model
+    return idx
+
+
+def _build_stage_a() -> pp.pandapowerNet:
+    """IEEE 13-node feeder from the published data only (Phase 2A).
+
+    Source: external grid directly at 650, 1.0 pu, 4.16 kV, as in the
+    published power flow (650 is the source node, l. 235, 271-272); no
+    substation transformer (it enters in Stage B, step B4).  All values come
+    from :mod:`ieee13_data`.
+    """
+    net = pp.create_empty_network(
+        name="IEEE 13-node (Stage A, 4.16 kV, 60 Hz)",
+        f_hz=ieee.FREQUENCY_HZ, sn_mva=1.0,
+    )
+    names = ["650", "RG60", "632", "633", "634", "645", "646", "670", "671",
+             "680", "684", "611", "652", "692", "675"]
+    B = {
+        n: pp.create_bus(
+            net, name=n,
+            vn_kv=ieee.V_XFM1_LV_KV if n == "634" else ieee.V_PRIMARY_KV)
+        for n in names
+    }
+
+    # Short-circuit data is required by runpp_3ph but not published: verify
+    # (same assumed values as stage B, audit §5).
+    pp.create_ext_grid(
+        net, bus=B["650"], vm_pu=1.0, name="Source_650",
+        s_sc_max_mva=1000.0, rx_max=0.1, x0x_max=1.0, r0x0_max=0.1,
+        s_sc_min_mva=800.0, rx_min=0.1, x0x_min=1.0, r0x0_min=0.1,
+    )
+
+    taps = ieee.REGULATOR["published_taps"]
+    pp.create_transformer_from_parameters(
+        net, hv_bus=B["650"], lv_bus=B["RG60"], sn_mva=REG_STANDIN_SN_MVA,
+        vn_hv_kv=ieee.V_PRIMARY_KV, vn_lv_kv=ieee.V_PRIMARY_KV,
+        vkr_percent=0.0, vk_percent=REG_STANDIN_VK_PERCENT,
+        pfe_kw=0.0, i0_percent=0.0, vector_group="YNyn",
+        vk0_percent=REG_STANDIN_VK_PERCENT, vkr0_percent=0.0,
+        mag0_percent=100.0, mag0_rx=0.0, si0_hv_partial=0.9, shift_degree=0,
+        tap_side="lv", tap_neutral=0, tap_min=-16, tap_max=16,
+        tap_step_percent=ieee.REGULATOR_STEP_PU * 100,
+        tap_pos=sum(taps) / len(taps), tap_changer_type="Ratio",
+        name="Regulator_650_RG60",
+    )
+
+    x1 = ieee.XFM1
+    vk = (x1["r_pct"] ** 2 + x1["x_pct"] ** 2) ** 0.5
+    # Zero-sequence data is not published; vk0 = vk is an assumption: verify.
+    pp.create_transformer_from_parameters(
+        net, hv_bus=B["633"], lv_bus=B["634"], sn_mva=x1["kva"] / 1e3,
+        vn_hv_kv=x1["kv_high"], vn_lv_kv=x1["kv_low"],
+        vkr_percent=x1["r_pct"], vk_percent=vk, pfe_kw=0.0, i0_percent=0.0,
+        vector_group="YNyn", vk0_percent=vk, vkr0_percent=x1["r_pct"],
+        mag0_percent=100.0, mag0_rx=0.0, si0_hv_partial=0.9, shift_degree=0,
+        name="XFM-1",
+    )
+
+    for a, b, length_ft, cfg in ieee.LINE_SEGMENTS:
+        if cfg == "XFM-1":
+            continue
+        if cfg == "Switch":
+            pp.create_switch(net, bus=B[a], element=B[b], et="b", closed=True,
+                             name=f"Switch_{a}_{b}")
+            continue
+        if (a, b) == ("650", "632"):
+            a = "RG60"  # the regulator sits at the 650 end of this segment
+        segs = [(a, b, length_ft)]
+        if (a, b) == ("632", "671"):
+            # Distributed load lumped at 670, one third along (Phase 1).
+            segs = [("632", "670", 667), ("670", "671", 1333)]
+        _, z_up, b_up = ieee.LINE_CONFIGS[cfg]
+        sp = sequence_params(z_up, b_up, ieee.CONFIG_PHASES[cfg], net.f_hz)
+        for fa, fb, ft in segs:
+            pp.create_line_from_parameters(
+                net, from_bus=B[fa], to_bus=B[fb], length_km=ft * FT_TO_KM,
+                r_ohm_per_km=sp.r1_ohm_per_km, x_ohm_per_km=sp.x1_ohm_per_km,
+                c_nf_per_km=sp.c1_nf_per_km, r0_ohm_per_km=sp.r0_ohm_per_km,
+                x0_ohm_per_km=sp.x0_ohm_per_km, c0_nf_per_km=sp.c0_nf_per_km,
+                max_i_ka=ieee.CONFIG_AMPACITY_KA[cfg],
+                name=f"Line_{fa}_{fb}", config=cfg,
+            )
+
+    for bus, (conn, model, p_kw, q_kvar) in ieee.SPOT_LOADS.items():
+        _add_modelled_load(net, B[bus], f"load_{bus}_{_phase_str(p_kw, q_kvar)}",
+                           conn, model, p_kw, q_kvar)
+    _, _, conn, model, p_kw, q_kvar = ieee.DISTRIBUTED_LOAD
+    _add_modelled_load(net, B["670"], f"load_670_{_phase_str(p_kw, q_kvar)}",
+                       conn, model, p_kw, q_kvar)
+
+    # Capacitors: 675 is balanced -> shunt (constant-Z in runpp_3ph).  611 is
+    # phase C only and runpp_3ph shunts are balanced, so it is a constant-Z
+    # phase-C element with Q0 = -100 kvar, scaled by the load-model loop.
+    cap675 = ieee.CAPACITORS["675"]
+    pp.create_shunt(net, bus=B["675"], q_mvar=-sum(cap675) / 1e3, p_mw=0.0,
+                    name="Cap_675")
+    cap611 = ieee.CAPACITORS["611"]
+    _add_modelled_load(net, B["611"], "cap_611_c", "Y", "Z",
+                       (0.0, 0.0, 0.0), tuple(-q for q in cap611))
+    return net
+
+
+def _load_voltage_pu(net, idx: int) -> Tuple[float, float, float]:
+    """Per-phase voltage magnitude seen by a load, in pu.
+
+    Wye: line-to-neutral.  Delta: |Vx - Vy| / sqrt(3) for the pair that
+    pandapower assigns to p_a / p_b / p_c (AB / BC / CA).
+    """
+    bus = int(net.asymmetric_load.at[idx, "bus"])
+    r = net.res_bus_3ph.loc[bus]
+    v = [r[f"vm_{p}_pu"] * np.exp(1j * np.deg2rad(r[f"va_{p}_degree"]))
+         for p in "abc"]
+    if net.asymmetric_load.at[idx, "type"] == "delta":
+        return tuple(abs(v[i] - v[(i + 1) % 3]) / np.sqrt(3) for i in range(3))
+    return tuple(abs(x) for x in v)
+
+
+def solve_with_load_models(net: pp.pandapowerNet, tol: float = 1e-3,
+                           max_iter: int = 10) -> int:
+    """Run runpp_3ph with constant-Z / constant-I loads (Phase 2A.2).
+
+    Outer iteration: solve, set P = P0 V^k and Q = Q0 V^k (k = 2 for Z, 1 for
+    I, 0 for PQ) from the solved voltages, repeat until the largest change in
+    any load P is below ``tol`` x total P.  Returns the number of power flows.
+    Raises RuntimeError if it does not converge (no silent fallback).
+    """
+    exp = {"PQ": 0, "Z": 2, "I": 1}
+    al = net.asymmetric_load
+    p_total = float(al[[f"p0_{p}_mw" for p in "abc"]].abs().sum().sum())
+    for n_pf in range(1, max_iter + 1):
+        pp.runpp_3ph(net)
+        max_dp = 0.0
+        updates = []
+        for idx in al.index:
+            k = exp[al.at[idx, "load_model"]]
+            vpu = _load_voltage_pu(net, idx)
+            for ph, v in zip("abc", vpu):
+                p_new = al.at[idx, f"p0_{ph}_mw"] * v ** k
+                q_new = al.at[idx, f"q0_{ph}_mvar"] * v ** k
+                max_dp = max(max_dp, abs(p_new - al.at[idx, f"p_{ph}_mw"]),
+                             abs(q_new - al.at[idx, f"q_{ph}_mvar"]))
+                updates.append((idx, ph, p_new, q_new))
+        if max_dp < tol * p_total:
+            logger.info("Load-model iteration converged after %d power flows", n_pf)
+            return n_pf
+        for idx, ph, p_new, q_new in updates:
+            al.at[idx, f"p_{ph}_mw"] = p_new
+            al.at[idx, f"q_{ph}_mvar"] = q_new
+    raise RuntimeError(
+        f"Load-model iteration did not converge in {max_iter} power flows")
+
+
+# ===================================================================== #
 #                          LOAD POINTS                                    #
 # ===================================================================== #
 
@@ -399,17 +601,23 @@ def get_load_points(net: pp.pandapowerNet | None = None) -> pd.DataFrame:
         net = build_ieee13_network()
 
     rows: list[dict] = []
+    # Stage A keeps nominal values in p0_*/q0_* (p_*/q_* move with the load
+    # models); stage B has no such columns.
+    nom = "p0_a_mw" in net.asymmetric_load.columns
     for idx in net.asymmetric_load.index:
         load_id = net.asymmetric_load.at[idx, "name"]
+        if not str(load_id).startswith("load_"):
+            continue  # e.g. Stage A's single-phase capacitor cap_611_c
         bus_idx = int(net.asymmetric_load.at[idx, "bus"])
         bus_name = net.bus.at[bus_idx, "name"]
 
-        pa = float(net.asymmetric_load.at[idx, "p_a_mw"])
-        pb = float(net.asymmetric_load.at[idx, "p_b_mw"])
-        pc = float(net.asymmetric_load.at[idx, "p_c_mw"])
-        qa = float(net.asymmetric_load.at[idx, "q_a_mvar"])
-        qb = float(net.asymmetric_load.at[idx, "q_b_mvar"])
-        qc = float(net.asymmetric_load.at[idx, "q_c_mvar"])
+        pfx_p, pfx_q = ("p0", "q0") if nom else ("p", "q")
+        pa = float(net.asymmetric_load.at[idx, f"{pfx_p}_a_mw"])
+        pb = float(net.asymmetric_load.at[idx, f"{pfx_p}_b_mw"])
+        pc = float(net.asymmetric_load.at[idx, f"{pfx_p}_c_mw"])
+        qa = float(net.asymmetric_load.at[idx, f"{pfx_q}_a_mvar"])
+        qb = float(net.asymmetric_load.at[idx, f"{pfx_q}_b_mvar"])
+        qc = float(net.asymmetric_load.at[idx, f"{pfx_q}_c_mvar"])
 
         # Determine phase
         phases_present = []
