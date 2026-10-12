@@ -65,6 +65,12 @@ def sequence_params(z_upper: Sequence[complex], b_upper: Sequence[float],
     """
     zs, zm = self_mutual(upper_to_matrix(z_upper), phases)
     bs, bm = self_mutual(upper_to_matrix(b_upper), phases)
+    return sequence_params_from_self_mutual(zs, zm, bs, bm, f_hz)
+
+
+def sequence_params_from_self_mutual(zs: complex, zm: complex, bs: complex,
+                                     bm: complex, f_hz: float) -> SequenceParams:
+    """Sequence data from self/mutual terms (ohm/mile, uS/mile, as published)."""
     z1, z0 = zs - zm, zs + 2 * zm
     b1, b0 = (bs - bm).real, (bs + 2 * bm).real
     us_per_mile_to_nf_per_km = 1e3 / (2 * math.pi * f_hz) / MILE_KM  # uS -> nF

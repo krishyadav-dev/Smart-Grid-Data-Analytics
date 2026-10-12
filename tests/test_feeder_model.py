@@ -46,8 +46,8 @@ class TestNetworkConstruction:
     """Verify the IEEE 13-bus network is built correctly."""
 
     def test_bus_count(self, net):
-        # 13 IEEE nodes + distributed-load bus 670 + 115 kV sourcebus
-        assert len(net.bus) == 15
+        # 13 IEEE nodes + RG60 + distributed-load bus 670 + 115 kV sourcebus
+        assert len(net.bus) == 16
 
     def test_bus_650_is_11kv(self, net):
         vn = net.bus.set_index("name").vn_kv

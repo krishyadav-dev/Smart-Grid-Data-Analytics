@@ -1,8 +1,15 @@
 """
-Physical-sanity tests for the IEEE 13-bus feeder at nominal load (runpp_3ph).
+Physical-sanity tests for the Stage B feeder at nominal load (runpp_3ph).
 
-Covers Fix Brief Phase 1 §4 (audit L1-1, L1-7, L1-8): energy balance,
-losses, voltage band, element loadings, radial topology and load totals.
+Phase 1 checks (energy balance, losses, voltages, loadings, radial topology,
+load totals), updated for Stage B (Phase 2B):
+
+- The asserted voltage band is IS 17036:2018 Table 4, MV: Un +/- 10 %
+  (0.90-1.10 pu, 100 % of the time).  The former +/- 5 % (0.95-1.05 pu) has no
+  source; it is reported as a design target, not asserted.
+- The bus-632 fixed-tap check became: the OLTC's compensated (relay) voltage
+  is inside its band (set point 1.0167 pu +/- 0.0083 pu); 632 is reported.
+
 Measured values are printed; run with ``pytest -s`` to see them.
 """
 
@@ -11,9 +18,12 @@ import pandapower as pp
 import pandapower.topology as top
 import pytest
 
+from src.data_source import oltc
 from src.data_source.feeder_model import build_ieee13_network
 
 PHASES = "abc"
+BAND_SOURCED = (0.90, 1.10)   # IS 17036:2018 Table 4, MV, 100 % of time
+BAND_TARGET = (0.95, 1.05)    # design target, reported only
 
 
 def _sum3(df, fmt):
@@ -48,18 +58,24 @@ def test_losses_below_5_percent(net):
 def test_11kv_voltages_in_band(net):
     vm = net.res_bus_3ph[[f"vm_{p}_pu" for p in PHASES]]
     mv = net.bus.index[net.bus.vn_kv == 11.0]
-    lo, hi = float(vm.loc[mv].values.min()), float(vm.loc[mv].values.max())
-    print(f"\n11 kV phase voltages: min {lo:.4f} pu, max {hi:.4f} pu")
+    v = vm.loc[mv]
+    lo, hi = float(v.values.min()), float(v.values.max())
+    outside = int(((v < BAND_TARGET[0]) | (v > BAND_TARGET[1])).sum().sum())
+    print(f"\n11 kV phase voltages: min {lo:.4f} pu, max {hi:.4f} pu; "
+          f"{outside} bus-phases outside the 0.95-1.05 target (reported)")
     v634 = vm.loc[net.bus.index[net.bus.name == "634"][0]].round(4).tolist()
     print(f"bus 634 (XFM-1 LV, not asserted): {v634}")
-    assert 0.95 <= lo and hi <= 1.05
+    assert BAND_SOURCED[0] <= lo and hi <= BAND_SOURCED[1]
 
 
-def test_bus_632_regulated_band(net):
+def test_oltc_relay_voltage_in_band(net):
+    v, per_phase = oltc.relay_voltage(net)
+    c = net["oltc"].iloc[0]
     i632 = net.bus.index[net.bus.name == "632"][0]
-    v = [float(net.res_bus_3ph.at[i632, f"vm_{p}_pu"]) for p in PHASES]
-    print(f"\nbus 632: {[round(x, 4) for x in v]} pu")
-    assert all(1.00 <= x <= 1.04 for x in v)
+    v632 = [round(float(net.res_bus_3ph.at[i632, f"vm_{p}_pu"]), 4) for p in PHASES]
+    print(f"\nOLTC tap {net.trafo.at[int(c.trafo), 'tap_pos']:+.0f}, relay {v:.4f} pu "
+          f"(per phase {[round(x, 4) for x in per_phase]}); bus 632: {v632} pu")
+    assert abs(v - c.set_point_pu) <= c.half_band_pu + 1e-9
 
 
 def test_loadings(net):
@@ -84,8 +100,9 @@ def test_network_is_radial(net):
 
 
 def test_load_totals(net):
-    p = _sum3(net.asymmetric_load, "p_{}_mw")
-    q = _sum3(net.asymmetric_load, "q_{}_mvar")
+    loads = net.asymmetric_load[net.asymmetric_load.name.str.startswith("load_")]
+    p = _sum3(loads, "p_{}_mw")
+    q = _sum3(loads, "q_{}_mvar")
     print(f"\nload totals: {p:.4f} MW, {q:.4f} Mvar")
     assert p == pytest.approx(3.466, rel=0.005)
     assert q == pytest.approx(2.102, rel=0.005)

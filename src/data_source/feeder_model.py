@@ -1,39 +1,27 @@
 """
-IEEE 13-Bus Test Feeder — Unbalanced Power-Flow Simulation at 11 kV.
+IEEE 13-node feeder — unbalanced three-phase power flow (pandapower ``runpp_3ph``).
 
-Builds the IEEE 13-bus test feeder (Kersting, 1991) in pandapower, adapted so
-the primary feeder operates at **11 kV line-to-line** instead of the original
-4.16 kV.  Voltage-dependent parameters are scaled accordingly; line impedances
-stay in ohms/km from the original data but per-unit bases change with the new
-voltage.
+Two modelling stages (docs/Phase_2_Modeling_Decisions_Brief.md):
 
-The network is modelled as a genuinely **unbalanced** system: single-phase and
-three-phase loads are represented explicitly per phase, and the solver used is
-``pandapower.pf.runpp_3ph`` — **never** the balanced ``runpp()``.
+- **Stage A** — the IEEE 13-node test feeder as published (4.16 kV, 60 Hz),
+  built only from :mod:`ieee13_data` and validated against Kersting's
+  published power flow (Phase 2A, docs/build_report_2A.md).
+- **Stage B** — the Indian 11 kV feeder, derived from Stage A by the
+  documented transformations B1–B9 in :mod:`stage_b` (Phase 2B): 11 kV, line
+  lengths x (11/4.16)^2, 50 Hz, 115/11 kV substation transformer with a
+  controlled OLTC and line-drop compensation (:mod:`oltc`), three-phase
+  laterals and capacitors, constant-PQ loads.  This is the network the meters,
+  :func:`run_timeseries` and Layer 2 use.
 
-Modelling judgement calls (documented in docs/feeder_model_contract.md)
------------------------------------------------------------------------
-- Source: external grid (vm_pu=1.0) on a 115 kV ``sourcebus``; substation
-  transformer sourcebus → 650, 115 kV / 11 kV, Dyn, 5 MVA (replaces
-  115/4.16).  Bus 650 feeds 632 through a 2000 ft config-601 line.
-- Voltage regulator 650→632: runpp_3ph has no regulator model, so it is
-  replaced by a fixed off-load tap on the substation transformer
-  (``SUB_TAP_POS`` × 0.625 %, LV side) — the fixed-tap equivalent of the
-  IEEE regulator.
-- XFM-1 (633→634): 11 kV / ~1.27 kV (0.48 × 11/4.16).  The kV ratio is
-  scaled proportionally so that downstream loads keep the same per-unit
-  voltage.
-- 632→671 distributed load: lumped at bus 670 (632-670 667 ft, 670-671
-  1333 ft), as in the OpenDSS IEEE13 model.
-- 671→692 switch: modelled as a very short line (0.001 km, config 606).
-- Capacitor banks at 675 (600 kVAR) and 611 (100 kVAR): kept at original
-  values.
+The network is genuinely **unbalanced**; the solver is always
+``pandapower.runpp_3ph`` — **never** the balanced ``runpp()``.
 
 References
 ----------
 1.  Kersting, W.H., "Radial Distribution Test Feeders," IEEE Trans. Power
     Systems, vol. 6, no. 3, pp. 975–985, 1991.
-2.  IEEE PES Distribution System Analysis Subcommittee, Test Feeder Resources.
+2.  IEEE PES Distribution System Analysis Subcommittee, IEEE 13 Node Test
+    Feeder (2004).
 3.  pandapower ``runpp_3ph`` and ``shortcircuit.calc_sc`` documentation.
 """
 
@@ -50,39 +38,14 @@ import pandapower as pp
 
 from . import config
 from . import ieee13_data as ieee
+from . import oltc
 from .line_sequence import sequence_params
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# IEEE 13-bus node names ↔ internal bus indices
-# ---------------------------------------------------------------------------
-NODE_NAMES = [
-    "650",   # 0  — substation transformer secondary (11 kV)
-    "632",   # 1  — primary feeder
-    "633",   # 2
-    "634",   # 3  — XFM-1 secondary
-    "645",   # 4
-    "646",   # 5
-    "671",   # 6
-    "680",   # 7  — no load
-    "684",   # 8
-    "611",   # 9
-    "652",   # 10
-    "675",   # 11
-    "692",   # 12
-    "670",   # 13 — distributed-load bus on 632-671 (OpenDSS IEEE13)
-    "sourcebus",  # 14 — 115 kV, external grid (OpenDSS IEEE13 "SourceBus")
-]
-
-# Mapping from node name → bus index (populated by build_ieee13_network)
+# Mapping from node name → bus index of the last Stage B network built
+# (used by inject_fault to resolve bus names).
 _NODE_INDEX: Dict[str, int] = {}
-
-# Fixed off-load tap on the substation transformer (LV side, 0.625 %/step):
-# the fixed-tap equivalent of the IEEE regulator.  10 = median of Kersting's
-# (1991) published regulator taps 10/8/11; it puts bus 632 at 1.012–1.034 pu
-# at nominal load (tap 11 takes phase B above 1.04).  See build_ieee13_network.
-SUB_TAP_POS = 10
 
 
 # ===================================================================== #
@@ -90,13 +53,7 @@ SUB_TAP_POS = 10
 # ===================================================================== #
 
 def build_ieee13_network() -> pp.pandapowerNet:
-    """Construct the IEEE 13-bus test feeder adapted to 11 kV.
-
-    Returns
-    -------
-    net : pandapowerNet
-        Ready-to-solve pandapower network with all buses, lines,
-        transformers, loads, shunts, and external grid.
+    """Build the Stage B feeder (alias of ``build_network("B")``).
 
     Raises
     ------
@@ -104,260 +61,14 @@ def build_ieee13_network() -> pp.pandapowerNet:
         If total connected load deviates from 3.466 MW / 2.102 Mvar by more
         than 0.5 %.
     """
-    net = pp.create_empty_network(name="IEEE 13-Bus @ 11 kV", sn_mva=10.0)
+    return build_network("B")
 
-    vn_primary = config.FEEDER_VOLTAGE_KV           # 11 kV
-    vn_sub     = 115.0                               # substation HV side
-    # XFM-1 secondary was 0.48 kV in original; scale proportionally
-    vn_xfm1_lv = 0.48 * config.VOLTAGE_SCALE_FACTOR  # ≈ 1.269 kV
 
-    # ------------------------------------------------------------------ #
-    # Buses                                                                #
-    # ------------------------------------------------------------------ #
-    _NODE_INDEX.clear()
-    for i, name in enumerate(NODE_NAMES):
-        if name == "sourcebus":
-            vn = vn_sub
-        elif name == "634":
-            vn = vn_xfm1_lv
-        else:
-            vn = vn_primary
-        idx = pp.create_bus(net, vn_kv=vn, name=name)
-        _NODE_INDEX[name] = idx
-
-    B = _NODE_INDEX  # shorthand
-
-    # ------------------------------------------------------------------ #
-    # External grid (slack at the 115 kV sourcebus, as in OpenDSS IEEE13)  #
-    # Short-circuit data needed by calc_sc (IEC 60909).                    #
-    # Zero-sequence parameters needed for SLG faults.                      #
-    # ------------------------------------------------------------------ #
-    pp.create_ext_grid(
-        net,
-        bus=B["sourcebus"],
-        vm_pu=1.0,
-        name="Substation",
-        s_sc_max_mva=1000.0,
-        rx_max=0.1,
-        s_sc_min_mva=800.0,
-        rx_min=0.1,
-        # Zero-sequence data for SLG fault calculation
-        x0x_max=1.0,
-        r0x0_max=0.1,
-        x0x_min=1.0,
-        r0x0_min=0.1,
-    )
-
-    # ------------------------------------------------------------------ #
-    # Substation transformer  sourcebus (115 kV) → 650 (11 kV), Dyn       #
-    #                                                                      #
-    # Fixed-tap equivalent of the IEEE regulator.  The IEEE feeder has a   #
-    # three-phase step regulator between 650 and 632; runpp_3ph has no     #
-    # regulator model, so it is replaced by a fixed off-load tap on the    #
-    # LV side of this transformer.  Step size and range are those of the   #
-    # IEEE regulator: 32 steps, ±10 % → 0.625 %/step (OpenDSS IEEE13       #
-    # "Reg1..3" transformers: default NumTaps=32, MinTap=0.9, MaxTap=1.1). #
-    # Kersting (1991) publishes regulator taps of 10/8/11 (phases A/B/C);  #
-    # one common tap is used here (a transformer tap is not per-phase).    #
-    # SUB_TAP_POS is chosen so bus 632 sits at 1.00–1.04 pu at nominal     #
-    # load (tests/test_feeder_physics.py); see docs/build_report_phase1.md.#
-    # ------------------------------------------------------------------ #
-    pp.create_transformer_from_parameters(
-        net,
-        hv_bus=B["sourcebus"],
-        lv_bus=B["650"],
-        sn_mva=5.0,
-        vn_hv_kv=vn_sub,
-        vn_lv_kv=vn_primary,
-        vkr_percent=1.0,
-        vk_percent=8.0,
-        pfe_kw=0.0,
-        i0_percent=0.0,
-        vector_group="Dyn",
-        vk0_percent=8.0,
-        vkr0_percent=1.0,
-        mag0_percent=100.0,
-        mag0_rx=0.0,
-        si0_hv_partial=0.9,
-        shift_degree=30,
-        tap_side="lv",
-        tap_neutral=0,
-        tap_min=-16,
-        tap_max=16,
-        tap_step_percent=0.625,
-        tap_pos=SUB_TAP_POS,
-        tap_changer_type="Ratio",
-        name="Sub_XFMR",
-    )
-
-    # ------------------------------------------------------------------ #
-    # In-line transformer XFM-1  (633 → 634): 11 kV / ~1.27 kV            #
-    # ------------------------------------------------------------------ #
-    pp.create_transformer_from_parameters(
-        net,
-        hv_bus=B["633"],
-        lv_bus=B["634"],
-        sn_mva=0.5,
-        vn_hv_kv=vn_primary,
-        vn_lv_kv=vn_xfm1_lv,
-        vkr_percent=1.1,
-        vk_percent=4.5,
-        pfe_kw=0.0,
-        i0_percent=0.0,
-        vector_group="Dyn",
-        vk0_percent=4.5,
-        vkr0_percent=1.1,
-        mag0_percent=100.0,
-        mag0_rx=0.0,
-        si0_hv_partial=0.9,
-        shift_degree=30,
-        name="XFM-1",
-    )
-
-    # ------------------------------------------------------------------ #
-    # Line segments                                                        #
-    # Original IEEE 13-bus line data: impedances in ohms/mile,             #
-    # lengths in feet.  We convert to ohms/km and km.                      #
-    # ------------------------------------------------------------------ #
-    FT_TO_KM = 0.0003048
-    MI_TO_KM = 1.60934
-
-    # Line configuration impedances (ohms/mile → ohms/km)
-    # Positive-sequence R1, X1 and zero-sequence R0, X0 per config type
-    # Source: IEEE 13-bus test feeder documentation
-    line_configs = {
-        # config_id: (r1_ohm_per_km, x1_ohm_per_km, c1_nf_per_km,
-        #             r0_ohm_per_km, x0_ohm_per_km, c0_nf_per_km, max_i_ka)
-        601: (0.2153, 0.4660, 10.0, 0.6459, 1.3980, 5.0, 0.4),
-        602: (0.2676, 0.4839, 10.0, 0.8028, 1.4517, 5.0, 0.4),
-        603: (0.7982, 0.4463, 10.0, 2.3946, 1.3389, 5.0, 0.3),
-        604: (0.7982, 0.4463, 10.0, 2.3946, 1.3389, 5.0, 0.3),
-        605: (0.7982, 0.4463, 10.0, 2.3946, 1.3389, 5.0, 0.3),
-        606: (0.4605, 0.2649, 10.0, 1.3815, 0.7947, 5.0, 0.3),
-        607: (0.5108, 0.2566, 10.0, 1.5324, 0.7698, 5.0, 0.3),
-    }
-
-    # Line segments: (from_node, to_node, config_id, length_ft)
-    # Topology and lengths: Kersting (1991) line segment data.  633-634 is
-    # XFM-1 (no line).  632-671 is split at the distributed-load bus 670 as
-    # in the OpenDSS IEEE13 model (Line.632670 667 ft, Line.670671 1333 ft).
-    line_segments = [
-        ("650", "632", 601, 2000),
-        ("632", "645", 603, 500),
-        ("632", "633", 602, 500),
-        ("645", "646", 603, 300),
-        ("632", "670", 601, 667),
-        ("670", "671", 601, 1333),
-        ("671", "684", 604, 300),
-        ("671", "680", 601, 1000),
-        ("671", "692", 606, 0),     # switch, negligible length
-        ("684", "611", 605, 300),
-        ("684", "652", 607, 800),
-        ("692", "675", 606, 500),
-    ]
-
-    for from_n, to_n, cfg_id, length_ft in line_segments:
-        cfg = line_configs[cfg_id]
-        length_km = max(length_ft * FT_TO_KM, 0.001)  # avoid zero length
-        pp.create_line_from_parameters(
-            net,
-            from_bus=B[from_n],
-            to_bus=B[to_n],
-            length_km=length_km,
-            r_ohm_per_km=cfg[0],
-            x_ohm_per_km=cfg[1],
-            c_nf_per_km=cfg[2],
-            r0_ohm_per_km=cfg[3],
-            x0_ohm_per_km=cfg[4],
-            c0_nf_per_km=cfg[5],
-            max_i_ka=cfg[6],
-            name=f"Line_{from_n}_{to_n}",
-        )
-
-    # ------------------------------------------------------------------ #
-    # Asymmetric (unbalanced) loads                                        #
-    # Source: IEEE 13-bus Spot Load Data                                    #
-    # (p_a/b/c in MW, q_a/b/c in Mvar)                                   #
-    #                                                                      #
-    # load_id is a stable string matching the contract:                    #
-    #   "load_<bus>_<phase>" where phase ∈ {a, b, c, abc}                 #
-    # Three-phase loads get one asymmetric_load entry with all phases.     #
-    # Single-/two-phase loads get one entry with zero on unused phases.    #
-    # ------------------------------------------------------------------ #
-    spot_loads = [
-        # (bus,  p_a,    p_b,    p_c,    q_a,    q_b,    q_c,   model, conn)
-        ("634", 0.160,  0.120,  0.120,  0.110,  0.090,  0.090, "wye",   "PQ"),
-        ("645", 0.000,  0.170,  0.000,  0.000,  0.125,  0.000, "wye",   "PQ"),
-        ("646", 0.000,  0.230,  0.000,  0.000,  0.132,  0.000, "delta", "Z"),
-        ("652", 0.128,  0.000,  0.000,  0.086,  0.000,  0.000, "wye",   "Z"),
-        ("671", 0.385,  0.385,  0.385,  0.220,  0.220,  0.220, "delta", "PQ"),
-        ("675", 0.485,  0.068,  0.290,  0.190,  0.060,  0.212, "wye",   "PQ"),
-        ("692", 0.000,  0.000,  0.170,  0.000,  0.000,  0.151, "delta", "PQ"),
-        ("611", 0.000,  0.000,  0.170,  0.000,  0.000,  0.080, "wye",   "PQ"),
-        # Distributed load on 632-671 (Kersting 1991: 17/66/117 kW,
-        # 10/38/68 kvar on A/B/C), lumped at bus 670 one third of the way
-        # along as in the OpenDSS IEEE13 model (Load.670a/b/c, wye).  It is
-        # not part of the 671 spot load.  Kept last so existing load_ids
-        # keep their unit ids (this one becomes unit 9 / m09).
-        ("670", 0.017,  0.066,  0.117,  0.010,  0.038,  0.068, "wye",   "PQ"),
-    ]
-
-    for bus_name, pa, pb, pc, qa, qb, qc, conn_type, load_model in spot_loads:
-        # Determine phase descriptor for load_id
-        phases_present = []
-        if pa > 0 or qa > 0:
-            phases_present.append("a")
-        if pb > 0 or qb > 0:
-            phases_present.append("b")
-        if pc > 0 or qc > 0:
-            phases_present.append("c")
-        phase_str = "".join(phases_present) if phases_present else "abc"
-
-        load_id = f"load_{bus_name}_{phase_str}"
-
-        pp.create_asymmetric_load(
-            net,
-            bus=B[bus_name],
-            p_a_mw=pa,
-            p_b_mw=pb,
-            p_c_mw=pc,
-            q_a_mvar=qa,
-            q_b_mvar=qb,
-            q_c_mvar=qc,
-            type=conn_type,
-            name=load_id,
-        )
-
-    # ------------------------------------------------------------------ #
-    # Shunt capacitors                                                     #
-    # ------------------------------------------------------------------ #
-    # Bus 675: 3-phase, 200 kVAR per phase
-    pp.create_shunt(
-        net,
-        bus=B["675"],
-        q_mvar=-0.600,   # 3 × 200 kVAR (negative = capacitive)
-        p_mw=0.0,
-        name="Cap_675",
-    )
-    # Bus 611: single-phase (phase C), 100 kVAR
-    pp.create_shunt(
-        net,
-        bus=B["611"],
-        q_mvar=-0.100,
-        p_mw=0.0,
-        name="Cap_611",
-    )
-
-    # ------------------------------------------------------------------ #
-    # Sanity check: total connected load = IEEE 13-bus spot + distributed #
-    # load, 3.466 MW / 2.102 Mvar (Kersting 1991), within ±0.5 %.          #
-    # ------------------------------------------------------------------ #
-    total_p = (
-        net.asymmetric_load[["p_a_mw", "p_b_mw", "p_c_mw"]].sum().sum()
-    )
-    total_q = (
-        net.asymmetric_load[["q_a_mvar", "q_b_mvar", "q_c_mvar"]].sum().sum()
-    )
+def _check_load_totals(net: pp.pandapowerNet) -> None:
+    """Total connected load = IEEE spot + distributed load (Kersting 1991)."""
+    loads = net.asymmetric_load[net.asymmetric_load.name.str.startswith("load_")]
+    total_p = loads[["p0_a_mw", "p0_b_mw", "p0_c_mw"]].sum().sum()
+    total_q = loads[["q0_a_mvar", "q0_b_mvar", "q0_c_mvar"]].sum().sum()
     for label, total, expected, unit in (
         ("load", total_p, config.TOTAL_LOAD_MW_ASSERTION, "MW"),
         ("reactive load", total_q, config.TOTAL_LOAD_MVAR_ASSERTION, "Mvar"),
@@ -368,11 +79,6 @@ def build_ieee13_network() -> pp.pandapowerNet:
             f"expected {expected} {unit} by more than "
             f"{config.LOAD_TOLERANCE_FRACTION * 100:.1f} %"
         )
-    logger.info(
-        "IEEE 13-bus network built: %d buses, %d lines, %.3f MW total load",
-        len(net.bus), len(net.line), total_p,
-    )
-    return net
 
 
 # ===================================================================== #
@@ -395,13 +101,23 @@ def build_network(stage: str = "B") -> pp.pandapowerNet:
 
     ``"A"``: the IEEE 13-node feeder as published (4.16 kV, 60 Hz), the
     validation base.  ``"B"``: the Indian 11 kV feeder used by the meters and
-    the time series (Phase 2B derives it from stage A; until then it is the
-    Phase 1 network, also returned by :func:`build_ieee13_network`).
+    the time series, derived from stage A by :func:`stage_b.build_stage_b`
+    (also returned by :func:`build_ieee13_network`).
     """
     if stage == "A":
         return _build_stage_a()
     if stage == "B":
-        return build_ieee13_network()
+        from .stage_b import build_stage_b
+        net = build_stage_b()
+        _check_load_totals(net)
+        _NODE_INDEX.clear()
+        _NODE_INDEX.update({str(n): int(i) for i, n in net.bus.name.items()})
+        logger.info(
+            "Stage B network built: %d buses, %d lines, %.3f MW total load",
+            len(net.bus), len(net.line),
+            net.asymmetric_load[["p0_a_mw", "p0_b_mw", "p0_c_mw"]].sum().sum(),
+        )
+        return net
     raise ValueError(f"stage must be 'A' or 'B', got {stage!r}")
 
 
@@ -729,8 +445,12 @@ def run_timeseries(
     freq: str | None = None,
     net: pp.pandapowerNet | None = None,
     profiles: pd.DataFrame | None = None,
-) -> pd.DataFrame:
+    return_state: bool = False,
+) -> pd.DataFrame | Tuple[pd.DataFrame, pd.DataFrame]:
     """Step through a time range, applying load profiles at each step.
+
+    If the network has a controlled OLTC (Stage B), each step is solved, the
+    tap moves at most one step towards the band and the step is re-solved.
 
     Parameters
     ----------
@@ -745,6 +465,12 @@ def run_timeseries(
         scaling factors versus nominal.  Must cover every simulated timestamp
         and every load_id.  If *None*, a built-in synthetic daily shape is
         used so the function works standalone.
+    return_state : bool
+        If True, also return a per-step state frame: ``timestamp, oltc_tap,
+        tap_moved, at_tap_limit, v_relay_pu, v_min_11kv_pu, v_max_11kv_pu,
+        p_in_mw, p_load_mw, losses_mw, branch_losses_mw, v_below_095,
+        v_above_105`` (the last two count 11 kV bus-phases outside the
+        0.95-1.05 pu design target).
 
     Returns
     -------
@@ -752,7 +478,8 @@ def run_timeseries(
         Tidy DataFrame with one row per ``(timestamp, load_id, phase)``
         and columns: ``timestamp, load_id, bus, phase, voltage_v,
         current_a, active_power_kw, reactive_power_kvar``.
-        Timestamps are timezone-naive.
+        Timestamps are timezone-naive.  With ``return_state`` a
+        ``(frame, state)`` tuple.
 
     Raises
     ------
@@ -796,6 +523,8 @@ def run_timeseries(
         bus_vn[bus_idx] = float(net.bus.at[bus_idx, "vn_kv"]) * 1000.0  # kV → V
 
     records: list[dict] = []
+    states: list[dict] = []
+    controlled = oltc.has_oltc(net)
 
     for ts in timestamps:
         # Scaling for this timestamp (coverage checked above)
@@ -805,11 +534,23 @@ def run_timeseries(
 
         try:
             snap = run_snapshot(net, load_scaling=scaling)
+            if controlled:
+                if ts == timestamps[0]:
+                    # Initial condition: settle the tap to the first step's
+                    # load (not counted as tap operations).
+                    oltc.regulate(net, max_moves=40)
+                # At most one OLTC move per time step (delay ignored at 15 min)
+                moves, v_relay = oltc.regulate(net, max_moves=1)
+                snap["bus_voltages"] = net.res_bus_3ph.copy()
+                snap["line_currents"] = net.res_line_3ph.copy()
             bus_v = snap["bus_voltages"]
             line_i = snap["line_currents"]
 
             if bus_v.empty:
                 raise RuntimeError("no 3ph voltage results")
+            if return_state:
+                states.append(_state_row(net, ts, moves if controlled else 0,
+                                         v_relay if controlled else np.nan))
 
             # For each load point, extract per-phase results
             for _, lp_row in lp_df.iterrows():
@@ -921,7 +662,36 @@ def run_timeseries(
             f"run_timeseries produced NaN values for "
             f"{sorted(nan_rows['load_id'].unique())}"
         )
+    if return_state:
+        return df, pd.DataFrame(states)
     return df
+
+
+def _state_row(net: pp.pandapowerNet, ts, moves: int, v_relay: float) -> dict:
+    """Network-level state of one solved time step (OLTC, voltages, losses)."""
+    mv = net.bus.index[net.bus.vn_kv == config.FEEDER_VOLTAGE_KV]
+    vm = net.res_bus_3ph.loc[mv, ["vm_a_pu", "vm_b_pu", "vm_c_pu"]]
+    al = net.asymmetric_load
+    p_load = float(sum((al[f"p_{p}_mw"] * al["scaling"]).sum() for p in "abc"))
+    p_in = float(sum(net.res_ext_grid_3ph[f"p_{p}_mw"].sum() for p in "abc"))
+    row = {
+        "timestamp": ts, "oltc_tap": np.nan, "tap_moved": moves,
+        "at_tap_limit": False, "v_relay_pu": v_relay,
+        "v_min_11kv_pu": float(np.nanmin(vm.values)),
+        "v_max_11kv_pu": float(np.nanmax(vm.values)),
+        "p_in_mw": p_in, "p_load_mw": p_load, "losses_mw": p_in - p_load,
+        "branch_losses_mw": float(
+            sum(net.res_line_3ph[f"pl_{p}_mw"].sum() for p in "abc")
+            + sum(net.res_trafo_3ph[f"pl_{p}_mw"].sum() for p in "abc")),
+        "v_below_095": int((vm < 0.95).sum().sum()),
+        "v_above_105": int((vm > 1.05).sum().sum()),
+    }
+    if oltc.has_oltc(net):
+        t = int(net["oltc"].trafo.iloc[0])
+        tap = float(net.trafo.at[t, "tap_pos"])
+        row["oltc_tap"] = tap
+        row["at_tap_limit"] = tap in (net.trafo.at[t, "tap_min"], net.trafo.at[t, "tap_max"])
+    return row
 
 
 # ===================================================================== #
