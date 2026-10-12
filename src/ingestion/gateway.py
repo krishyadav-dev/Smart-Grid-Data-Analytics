@@ -2,7 +2,15 @@
 
 Polls every meter of the Layer 1 Modbus TCP server, decodes registers using
 ``config/register_map.yaml``, and publishes one JSON telemetry message per new
-simulated time step to ``sg/v1/{feeder_id}/{meter_id}/telemetry`` (QoS 1).
+simulated time step to ``sg/v2/{feeder_id}/{meter_id}/telemetry`` (QoS 1).
+
+Fault bursts (schema 2.0): the meter's event counter is part of every poll.
+When it changes, the gateway reads the event record (header, then samples in
+blocks of ≤ 125 registers), re-reads the counter to detect a record that was
+overwritten mid-read (retried like a torn read), and publishes an
+:class:`EventBurst` to ``sg/v2/{feeder_id}/{meter_id}/event`` (QoS 1).  A
+counter jump of more than one is logged and counted as missed events (only
+the latest record is held by the meter).
 
 Design
 ------
@@ -44,9 +52,10 @@ from typing import Any, Optional, Protocol
 from . import topics
 from .backoff import Backoff
 from .config import GatewayConfig, MeterConfig, load_gateway_config, load_meters
-from .register_map import ReadBlock, RegisterMap
+from .register_map import ReadBlock, RegisterMap, decode_event_header
 from .schema import (
     SCHEMA_VERSION,
+    EventBurst,
     GatewayState,
     GatewayStatus,
     MeterLinkState,
@@ -129,7 +138,7 @@ class OutMessage:
     retain: bool = False
 
     def wire(self) -> bytes:
-        if isinstance(self.payload, Telemetry):
+        if isinstance(self.payload, (Telemetry, EventBurst)):
             self.payload.t_pub_utc = utc_now()
             return self.payload.to_wire()
         return self.payload
@@ -180,6 +189,7 @@ class PollOutcome:
     published: Optional[Telemetry] = None
     skipped: bool = False
     error: Optional[str] = None
+    event: Optional[EventBurst] = None
 
 
 @dataclass
@@ -199,6 +209,9 @@ class MeterPoller:
     last_values: Optional[dict] = None
     skipped_same_t_sim: int = 0
     torn_retries_total: int = 0
+    last_event_counter: Optional[int] = None
+    events_fetched: int = 0
+    events_missed: int = 0
     link_state: Optional[MeterLinkState] = None
     link_since: Optional[datetime] = None
     last_error: Optional[str] = None
@@ -261,9 +274,73 @@ class MeterPoller:
             return values, flags, errors
         raise AssertionError("unreachable")
 
+    # -- event (burst) records --------------------------------------------
+    async def _read_counter(self) -> int:
+        r = self.regmap.event_counter_register
+        words = await self.reader.read(self.meter.unit_id, r.function_code,
+                                       self.regmap.wire_address(r.address), r.width_registers)
+        return int(r.decode(words))
+
+    async def read_event(self, counter: int) -> Optional[EventBurst]:
+        """Read the meter's current event record; ``None`` if it kept changing."""
+        ev = self.regmap.event
+        for attempt in range(self.torn_read_retries + 1):
+            hdr = decode_event_header(await self.reader.read(
+                self.meter.unit_id, ev.function_code,
+                self.regmap.wire_address(ev.header_address), ev.header_registers))
+            n = min(hdr.n_samples, ev.max_samples)
+            words: list[int] = []
+            for b in self.regmap.event_sample_blocks(n):
+                words += await self.reader.read(self.meter.unit_id, b.function_code,
+                                                 self.regmap.wire_address(b.start), b.count)
+            if await self._read_counter() == counter:
+                break
+            self.torn_retries_total += 1
+            if attempt == self.torn_read_retries:
+                logger.warning("%s: event record changed during %d reads; skipped",
+                               self.meter.meter_id, attempt + 1)
+                return None
+        vps = ev.values_per_sample
+        phases = [p for p in hdr.phases if p in self.meter.phases_present] or hdr.phases
+        idx = {"a": 0, "b": 1, "c": 2}
+        v_scale = ev.voltage_scale_pu * hdr.v_base_ln_v
+        samples = {
+            "voltage_v": {p: [round(words[k * vps + idx[p]] * v_scale, 3) for k in range(n)]
+                          for p in phases},
+            "current_a": {p: [round(words[k * vps + 3 + idx[p]] * hdr.current_scale_a, 3)
+                              for k in range(n)] for p in phases},
+        }
+        t_poll = utc_now()
+        return EventBurst(
+            schema_version=SCHEMA_VERSION, feeder_id=self.feeder_id,
+            meter_id=self.meter.meter_id, unit_id=self.meter.unit_id,
+            load_id=self.meter.load_id, meter_role=self.meter.role, run_id=self.run_id,
+            event_id=hdr.event_id, t_start=hdr.t_start,
+            sample_interval_ms=hdr.sample_interval_ms, n_samples=n,
+            v_base_ln_v=hdr.v_base_ln_v, samples=samples,
+            t_poll_utc=t_poll, t_pub_utc=t_poll,
+        )
+
+    async def _check_event(self, values: dict[str, float]) -> Optional[EventBurst]:
+        counter = self.regmap.decode_event_counter(values)
+        if self.regmap.event is None or counter is None:
+            return None
+        last, self.last_event_counter = self.last_event_counter, counter
+        if counter == 0 or counter == last:
+            return None
+        if last is not None and counter - last > 1:
+            self.events_missed += counter - last - 1
+            logger.warning("%s: event counter %d -> %d; %d event(s) missed",
+                           self.meter.meter_id, last, counter, counter - last - 1)
+        burst = await self.read_event(counter)
+        if burst is not None:
+            self.events_fetched += 1
+        return burst
+
     # -- one poll ---------------------------------------------------------
     async def poll_once(self) -> PollOutcome:
         values, flags, errors = await self.read_consistent()
+        event = await self._check_event(values)
         t_poll = utc_now()
         t_sim = self.regmap.decode_time(values)
         has_time_reg = self.regmap.time_register is not None
@@ -272,10 +349,10 @@ class MeterPoller:
         if has_time_reg and self.regmap.time_register.name in values:
             if t_sim is None:
                 # Server up but has not written its first frame yet.
-                return PollOutcome(skipped=True)
+                return PollOutcome(skipped=True, event=event)
             if self.last_t_sim is not None and t_sim == self.last_t_sim:
                 self.skipped_same_t_sim += 1
-                return PollOutcome(skipped=True)
+                return PollOutcome(skipped=True, event=event)
             if self.last_t_sim is not None and t_sim > self.last_t_sim:
                 steps = round((t_sim - self.last_t_sim).total_seconds() / self.expected_step_s)
                 if steps > 1:
@@ -286,7 +363,7 @@ class MeterPoller:
             flags.append(QualityFlag.NO_SIM_TIME)
             if self.last_values is not None and values == self.last_values:
                 self.skipped_same_t_sim += 1
-                return PollOutcome(skipped=True)
+                return PollOutcome(skipped=True, event=event)
 
         measurements = self.regmap.build_measurements(values, self.meter.phases_present)
         msg = Telemetry(
@@ -310,7 +387,7 @@ class MeterPoller:
         self.last_values = values
         if errors:
             self.last_error = errors[0]
-        return PollOutcome(published=msg)
+        return PollOutcome(published=msg, event=event)
 
 
 def _dedupe(flags: list[QualityFlag]) -> list[QualityFlag]:
@@ -340,6 +417,7 @@ class Gateway:
         self._mqtt_factory = mqtt_client_factory
         self.pollers: dict[str, MeterPoller] = {}
         self.published = 0
+        self.events_published = 0
         self.mqtt_connected = asyncio.Event()
         self._stopping = asyncio.Event()
         self._last_gw_state: Optional[tuple] = None
@@ -431,6 +509,9 @@ class Gateway:
                 continue
             backoff.reset()
             self._set_link(poller, MeterLinkState.REACHABLE, None)
+            if outcome.event is not None:
+                self.buffer.put(OutMessage(topics.event(self.cfg.feeder_id, meter.meter_id),
+                                           outcome.event, topics.QOS_TELEMETRY, False))
             if outcome.published is not None:
                 self.buffer.put(OutMessage(topic, outcome.published, topics.QOS_TELEMETRY, False))
             elapsed = loop.time() - started
@@ -491,6 +572,8 @@ class Gateway:
                             raise
                         if isinstance(msg.payload, Telemetry):
                             self.published += 1
+                        elif isinstance(msg.payload, EventBurst):
+                            self.events_published += 1
             except aiomqtt.MqttError as exc:
                 self.mqtt_connected.clear()
                 delay = backoff.next_delay()
@@ -548,6 +631,8 @@ class Gateway:
             "buffer_dropped": self.buffer.dropped,
             "skipped_same_t_sim": {k: p.skipped_same_t_sim for k, p in self.pollers.items()},
             "torn_retries": {k: p.torn_retries_total for k, p in self.pollers.items()},
+            "events_fetched": {k: p.events_fetched for k, p in self.pollers.items()},
+            "events_missed": {k: p.events_missed for k, p in self.pollers.items()},
         }
 
 

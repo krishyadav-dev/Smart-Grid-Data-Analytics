@@ -19,7 +19,7 @@ from ..schema import (
 )
 from .hub import TelemetryHub
 from .stats import LatencyStats, RateTracker
-from .validation import Accepted, Rejected, Validator
+from .validation import Accepted, AcceptedEvent, Rejected, Validator
 
 
 @dataclass
@@ -52,6 +52,7 @@ class ListenerService:
         self.broker_connected = False
         self.last_message_utc: Optional[datetime] = None
         self.status_errors = 0
+        self.events: deque[dict] = deque(maxlen=settings.history_len)
 
     # ------------------------------------------------------------------ #
     def handle(self, topic: str, payload: bytes,
@@ -64,7 +65,12 @@ class ListenerService:
             return []
         self.received += 1
         self.last_message_utc = t_recv
-        result = self.validator.process(topic, payload, t_recv)
+        if pt is not None and pt.kind == "event":
+            result = self.validator.process_event(topic, payload)
+        else:
+            result = self.validator.process(topic, payload, t_recv)
+        if isinstance(result, AcceptedEvent):
+            return [self._accept_event(result, t_recv)]
         if isinstance(result, Rejected):
             self.dlq_count += 1
             dlq = DlqMessage(
@@ -97,6 +103,24 @@ class ListenerService:
         return Outbound(topics.validated(self.s.feeder_id, m.meter_id),
                         dumps_compact(doc), topics.QOS_VALIDATED)
 
+    def _accept_event(self, acc: AcceptedEvent, t_recv: datetime) -> Outbound:
+        """Fault burst: enrich, hand to the hub, republish (values untouched)."""
+        m = acc.model
+        self.ingest_seq += 1
+        doc = acc.doc
+        doc["ingest"] = {
+            "t_recv_utc": t_recv.isoformat().replace("+00:00", "Z"),
+            "ingest_seq": self.ingest_seq,
+            "latency_ms": {"poll_to_pub": _ms(m.t_poll_utc, m.t_pub_utc),
+                           "pub_to_recv": _ms(m.t_pub_utc, t_recv),
+                           "total": _ms(m.t_poll_utc, t_recv)},
+        }
+        self.events.append({"meter_id": m.meter_id, "event_id": m.event_id,
+                            "n_samples": m.n_samples, "t_start": doc["t_start"]})
+        self.hub.publish({"kind": "event", **doc})
+        return Outbound(topics.validated_event(self.s.feeder_id, m.meter_id),
+                        dumps_compact(doc), topics.QOS_VALIDATED)
+
     def _handle_status(self, pt: topics.ParsedTopic, payload: bytes) -> None:
         try:
             if pt.kind == "gateway_status":
@@ -127,4 +151,5 @@ class ListenerService:
             "latency_budget_ms": self.s.LATENCY_BUDGET_MS,
             "hub": self.hub.stats(),
             "status_parse_errors": self.status_errors,
+            "events": {"accepted": v.events_accepted, "samples": v.event_samples},
         }

@@ -8,7 +8,7 @@ here.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable, Literal, Optional
 
@@ -17,7 +17,15 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .config import DEFAULT_REGISTER_MAP_FILE, load_yaml
 
 TIME_MEASUREMENT = "t_sim"
-_EPOCH = datetime(1970, 1, 1)
+EVENT_COUNTER_MEASUREMENT = "event_counter"
+# Meta registers: read and used by the gateway, never put into `measurements`.
+META_MEASUREMENTS = frozenset({TIME_MEASUREMENT, EVENT_COUNTER_MEASUREMENT})
+# Schema 2.0: simulated time is Indian Standard Time (UTC+05:30).  The
+# register holds Unix seconds of the instant; it is decoded as an aware IST
+# datetime.
+IST = timezone(timedelta(hours=5, minutes=30), "IST")
+# Line-to-line phase pairs need both phases present.
+_PAIRS = {"ab": ("a", "b"), "bc": ("b", "c"), "ca": ("c", "a")}
 
 
 class RegisterDef(BaseModel):
@@ -25,7 +33,7 @@ class RegisterDef(BaseModel):
 
     name: str
     measurement: str
-    phase: Optional[Literal["a", "b", "c", "total"]] = None
+    phase: Optional[Literal["a", "b", "c", "ab", "bc", "ca", "total"]] = None
     function_code: Literal[3, 4]
     address: int = Field(ge=0)
     width_registers: Literal[1, 2, 4]
@@ -35,6 +43,7 @@ class RegisterDef(BaseModel):
     raw_unit: Optional[str] = None
     unit: str
     obis: Optional[str] = None
+    group: Literal["poll", "event"] = "poll"
 
     def decode_raw(self, words: list[int]) -> int:
         """Combine 16-bit words into an integer (word order + signedness)."""
@@ -70,12 +79,57 @@ class ReadBlock:
     count: int
 
 
+class EventLayout(BaseModel):
+    """Burst-record block (brief v2 section 2D/2E), read only on a counter change."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    function_code: Literal[3, 4] = 4
+    header_address: int = Field(ge=0)
+    header_registers: int = Field(12, ge=12)
+    sample_address: int = Field(ge=0)
+    values_per_sample: int = Field(6, ge=1)
+    max_samples: int = Field(ge=1)
+    voltage_scale_pu: float = 0.0001
+
+
+@dataclass(frozen=True)
+class EventHeader:
+    event_id: int
+    start_unix_s: int
+    start_ms: int
+    sample_interval_ms: int
+    n_samples: int
+    phases_mask: int
+    v_base_ln_v: float
+    current_scale_a: float
+
+    @property
+    def phases(self) -> list[str]:
+        return [p for p, bit in (("a", 1), ("b", 2), ("c", 4)) if self.phases_mask & bit]
+
+    @property
+    def t_start(self) -> datetime:
+        return (datetime.fromtimestamp(self.start_unix_s, tz=IST)
+                + timedelta(milliseconds=self.start_ms))
+
+
+def decode_event_header(words: list[int]) -> EventHeader:
+    u32 = lambda i: ((words[i] & 0xFFFF) << 16) | (words[i + 1] & 0xFFFF)  # noqa: E731
+    return EventHeader(
+        event_id=u32(0), start_unix_s=u32(2), start_ms=words[4],
+        sample_interval_ms=words[5], n_samples=words[6], phases_mask=words[7],
+        v_base_ln_v=u32(8) / 100.0, current_scale_a=u32(10) / 1000.0,
+    )
+
+
 class RegisterMap(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     address_base: int = 0
     max_registers_per_read: int = Field(125, ge=1, le=125)
     registers: list[RegisterDef]
+    event: Optional[EventLayout] = None
 
     @model_validator(mode="after")
     def _no_overlap(self) -> "RegisterMap":
@@ -103,6 +157,21 @@ class RegisterMap(BaseModel):
                 return r
         return None
 
+    @property
+    def event_counter_register(self) -> Optional[RegisterDef]:
+        for r in self.registers:
+            if r.measurement == EVENT_COUNTER_MEASUREMENT:
+                return r
+        return None
+
+    def event_sample_blocks(self, n_samples: int) -> list[ReadBlock]:
+        """Reads of whole samples, each ≤ max_registers_per_read words."""
+        ev = self.event
+        per_read = (self.max_registers_per_read // ev.values_per_sample) * ev.values_per_sample
+        total = n_samples * ev.values_per_sample
+        return [ReadBlock(ev.function_code, ev.sample_address + s, min(per_read, total - s))
+                for s in range(0, total, per_read)]
+
     def wire_address(self, offset: int) -> int:
         return offset + self.address_base
 
@@ -120,9 +189,10 @@ class RegisterMap(BaseModel):
         into one read.
         """
         blocks: list[ReadBlock] = []
-        for fc in sorted({r.function_code for r in self.registers}):
+        polled = [r for r in self.registers if r.group == "poll"]
+        for fc in sorted({r.function_code for r in polled}):
             spans = sorted((r.address, r.address + r.width_registers)
-                           for r in self.registers if r.function_code == fc)
+                           for r in polled if r.function_code == fc)
             cur_s, cur_e = spans[0]
             for s, e in spans[1:]:
                 if s <= cur_e + gap_fill and max(e, cur_e) - cur_s <= self.max_registers_per_read:
@@ -163,19 +233,22 @@ class RegisterMap(BaseModel):
     ) -> dict:
         """Group decoded values into the payload ``measurements`` object.
 
-        Phases not in ``phases_present`` are omitted.  ``total`` is the sum of
-        the present phases, added only when every present phase was read and
-        the map does not serve a total register itself.
+        Phases not in ``phases_present`` are omitted; a line-to-line pair
+        (ab/bc/ca) is kept only when both its phases are present.  ``total``
+        is the sum of the present phases, added only when every present phase
+        was read and the map does not serve a total register itself.  Meta
+        registers (t_sim, event_counter) are never measurements.
         """
         phases = set(phases_present)
         grouped: dict[str, dict[str, float] | float] = {}
         for r in self.registers:
-            if r.measurement == TIME_MEASUREMENT or r.name not in values:
+            if r.measurement in META_MEASUREMENTS or r.name not in values:
                 continue
             v = values[r.name]
             if r.phase is None:
                 grouped[r.measurement] = v
-            elif r.phase == "total" or r.phase in phases:
+            elif (r.phase == "total" or r.phase in phases
+                  or (r.phase in _PAIRS and set(_PAIRS[r.phase]) <= phases)):
                 grouped.setdefault(r.measurement, {})[r.phase] = v  # type: ignore[index]
         decimals: dict[str, int] = {}
         for r in self.registers:
@@ -187,11 +260,17 @@ class RegisterMap(BaseModel):
         return grouped
 
     def decode_time(self, values: dict[str, float]) -> Optional[datetime]:
-        """Simulated time as a naive datetime; ``None`` if absent or still 0."""
+        """Simulated time as an aware IST datetime; ``None`` if absent or 0."""
         tr = self.time_register
         if tr is None or tr.name not in values:
             return None
         secs = values[tr.name]
         if secs <= 0:
             return None
-        return _EPOCH + timedelta(seconds=secs)
+        return datetime.fromtimestamp(secs, tz=IST)
+
+    def decode_event_counter(self, values: dict[str, float]) -> Optional[int]:
+        r = self.event_counter_register
+        if r is None or r.name not in values:
+            return None
+        return int(values[r.name])

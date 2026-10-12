@@ -23,6 +23,7 @@ from pydantic import ValidationError
 from ..config import ListenerSettings, MeterConfig
 from ..schema import (
     SUPPORTED_SCHEMA_VERSIONS,
+    EventBurst,
     QualityFlag,
     RejectReason,
     Telemetry,
@@ -35,7 +36,7 @@ STEPS = (
 )
 
 # Strictly non-negative magnitudes; anything below 0 is physically impossible.
-_NON_NEGATIVE = ("voltage_v", "current_a")
+_NON_NEGATIVE = ("voltage_v", "voltage_ll_v", "current_a", "apparent_power_kva")
 
 
 @dataclass
@@ -49,6 +50,12 @@ class Accepted:
 class Rejected:
     reason: RejectReason
     detail: str
+
+
+@dataclass
+class AcceptedEvent:
+    doc: dict
+    model: EventBurst
 
 
 @dataclass
@@ -69,6 +76,51 @@ class Validator:
         self.reject_counts: dict[str, int] = {r.value: 0 for r in RejectReason}
         self.flag_counts: dict[str, int] = {f.value: 0 for f in QualityFlag}
         self._state: dict[str, _MeterState] = {}
+        self.events_accepted = 0
+        self.event_samples = 0
+        self._seen_events: "OrderedDict[tuple[str, str, int], None]" = OrderedDict()
+
+    # ------------------------------------------------------------------ #
+    def process_event(self, topic: str, payload: bytes) -> "AcceptedEvent | Rejected":
+        """Validate one fault-burst record (no measurement value is altered).
+
+        Checks: JSON, schema version, model (types, IST t_start), topic match,
+        known meter, duplicate (run_id, meter, event_id), and that every phase
+        list holds exactly ``n_samples`` values.
+        """
+        try:
+            doc = json.loads(payload.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            return self._reject(RejectReason.MALFORMED_JSON, str(exc)[:200])
+        if not isinstance(doc, dict) or not isinstance(doc.get("schema_version"), str):
+            return self._reject(RejectReason.SCHEMA_INVALID, "schema_version missing")
+        if doc["schema_version"] not in SUPPORTED_SCHEMA_VERSIONS:
+            return self._reject(RejectReason.UNSUPPORTED_SCHEMA_VERSION, doc["schema_version"][:50])
+        try:
+            ev = EventBurst.model_validate(doc)
+        except ValidationError as exc:
+            errs = exc.errors(include_url=False)[:3]
+            return self._reject(RejectReason.SCHEMA_INVALID,
+                                "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in errs))
+        pt = topics.parse(topic)
+        if pt is not None and (pt.meter_id != ev.meter_id or pt.feeder_id != ev.feeder_id):
+            return self._reject(RejectReason.SCHEMA_INVALID,
+                                f"topic {topic} does not match payload {ev.feeder_id}/{ev.meter_id}")
+        mc = self.meters.get(ev.meter_id)
+        if mc is None or ev.feeder_id != self.s.feeder_id or mc.unit_id != ev.unit_id:
+            return self._reject(RejectReason.UNKNOWN_METER, f"{ev.feeder_id}/{ev.meter_id}")
+        lens = {len(v) for d in (ev.samples.voltage_v, ev.samples.current_a) for v in d.values()}
+        if lens != {ev.n_samples}:
+            return self._reject(RejectReason.SCHEMA_INVALID,
+                                f"{ev.meter_id} event {ev.event_id}: sample lists {sorted(lens)} "
+                                f"!= n_samples {ev.n_samples}")
+        key = (str(ev.run_id), ev.meter_id, ev.event_id)
+        if key in self._seen_events:
+            return self._reject(RejectReason.DUPLICATE, f"{ev.meter_id} event {ev.event_id}")
+        self._remember(self._seen_events, key, self.s.dedup_window)
+        self.events_accepted += 1
+        self.event_samples += ev.n_samples
+        return AcceptedEvent(doc=doc, model=ev)
 
     # ------------------------------------------------------------------ #
     def _reject(self, reason: RejectReason, detail: str) -> Rejected:
@@ -172,6 +224,8 @@ class Validator:
             bad.append("energy_import_kwh")
         if m.frequency_hz is not None and m.frequency_hz <= 0:
             bad.append("frequency_hz")
+        if m.power_factor and any(abs(v) > 1.0 for v in m.power_factor.values()):
+            bad.append("power_factor")
         if bad:
             added.append(QualityFlag.SUSPECT_RANGE.value)
 

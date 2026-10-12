@@ -25,13 +25,13 @@ def process(svc, doc_or_bytes, topic=None, t_recv=T_RECV):
         payload = encode(doc_or_bytes)
     else:
         payload = doc_or_bytes
-        topic = topic or "sg/v1/ieee13_11kv/m05/telemetry"
+        topic = topic or "sg/v2/ieee13_11kv/m05/telemetry"
     return svc.validator.process(topic, payload, t_recv)
 
 
 # ---------------------------------------------------------------- rejects
 def test_reject_malformed_json(svc):
-    r = process(svc, b'{"schema_version": "1.0", ')
+    r = process(svc, b'{"schema_version": "2.0", ')
     assert isinstance(r, Rejected) and r.reason == RejectReason.MALFORMED_JSON
     assert process(svc, b"\xff\xfe").reason == RejectReason.MALFORMED_JSON
     assert process(svc, b"[1,2]").reason == RejectReason.MALFORMED_JSON
@@ -50,14 +50,14 @@ def test_reject_schema_invalid(svc):
 
 
 def test_reject_topic_payload_mismatch(svc):
-    r = process(svc, valid_doc(), topic="sg/v1/ieee13_11kv/m06/telemetry")
+    r = process(svc, valid_doc(), topic="sg/v2/ieee13_11kv/m06/telemetry")
     assert r.reason == RejectReason.SCHEMA_INVALID
 
 
 def test_reject_unsupported_version(svc):
     assert process(svc, valid_doc(schema_version="1.7")).reason == \
         RejectReason.UNSUPPORTED_SCHEMA_VERSION
-    assert process(svc, valid_doc(schema_version="2.0")).reason == \
+    assert process(svc, valid_doc(schema_version="1.0")).reason == \
         RejectReason.UNSUPPORTED_SCHEMA_VERSION
 
 
@@ -182,8 +182,8 @@ def test_d1_sag_and_overcurrent_pass_unmodified(svc):
 
 
 def test_handle_routes_rejects_to_dlq(svc):
-    out = svc.handle("sg/v1/ieee13_11kv/m05/telemetry", b"not json", T_RECV)
-    assert len(out) == 1 and out[0].topic == "sg/v1/ieee13_11kv/dlq" and out[0].qos == 0
+    out = svc.handle("sg/v2/ieee13_11kv/m05/telemetry", b"not json", T_RECV)
+    assert len(out) == 1 and out[0].topic == "sg/v2/ieee13_11kv/dlq" and out[0].qos == 0
     dlq = json.loads(out[0].payload)
     assert dlq["reason"] == "MALFORMED_JSON" and dlq["payload_head"] == "not json"
 
@@ -191,6 +191,6 @@ def test_handle_routes_rejects_to_dlq(svc):
 def test_enrichment_latency_and_ingest_seq(svc):
     out = svc.handle(topic_for(valid_doc()), encode(valid_doc()), T_RECV)
     doc = json.loads(out[0].payload)
-    assert out[0].topic == "sg/v1/ieee13_11kv/validated/m05"
+    assert out[0].topic == "sg/v2/ieee13_11kv/validated/m05"
     assert doc["ingest"]["ingest_seq"] == 1
     assert doc["ingest"]["latency_ms"] == {"poll_to_pub": 2.0, "pub_to_recv": 3.0, "total": 5.0}

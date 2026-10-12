@@ -3,15 +3,17 @@
 # unit_id follows meter_server._load_id_unit_map() (row order of get_load_points).
 # v_base_ln_v = bus vn_kv * 1000 / sqrt(3) from feeder_model.build_network("B") (Stage B).
 # i_rated_a: Layer 1 has no rating data -> null.
-# role: Layer 1 only serves load-point (consumer) meters; no DT / feeder-head meter exists.
+# role: bus_virtual = bus-level aggregate of the bus's load (sum of its DT meters once the
+#   DTs exist, Part 2C); no meter error of its own; not a physical meter and excluded from
+#   meter counts and accuracy claims; kept for Layer 2 compatibility (schema 2.0).
 feeder_id: ieee13_11kv
 meters:
-  - {meter_id: m01, unit_id: 1, load_id: load_634_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 277.13,  i_rated_a: null}
-  - {meter_id: m02, unit_id: 2, load_id: load_645_b,   role: consumer, phases_present: [b],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m03, unit_id: 3, load_id: load_646_b,   role: consumer, phases_present: [b],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m04, unit_id: 4, load_id: load_652_a,   role: consumer, phases_present: [a],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m05, unit_id: 5, load_id: load_671_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m06, unit_id: 6, load_id: load_675_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m07, unit_id: 7, load_id: load_692_c,   role: consumer, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m08, unit_id: 8, load_id: load_611_c,   role: consumer, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m09, unit_id: 9, load_id: load_670_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m01, unit_id: 1, load_id: load_634_abc, role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 277.13,  i_rated_a: null}
+  - {meter_id: m02, unit_id: 2, load_id: load_645_b,   role: bus_virtual, phases_present: [b],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m03, unit_id: 3, load_id: load_646_b,   role: bus_virtual, phases_present: [b],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m04, unit_id: 4, load_id: load_652_a,   role: bus_virtual, phases_present: [a],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m05, unit_id: 5, load_id: load_671_abc, role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m06, unit_id: 6, load_id: load_675_abc, role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m07, unit_id: 7, load_id: load_692_c,   role: bus_virtual, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m08, unit_id: 8, load_id: load_611_c,   role: bus_virtual, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m09, unit_id: 9, load_id: load_670_abc, role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}

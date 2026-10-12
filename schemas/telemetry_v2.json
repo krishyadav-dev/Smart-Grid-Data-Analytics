@@ -25,8 +25,32 @@
             }
           ],
           "default": null,
-          "description": "Active power per phase and total, kW",
+          "description": "Active power per phase and total, kW (signed)",
           "title": "Active Power Kw"
+        },
+        "apparent_power_kva": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "a",
+                  "b",
+                  "c",
+                  "total"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Apparent power per phase and total (vector: sqrt(P_tot^2 + Q_tot^2)), kVA",
+          "title": "Apparent Power Kva"
         },
         "current_a": {
           "anyOf": [
@@ -48,7 +72,7 @@
             }
           ],
           "default": null,
-          "description": "Current per phase, A (see docs: Layer 1 serves the largest connected line current, not the load's own)",
+          "description": "The meter's own load current per phase, A (|S|/|V| from the solved power flow)",
           "title": "Current A"
         },
         "energy_import_kwh": {
@@ -61,7 +85,7 @@
             }
           ],
           "default": null,
-          "description": "Cumulative active energy import, kWh",
+          "description": "Cumulative active energy import up to t_sim, kWh (stamped at the end of the interval)",
           "title": "Energy Import Kwh"
         },
         "frequency_hz": {
@@ -74,8 +98,32 @@
             }
           ],
           "default": null,
-          "description": "Frequency, Hz (not served by Layer 1)",
+          "description": "Frequency, Hz (constant 50 Hz in Layer 1)",
           "title": "Frequency Hz"
+        },
+        "power_factor": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "a",
+                  "b",
+                  "c",
+                  "total"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Power factor P/|S| per phase and total (signed)",
+          "title": "Power Factor"
         },
         "reactive_power_kvar": {
           "anyOf": [
@@ -100,6 +148,29 @@
           "default": null,
           "description": "Reactive power per phase and total, kvar (signed)",
           "title": "Reactive Power Kvar"
+        },
+        "voltage_ll_v": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "ab",
+                  "bc",
+                  "ca"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Line-to-line voltage per phase pair, V (pairs whose two phases are both present)",
+          "title": "Voltage Ll V"
         },
         "voltage_v": {
           "anyOf": [
@@ -132,7 +203,8 @@
       "enum": [
         "consumer",
         "dt",
-        "feeder_head"
+        "feeder_head",
+        "bus_virtual"
       ],
       "title": "MeterRole",
       "type": "string"
@@ -173,7 +245,7 @@
       "type": "string"
     }
   },
-  "$id": "https://smart-grid-data-analytics/schemas/telemetry_v1.json",
+  "$id": "https://smart-grid-data-analytics/schemas/telemetry_v2.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "One meter reading, as published by the gateway.",
@@ -208,7 +280,7 @@
       "type": "string"
     },
     "schema_version": {
-      "pattern": "^1\\.\\d+$",
+      "pattern": "^2\\.\\d+$",
       "title": "Schema Version",
       "type": "string"
     },
@@ -239,7 +311,7 @@
           "type": "null"
         }
       ],
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?$",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+05:30$",
       "title": "T Sim"
     },
     "unit_id": {
@@ -263,6 +335,6 @@
     "t_pub_utc",
     "measurements"
   ],
-  "title": "Telemetry v1.0",
+  "title": "Telemetry v2.0",
   "type": "object"
 }

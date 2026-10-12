@@ -28,6 +28,7 @@ References
 from __future__ import annotations
 
 import logging
+import math
 import warnings
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -477,9 +478,11 @@ def run_timeseries(
     pd.DataFrame
         Tidy DataFrame with one row per ``(timestamp, load_id, phase)``
         and columns: ``timestamp, load_id, bus, phase, voltage_v,
-        current_a, active_power_kw, reactive_power_kvar``.
-        Timestamps are timezone-naive.  With ``return_state`` a
-        ``(frame, state)`` tuple.
+        current_a, active_power_kw, reactive_power_kvar`` (unchanged since
+        Phase 1) plus, for schema 2.0, ``voltage_angle_deg`` (phase angle of
+        the bus voltage) and ``load_current_a`` (the load's own current,
+        |S|/|V| per phase).  Timestamps are timezone-naive IST wall time.
+        With ``return_state`` a ``(frame, state)`` tuple.
 
     Raises
     ------
@@ -591,8 +594,11 @@ def run_timeseries(
                     if vm_col and bus_idx in bus_v.index:
                         vm_pu = float(bus_v.at[bus_idx, vm_col[0]])
                         row["voltage_v"] = vm_pu * vn_ln
+                        row["voltage_angle_deg"] = float(
+                            bus_v.at[bus_idx, f"va_{ph}_degree"])
                     else:
                         row["voltage_v"] = np.nan
+                        row["voltage_angle_deg"] = np.nan
 
                     # Current (kA → A) — max over lines connected to this
                     # bus and transformer windings on this bus (bus 634 is
@@ -642,6 +648,12 @@ def run_timeseries(
                             break
                     row["active_power_kw"] = p_val
                     row["reactive_power_kvar"] = q_val
+                    # The load's own current (schema 2.0, audit L1-15): |S|/|V|
+                    # per phase from the solved voltage (current_a keeps its
+                    # Phase 1 meaning, the largest connected branch current).
+                    v_ph = row["voltage_v"]
+                    row["load_current_a"] = (
+                        math.hypot(p_val, q_val) * 1000.0 / v_ph if v_ph > 0 else 0.0)
 
                     records.append(row)
 
@@ -654,8 +666,10 @@ def run_timeseries(
         df = pd.DataFrame(columns=[
             "timestamp", "load_id", "bus", "phase",
             "voltage_v", "current_a", "active_power_kw", "reactive_power_kvar",
+            "voltage_angle_deg", "load_current_a",
         ])
-    value_cols = ["voltage_v", "current_a", "active_power_kw", "reactive_power_kvar"]
+    value_cols = ["voltage_v", "current_a", "active_power_kw", "reactive_power_kvar",
+                  "voltage_angle_deg", "load_current_a"]
     nan_rows = df[df[value_cols].isna().any(axis=1)]
     if not nan_rows.empty:
         raise RuntimeError(

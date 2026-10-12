@@ -1,10 +1,15 @@
-"""MQTT topic names (MQTT 3.1.1, UTF-8, lowercase).  See brief §4.2."""
+"""MQTT topic names (MQTT 3.1.1, UTF-8, lowercase).  See brief §4.2.
+
+Schema 2.0 moved the prefix to ``sg/v2`` and added the fault-burst topics
+``.../{meter_id}/event`` (gateway) and ``.../validated_event/{meter_id}``
+(listener).
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-PREFIX = "sg/v1"
+PREFIX = "sg/v2"
 
 QOS_TELEMETRY = 1
 QOS_STATUS = 1
@@ -36,9 +41,21 @@ def dlq(feeder_id: str) -> str:
     return f"{PREFIX}/{feeder_id}/dlq"
 
 
+def event(feeder_id: str, meter_id: str) -> str:
+    return f"{PREFIX}/{feeder_id}/{meter_id}/event"
+
+
+def validated_event(feeder_id: str, meter_id: str) -> str:
+    return f"{PREFIX}/{feeder_id}/validated_event/{meter_id}"
+
+
 # Subscription filters
 def telemetry_filter(feeder_id: str) -> str:
     return f"{PREFIX}/{feeder_id}/+/telemetry"
+
+
+def event_filter(feeder_id: str) -> str:
+    return f"{PREFIX}/{feeder_id}/+/event"
 
 
 def status_filter(feeder_id: str) -> str:
@@ -53,7 +70,7 @@ def validated_filter(feeder_id: str) -> str:
 @dataclass(frozen=True)
 class ParsedTopic:
     feeder_id: str
-    kind: str            # telemetry | status | gateway_status | validated | dlq
+    kind: str            # telemetry | event | status | gateway_status | validated | validated_event | dlq
     meter_id: str | None
 
 
@@ -69,10 +86,14 @@ def parse(topic: str) -> ParsedTopic | None:
     a, b = parts[3], parts[4]
     if a == "validated":
         return ParsedTopic(feeder, "validated", b)
+    if a == "validated_event":
+        return ParsedTopic(feeder, "validated_event", b)
     if a == "gateway" and b == "status":
         return ParsedTopic(feeder, "gateway_status", None)
     if b == "telemetry":
         return ParsedTopic(feeder, "telemetry", a)
+    if b == "event":
+        return ParsedTopic(feeder, "event", a)
     if b == "status":
         return ParsedTopic(feeder, "status", a)
     return None

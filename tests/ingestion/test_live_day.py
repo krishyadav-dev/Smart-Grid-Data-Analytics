@@ -1,13 +1,18 @@
-"""Live, one simulated day through the whole chain (C1, C2, D3, D5).
+"""Live, one simulated day through the whole chain (C1, C2, D3, D5) — schema 2.0.
 
 Real meter server fed by real ``feeder_model.run_timeseries`` output,
-real Mosquitto, gateway and listener as separate processes.
+real Mosquitto, gateway and listener as separate processes.  The frame is
+built here (as ``scripts/run_meter_server.py`` would) and served with
+``--frame-in`` so that a few **negative test values** (P and Q on one phase
+of m09) can be injected and checked end to end (brief v2 §2E acceptance).
 """
 
 from __future__ import annotations
 
 import asyncio
+import cmath
 import json
+import math
 import time
 from collections import defaultdict
 
@@ -21,7 +26,15 @@ from src.ingestion.register_map import RegisterMap
 pytestmark = pytest.mark.live
 
 SPEED = 1800.0          # 0.5 s wall per 15-min step -> one day in 48 s
-STEPS = 96              # 2024-01-01 00:00 .. 23:45
+STEPS = 96              # 2024-01-01 00:00 .. 23:45 (IST)
+IST = "+05:30"
+# Injected negative test values (not physics): m09 phase b, steps 10-19.
+NEG_LOAD, NEG_PHASE, NEG_STEPS = "load_670_abc", "b", range(10, 20)
+NEG_P_KW, NEG_Q_KVAR = -50.0, -120.0
+
+
+def _ist(ts) -> str:
+    return pd.Timestamp(ts).isoformat() + IST
 
 
 @pytest.fixture(scope="module")
@@ -29,13 +42,24 @@ def day():
     st = Stack()
     rec = None
     try:
+        from run_meter_server import build_frame
+        frame = build_frame("2024-01-01 00:00", "2024-01-01 23:45")
+        times = sorted(frame.timestamp.unique())
+        neg = frame.load_id.eq(NEG_LOAD) & frame.phase.eq(NEG_PHASE) & \
+            frame.timestamp.isin([times[i] for i in NEG_STEPS])
+        frame.loc[neg, "active_power_kw"] = NEG_P_KW
+        frame.loc[neg, "reactive_power_kvar"] = NEG_Q_KVAR
+        frame.loc[neg, "load_current_a"] = (math.hypot(NEG_P_KW, NEG_Q_KVAR) * 1000
+                                            / frame.loc[neg, "voltage_v"])
+        frame_path = st.workdir / "frame.csv"
+        frame.to_csv(frame_path, index=False)
+
         st.start_broker()
         rec = Recorder(st.mqtt_port)
         assert rec.connected.wait(10)
         st.start_listener(persistent=True, client_id="sg-listener-day")
         st.start_gateway(poll_interval=0.05, playback_speed=SPEED)
-        frame_path = st.workdir / "frame.csv"
-        st.start_meter(SPEED, frame_out=frame_path, start_delay=3.0)
+        st.start_meter(SPEED, frame_in=frame_path, start_delay=3.0)
         meters = load_meters().meters
 
         def complete():
@@ -48,7 +72,8 @@ def day():
         wait_for(complete, timeout=STEPS * 0.5 + 90, interval=0.5, what="one simulated day")
         time.sleep(1.5)     # let listener drain
         from dump_registers import dump
-        regs = asyncio.run(dump("127.0.0.1", st.modbus_port, list(range(0, 11)), 40))
+        n_units = max(m.unit_id for m in meters)
+        regs = asyncio.run(dump("127.0.0.1", st.modbus_port, list(range(0, n_units + 2)), 60))
         out = {
             "frame": pd.read_csv(frame_path, parse_dates=["timestamp"]),
             "telemetry": [m.json() for m in rec.snapshot(suffix="/telemetry")],
@@ -69,9 +94,13 @@ def day():
 # C1 — decoded values equal the run_timeseries frame within quantisation
 # --------------------------------------------------------------------------
 TOL = {"voltage_v": 0.005 + 1e-9, "current_a": 0.0005 + 1e-9,
-       "active_power_kw": 0.0005 + 1e-9, "reactive_power_kvar": 0.0005 + 1e-9}
-COLS = {"voltage_v": "voltage_v", "current_a": "current_a",
+       "active_power_kw": 0.0005 + 1e-9, "reactive_power_kvar": 0.0005 + 1e-9,
+       "apparent_power_kva": 0.0005 + 1e-9, "power_factor": 0.00005 + 1e-9,
+       "voltage_ll_v": 0.005 + 1e-9}
+# payload key -> frame column (current_a is now the meter's own current)
+COLS = {"voltage_v": "voltage_v", "current_a": "load_current_a",
         "active_power_kw": "active_power_kw", "reactive_power_kvar": "reactive_power_kvar"}
+PAIRS = {"ab": ("a", "b"), "bc": ("b", "c"), "ca": ("c", "a")}
 
 
 def test_c1_values_match_frame(day):
@@ -81,40 +110,58 @@ def test_c1_values_match_frame(day):
     by_key = {(m["meter_id"], m["t_sim"]): m for m in tel}
     assert len(by_key) == len(tel), "gateway published a t_sim twice"
     worst = defaultdict(float)
-    checked = 0
+    checked = negatives = 0
+
+    def check(key, got, want, where):
+        nonlocal checked
+        err = abs(got - want)
+        worst[key] = max(worst[key], err)
+        assert err <= TOL[key], (*where, key, got, want)
+        checked += 1
+
     for mid, mc in meters.items():
         sub = frame[frame.load_id == mc.load_id]
         energy_wh = 0.0
         for ts, rows in sub.groupby("timestamp", sort=True):
-            msg = by_key[(mid, ts.isoformat())]
+            msg = by_key[(mid, _ist(ts))]
             meas = msg["measurements"]
-            p_total = 0.0
+            phasor = {}
             for _, row in rows.iterrows():
                 ph = row.phase
                 for key, col in COLS.items():
-                    err = abs(meas[key][ph] - row[col])
-                    worst[key] = max(worst[key], err)
-                    assert err <= TOL[key], (mid, ts, key, ph, meas[key][ph], row[col])
-                    checked += 1
-                p_total += row.active_power_kw
+                    check(key, meas[key][ph], row[col], (mid, ts, ph))
+                s = math.hypot(row.active_power_kw, row.reactive_power_kvar)
+                check("apparent_power_kva", meas["apparent_power_kva"][ph], s, (mid, ts, ph))
+                pf = row.active_power_kw / s if s > 0 else 0.0
+                check("power_factor", meas["power_factor"][ph], pf, (mid, ts, ph))
+                phasor[ph] = cmath.rect(row.voltage_v, math.radians(row.voltage_angle_deg))
+                negatives += row.active_power_kw < 0
+            for pair, (x, y) in PAIRS.items():
+                if x in phasor and y in phasor:
+                    check("voltage_ll_v", meas["voltage_ll_v"][pair],
+                          abs(phasor[x] - phasor[y]), (mid, ts, pair))
             # absent phases are omitted, never zero-filled
             for key in COLS:
                 assert set(meas[key]) - {"total"} == set(mc.phases_present)
-            energy_wh += p_total * 1000.0 * 0.25
+            # energy is stamped at the end of the interval (MB-7): the value at
+            # t covers the steps before t; only import accumulates
             assert abs(meas["energy_import_kwh"] - round(energy_wh) / 1000) <= 0.0005 + 1e-9
+            energy_wh += max(rows.active_power_kw.sum(), 0.0) * 1000.0 * 0.25
             assert meas["frequency_hz"] == 50.0
             q_sum = rows.reactive_power_kvar.sum()
             assert abs(meas["reactive_power_kvar"]["total"] - q_sum) <= 0.0005 + 1e-9
             assert msg["quality"]["flags"] == []
-    print(f"\nC1: {checked} phase values checked; worst abs error {dict(worst)}")
+    assert negatives == len(NEG_STEPS)          # the injected negative values arrived
+    print(f"\nC1: {checked} values checked ({negatives} negative P); "
+          f"worst abs error {dict(worst)}")
 
 
 def test_c1_every_step_published_once_in_order(day):
     per = defaultdict(list)
     for m in day["telemetry"]:
         per[m["meter_id"]].append((m["seq"], m["t_sim"]))
-    expected = [t.isoformat() for t in pd.date_range("2024-01-01", periods=STEPS, freq="15min")]
-    assert len(per) == 9
+    expected = [_ist(t) for t in pd.date_range("2024-01-01", periods=STEPS, freq="15min")]
+    assert len(per) == len(load_meters().meters)
     for mid, items in per.items():
         assert [s for s, _ in items] == list(range(len(items))), mid
         assert [t for _, t in items][:STEPS] == expected, mid
@@ -178,7 +225,7 @@ def test_d5_end_to_end_accounting(day):
     # every (meter, t_sim) of the simulated day delivered exactly once
     frame = day["frame"]
     meters = load_meters().meters
-    expected = {(m.meter_id, t.isoformat()) for m in meters
+    expected = {(m.meter_id, _ist(t)) for m in meters
                 for t in frame[frame.load_id == m.load_id].timestamp.unique()}
     got = [(v["meter_id"], v["t_sim"]) for v in day["validated"]]
     assert len(got) == len(set(got))

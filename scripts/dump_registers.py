@@ -6,7 +6,7 @@ addresses show up as exceptions instead of failing a whole block.
 
 PowerShell::
 
-    python scripts/dump_registers.py --port 5020 --units 1-10 --max-addr 40
+    python scripts/dump_registers.py --port 5020 --units 1-30 --max-addr 60
 """
 
 from __future__ import annotations
@@ -58,8 +58,8 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=5020)
-    ap.add_argument("--units", default="1-8")
-    ap.add_argument("--max-addr", type=int, default=30)
+    ap.add_argument("--units", default="1-30")
+    ap.add_argument("--max-addr", type=int, default=60)   # v2: polled block is 0-57
     ap.add_argument("--json", action="store_true", help="print raw JSON")
     args = ap.parse_args(argv)
     res = asyncio.run(dump(args.host, args.port, _parse_units(args.units), args.max_addr))

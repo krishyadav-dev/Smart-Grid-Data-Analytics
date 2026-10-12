@@ -28,11 +28,11 @@ def frame_csv(tmp_path_factory):
 
 
 def _status(port, meter):
-    return retained(port, f"sg/v1/{FEEDER}/{meter}/status") or {}
+    return retained(port, f"sg/v2/{FEEDER}/{meter}/status") or {}
 
 
 def _gw_status(port):
-    return retained(port, f"sg/v1/{FEEDER}/gateway/status") or {}
+    return retained(port, f"sg/v2/{FEEDER}/gateway/status") or {}
 
 
 def _count(rec, meter="m01"):
@@ -132,7 +132,7 @@ def test_c5_lwt_on_abrupt_gateway_kill(frame_csv):
         st.start_gateway(poll_interval=0.1, playback_speed=900, keepalive=keepalive)
         st.start_meter(900, frame_in=frame_csv)
         wait_for(lambda: _gw_status(st.mqtt_port).get("state") == "online", 20, what="online")
-        rec = Recorder(st.mqtt_port, f"sg/v1/{FEEDER}/gateway/status")
+        rec = Recorder(st.mqtt_port, f"sg/v2/{FEEDER}/gateway/status")
         assert rec.connected.wait(5)
         time.sleep(0.3)
         t0 = time.time()
@@ -166,7 +166,7 @@ def test_d7_listener_restart(frame_csv, persistent):
 
         stop(st.listener)                          # graceful (SIGTERM)
         n_tel_down = len(rec.snapshot(suffix="/telemetry"))
-        time.sleep(5.0)                            # ~5 steps x 9 meters published meanwhile
+        time.sleep(5.0)                            # ~5 steps x every meter published meanwhile
         n_tel_up = len(rec.snapshot(suffix="/telemetry"))
         st.start_listener(persistent=persistent, client_id=cid)
         time.sleep(3.0)

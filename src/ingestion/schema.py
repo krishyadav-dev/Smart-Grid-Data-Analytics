@@ -1,19 +1,26 @@
-"""Telemetry contract for Layer 2 (schema version 1.0).
+"""Telemetry contract for Layer 2 (schema version 2.0).
 
 Pydantic v2 models shared by the gateway (producer) and the listener
-(validator).  ``schemas/telemetry_v1.json`` is exported from
+(validator).  ``schemas/telemetry_v2.json`` is exported from
 :class:`Telemetry` by :func:`export_json_schema`; a test regenerates it and
 compares, so the file and the models cannot drift.
 
 Conventions
 -----------
-- Canonical engineering units (V, A, kW, kvar, kWh, Hz), already scaled.
+- Canonical engineering units (V, A, kW, kvar, kVA, kWh, Hz), already scaled.
 - Per-phase quantities are objects keyed by phase; phases a meter does not
-  have are **omitted**, never zero-filled.
-- ``t_sim`` is timezone-naive ISO 8601 (Layer 1 convention) or ``null`` when
-  the meter has no simulated-time register (flag ``NO_SIM_TIME``).
+  have are **omitted**, never zero-filled.  Line-to-line voltages are keyed
+  ``ab``/``bc``/``ca`` and present only when both phases are.
+- ``t_sim`` is ISO 8601 **with the IST offset +05:30** (simulated Indian
+  Standard Time), or ``null`` when the meter has no simulated-time register
+  (flag ``NO_SIM_TIME``).
 - ``t_*_utc`` are timezone-aware wall-clock UTC.
 - NaN / Infinity are rejected (``allow_inf_nan=False``).
+
+Changes from 1.0: signed active/reactive power, energy as u64 in input
+registers (stamped at the end of the interval), line-to-line voltage,
+apparent power, power factor, load current, role ``bus_virtual``, IST
+``t_sim``, and :class:`EventBurst` messages for fault bursts.
 """
 
 from __future__ import annotations
@@ -30,19 +37,22 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    NaiveDatetime,
+    field_validator,
 )
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "2.0"
 SUPPORTED_SCHEMA_VERSIONS = frozenset({SCHEMA_VERSION})
 
-SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schemas" / "telemetry_v1.json"
+SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schemas" / "telemetry_v2.json"
 
 
 class MeterRole(StrEnum):
     CONSUMER = "consumer"
     DT = "dt"
     FEEDER_HEAD = "feeder_head"
+    # Bus-level aggregate (= sum of the bus's DT meters), kept for Layer 2
+    # compatibility; no meter error, not a physical meter.
+    BUS_VIRTUAL = "bus_virtual"
 
 
 class QualityFlag(StrEnum):
@@ -79,11 +89,19 @@ class MeterLinkState(StrEnum):
 
 # JSON Schema cannot express naive vs aware datetimes; patterns make the
 # exported schema enforce it (pydantic enforces it via the types below).
-NAIVE_ISO = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$"
 AWARE_ISO = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$"
+IST_ISO = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?\+05:30$"
+IST_OFFSET_S = 5 * 3600 + 30 * 60
 
 Phase = Literal["a", "b", "c"]
 PhaseOrTotal = Literal["a", "b", "c", "total"]
+PhasePair = Literal["ab", "bc", "ca"]
+
+
+def _require_ist(v: Optional[datetime]) -> Optional[datetime]:
+    if v is not None and v.utcoffset().total_seconds() != IST_OFFSET_S:
+        raise ValueError("t_sim must carry the IST offset +05:30")
+    return v
 
 _STRICT = ConfigDict(extra="forbid", allow_inf_nan=False)
 
@@ -96,17 +114,26 @@ class Measurements(BaseModel):
 
     voltage_v: Optional[dict[Phase, float]] = Field(
         None, description="Line-to-neutral voltage per phase, V")
+    voltage_ll_v: Optional[dict[PhasePair, float]] = Field(
+        None, description="Line-to-line voltage per phase pair, V (pairs whose "
+                          "two phases are both present)")
     current_a: Optional[dict[Phase, float]] = Field(
-        None, description="Current per phase, A (see docs: Layer 1 serves the "
-                          "largest connected line current, not the load's own)")
+        None, description="The meter's own load current per phase, A (|S|/|V| "
+                          "from the solved power flow)")
     active_power_kw: Optional[dict[PhaseOrTotal, float]] = Field(
-        None, description="Active power per phase and total, kW")
+        None, description="Active power per phase and total, kW (signed)")
     reactive_power_kvar: Optional[dict[PhaseOrTotal, float]] = Field(
         None, description="Reactive power per phase and total, kvar (signed)")
+    apparent_power_kva: Optional[dict[PhaseOrTotal, float]] = Field(
+        None, description="Apparent power per phase and total (vector: "
+                          "sqrt(P_tot^2 + Q_tot^2)), kVA")
+    power_factor: Optional[dict[PhaseOrTotal, float]] = Field(
+        None, description="Power factor P/|S| per phase and total (signed)")
     energy_import_kwh: Optional[float] = Field(
-        None, description="Cumulative active energy import, kWh")
+        None, description="Cumulative active energy import up to t_sim, kWh "
+                          "(stamped at the end of the interval)")
     frequency_hz: Optional[float] = Field(
-        None, description="Frequency, Hz (not served by Layer 1)")
+        None, description="Frequency, Hz (constant 50 Hz in Layer 1)")
 
 
 class Quality(BaseModel):
@@ -121,7 +148,7 @@ class Telemetry(BaseModel):
 
     model_config = _STRICT
 
-    schema_version: str = Field(pattern=r"^1\.\d+$")
+    schema_version: str = Field(pattern=r"^2\.\d+$")
     feeder_id: str = Field(min_length=1)
     meter_id: str = Field(pattern=r"^m\d{2,}$")
     unit_id: int = Field(ge=1, le=247)
@@ -129,11 +156,16 @@ class Telemetry(BaseModel):
     meter_role: MeterRole
     run_id: UUID
     seq: int = Field(ge=0)
-    t_sim: Optional[NaiveDatetime] = Field(json_schema_extra={"pattern": NAIVE_ISO})
+    t_sim: Optional[AwareDatetime] = Field(json_schema_extra={"pattern": IST_ISO})
     t_poll_utc: AwareDatetime = Field(json_schema_extra={"pattern": AWARE_ISO})
     t_pub_utc: AwareDatetime = Field(json_schema_extra={"pattern": AWARE_ISO})
     measurements: Measurements
     quality: Quality = Field(default_factory=Quality)
+
+    @field_validator("t_sim")
+    @classmethod
+    def _t_sim_is_ist(cls, v: Optional[datetime]) -> Optional[datetime]:
+        return _require_ist(v)
 
     def to_wire(self) -> bytes:
         """Compact UTF-8 JSON; absent measurements and phases are omitted."""
@@ -166,6 +198,49 @@ class ValidatedTelemetry(Telemetry):
     """Telemetry plus the listener's ``ingest`` block (validated topic)."""
 
     ingest: IngestInfo
+
+
+class BurstSamples(BaseModel):
+    """Half-cycle RMS samples of one burst, one list per present phase."""
+
+    model_config = _STRICT
+
+    voltage_v: dict[Phase, list[float]]
+    current_a: dict[Phase, list[float]]
+
+
+class EventBurst(BaseModel):
+    """One fault-event burst record read from a meter (topic ``.../event``).
+
+    Sample k is at ``t_start + k * sample_interval_ms``.  Values are
+    quasi-steady half-cycle RMS (Urms(1/2), IS 17036 Cl. 3.18), not waveforms.
+    """
+
+    model_config = _STRICT
+
+    schema_version: str = Field(pattern=r"^2\.\d+$")
+    feeder_id: str = Field(min_length=1)
+    meter_id: str = Field(pattern=r"^m\d{2,}$")
+    unit_id: int = Field(ge=1, le=247)
+    load_id: str = Field(min_length=1)
+    meter_role: MeterRole
+    run_id: UUID
+    event_id: int = Field(ge=1)
+    t_start: AwareDatetime = Field(json_schema_extra={"pattern": IST_ISO})
+    sample_interval_ms: int = Field(gt=0)
+    n_samples: int = Field(ge=1)
+    v_base_ln_v: float = Field(gt=0)
+    samples: BurstSamples
+    t_poll_utc: AwareDatetime = Field(json_schema_extra={"pattern": AWARE_ISO})
+    t_pub_utc: AwareDatetime = Field(json_schema_extra={"pattern": AWARE_ISO})
+
+    @field_validator("t_start")
+    @classmethod
+    def _t_start_is_ist(cls, v: datetime) -> datetime:
+        return _require_ist(v)
+
+    def to_wire(self) -> bytes:
+        return dumps_compact(self.model_dump(mode="json"))
 
 
 class GatewayStatus(BaseModel):
@@ -210,7 +285,7 @@ def utc_now() -> datetime:
 def build_json_schema() -> dict:
     schema = Telemetry.model_json_schema(mode="validation")
     schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
-    schema["$id"] = "https://smart-grid-data-analytics/schemas/telemetry_v1.json"
+    schema["$id"] = "https://smart-grid-data-analytics/schemas/telemetry_v2.json"
     schema["title"] = f"Telemetry v{SCHEMA_VERSION}"
     return schema
 
