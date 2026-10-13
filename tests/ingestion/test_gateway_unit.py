@@ -76,8 +76,15 @@ class FakeMeter:
         pass
 
 
-def _poller(meter_id="m04", regmap=REGMAP):
-    meter = load_meters().by_id()[meter_id]
+def _single_phase_meter():
+    """Test-only single-phase meter config (phase 'a').  Since brief v2 X.3 every
+    bus_virtual meter in meters.yaml is three-phase, so the single-phase gateway
+    paths are exercised with this copy of m04 instead of the inventory entry."""
+    return load_meters().by_id()["m04"].model_copy(update={"phases_present": ["a"]})
+
+
+def _poller(meter_id=None, regmap=REGMAP):
+    meter = _single_phase_meter() if meter_id is None else load_meters().by_id()[meter_id]
     fake = FakeMeter()
     p = MeterPoller(meter=meter, feeder_id="ieee13_11kv", run_id=uuid.uuid4(),
                     regmap=regmap, reader=fake, expected_step_s=900,
@@ -87,7 +94,7 @@ def _poller(meter_id="m04", regmap=REGMAP):
 
 @pytest.fixture
 def poller():
-    return _poller()                     # m04: single phase 'a'
+    return _poller()                     # test-only single-phase 'a' meter (m04 copy)
 
 
 def run(coro):

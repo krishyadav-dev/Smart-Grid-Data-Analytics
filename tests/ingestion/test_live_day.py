@@ -135,7 +135,8 @@ def test_c1_values_match_frame(day):
                 pf = row.active_power_kw / s if s > 0 else 0.0
                 check("power_factor", meas["power_factor"][ph], pf, (mid, ts, ph))
                 phasor[ph] = cmath.rect(row.voltage_v, math.radians(row.voltage_angle_deg))
-                negatives += row.active_power_kw < 0
+                # injected values only (unloaded DT phases solve to ~ -1e-12 kW)
+                negatives += mc.load_id == NEG_LOAD and row.active_power_kw < 0
             for pair, (x, y) in PAIRS.items():
                 if x in phasor and y in phasor:
                     check("voltage_ll_v", meas["voltage_ll_v"][pair],

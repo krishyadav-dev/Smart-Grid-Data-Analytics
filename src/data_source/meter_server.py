@@ -5,8 +5,10 @@ Architecture choice
 -------------------
 A **single Modbus TCP server with multiple unit IDs** (one per simulated
 meter) was chosen over N separate servers: one TCP port, one process, and
-pymodbus serves many devices keyed by unit_id.  Each load point from
-``get_load_points()`` maps to a distinct unit_id (row order, 1-based).
+pymodbus serves many devices keyed by unit_id.  Each meter point of
+``feeder_model.meter_points()`` maps to a distinct unit_id: 1-9 the load
+points (bus_virtual), 10 the feeder head, 11+ the DT meters (Part 2C.3).
+Consumer meters are not served; they go to the AMI export file.
 
 DLMS/COSEM scope
 -----------------
@@ -266,7 +268,8 @@ class MeterState:
         self.unit_id = unit_id
         self.load_id = load_id
         parts = load_id.split("_")
-        self.bus_name = parts[1] if len(parts) >= 2 else load_id
+        self.bus_name = parts[-1] if load_id.startswith("feeder_head") else (
+            parts[1] if len(parts) >= 2 else load_id)
         self.energy_wh: float = 0.0       # import up to the last written t_sim
         self.event_counter: int = 0
         self._last_poll: Optional[list[int]] = None
@@ -333,15 +336,15 @@ def build_server_context(unit_map: Optional[dict[str, int]] = None):
 
 
 def _load_id_unit_map() -> dict[str, int]:
-    """Map load_id → unit_id (row order of ``get_load_points()``, 1-based).
+    """Map meter-point id → unit_id (``feeder_model.meter_points()`` order).
 
-    Raises if the feeder model cannot be built: a silent fallback would
-    serve meters with fake load_ids that never receive data.
+    Units 1-9 are the load points (bus_virtual), unit 10 the feeder head,
+    units 11+ the DT meters.  Raises if the feeder model cannot be built: a
+    silent fallback would serve meters with fake ids that never receive data.
     """
-    from .feeder_model import get_load_points
-    lp = get_load_points()
-    return {row["load_id"]: i + 1
-            for i, (_, row) in enumerate(lp.iterrows())}
+    from .feeder_model import meter_points
+    mp = meter_points()
+    return {r.load_id: int(r.unit_id) for r in mp.itertuples()}
 
 
 # ---------------------------------------------------------------------------

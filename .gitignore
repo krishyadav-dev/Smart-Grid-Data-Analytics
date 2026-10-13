@@ -16,8 +16,10 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# Data & Output (exclude generated data files)
-data/
+# Data & Output (exclude data files; eMARC and SGCC are never committed).
+# Only the SLDC reference transcription is versioned (brief v2 X.3.3 item 1).
+data/*
+!data/delhi_sldc_2024_25_reference.csv
 # Simulated year cache (regenerable from the master seed: scripts/run_year.py)
 results/year_2024*/
 
@@ -26,6 +28,7 @@ results/year_2024*/
 .env.local
 
 # IDE & Editor files
+.claude/
 .vscode/
 .idea/
 *.swp

@@ -1,189 +1,127 @@
 """
-Synthetic electricity-theft attack functions.
+Electricity-theft attacks h1-h6 of Jokar, Arianpoo & Leung (Part 2C.4).
 
-Implements the attack types described in:
-    Jokar, P., Arianpoo, N., Leung, V.C.M., "Electricity Theft Detection in
-    AMI Using Customers' Consumption Patterns," IEEE Trans. Smart Grid, vol. 7,
-    no. 1, pp. 216–226, 2016.
+Source: P. Jokar, N. Arianpoo, V.C.M. Leung, "Electricity Theft Detection in
+AMI Using Customers' Consumption Patterns", IEEE Trans. Smart Grid 7(1), 2016,
+early-access version in References, §VI items 1-6, PDF p. 7.  The paper works
+on a customer's daily vector of hourly readings x = [x_1 .. x_24]:
 
-Each function takes a true consumption Series and returns a tuple of:
-    (manipulated_series, label_string, severity_value)
+    h1(x_t) = alpha x_t,           alpha = random(0.1, 0.8)
+    h2(x_t) = beta_t x_t,          beta_t = 0 for t_s <= t < t_s + duration, else 1
+                                   t_s = random(0, 23 - minOFFtime),
+                                   duration = random(minOFFtime, 24), minOFFtime = 4 h
+    h3(x_t) = gamma_t x_t,         gamma_t = random(0.1, 0.8)
+    h4(x_t) = gamma_t mean(x),     gamma_t = random(0.1, 0.8)
+    h5(x_t) = mean(x)
+    h6(x_t) = x_(24 - t)
 
-This module is **independent** of ``dataset_loader`` — it operates on any
-``pandas.Series`` (real SGCC data, raw pandapower output, or a hand-crafted
-test vector).
+At 15-minute resolution (96 samples a day) the parameters stay hourly:
+gamma_t and beta_t are drawn per hour and held for that hour's four samples;
+mean(x) is the daily mean; h6 reverses the day's samples (the paper's index
+24 - t is off by one at t = 24, so it is implemented as a pure reversal).
+t_s and duration are whole hours (the paper's vectors are hourly) and the h2
+window is clipped at the end of the day.  Every parameter is redrawn per day,
+as the paper generates one attack sample per daily vector.
+
+h5 and h6 keep the daily energy (load-shifting attacks), so their severity is
+0; h1-h4 report at most 0.8 of the true daily energy.
+
+All functions take ``x`` with shape (days, samples_per_day) (a 1-D vector is
+one day) and a numpy Generator, and return the reported array of the same
+shape plus the drawn parameters.
 """
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Callable, Dict, Tuple
 
 import numpy as np
-import pandas as pd
+
+ATTACKS = ("h1", "h2", "h3", "h4", "h5", "h6")
+# Brief v2 X.3.1 item 4 / X.3.2 item 20: h5 and h6 leave the daily energy
+# unchanged ("load-shifting"); h1-h4 reduce it ("energy-reducing").  Every
+# NTL / lambda result is reported with all attacks, without h6, and without h5 + h6.
+LOAD_SHIFTING = ("h5", "h6")
 
 
-def constant_partial_reporting(
-    series: pd.Series,
-    fraction: float = 0.5,
-) -> Tuple[pd.Series, str, float]:
-    """Report a fixed fraction of true consumption at every timestep.
-
-    Parameters
-    ----------
-    series : pd.Series
-        True consumption values (kWh or similar).
-    fraction : float, optional
-        Fraction of true consumption reported (0 < fraction < 1).
-        Default is 0.5 (50 %).
-
-    Returns
-    -------
-    manipulated : pd.Series
-        ``fraction * series``.
-    label : str
-        ``"constant_partial_reporting"``.
-    severity : float
-        ``1 - fraction`` (higher ⇒ more energy stolen).
-    """
-    if not 0 < fraction < 1:
-        raise ValueError(f"fraction must be in (0, 1), got {fraction}")
-    manipulated = series * fraction
-    severity = 1.0 - fraction
-    return manipulated, "constant_partial_reporting", severity
+def attack_class(kind: str) -> str:
+    """"load-shifting" for h5/h6, "energy-reducing" for h1-h4."""
+    if kind not in ATTACKS:
+        raise ValueError(f"unknown attack {kind!r}")
+    return "load-shifting" if kind in LOAD_SHIFTING else "energy-reducing"
+RANGE_LO, RANGE_HI = 0.1, 0.8          # alpha and gamma_t, Jokar §VI items 1, 3, 4
+MIN_OFF_TIME_H = 4                     # Jokar §VI item 2
+HOURS = 24
 
 
-def random_reduction(
-    series: pd.Series,
-    min_frac: float = 0.3,
-    max_frac: float = 0.9,
-    seed: int | None = None,
-) -> Tuple[pd.Series, str, float]:
-    """Scale each timestep by a uniformly-random factor in [min_frac, max_frac].
-
-    Parameters
-    ----------
-    series : pd.Series
-        True consumption values.
-    min_frac, max_frac : float
-        Lower/upper bounds of the per-timestep scaling factor.
-    seed : int or None
-        Random seed for reproducibility.
-
-    Returns
-    -------
-    manipulated : pd.Series
-        Element-wise ``series * uniform(min_frac, max_frac)``.
-    label : str
-        ``"random_reduction"``.
-    severity : float
-        Mean reduction factor: ``1 - mean(scaling_factors)``.
-    """
-    if not (0 < min_frac <= max_frac < 1):
-        raise ValueError(
-            f"Need 0 < min_frac <= max_frac < 1, got ({min_frac}, {max_frac})"
-        )
-    rng = np.random.default_rng(seed)
-    factors = rng.uniform(min_frac, max_frac, size=len(series))
-    manipulated = series * factors
-    severity = float(1.0 - np.mean(factors))
-    return manipulated, "random_reduction", severity
+def _as_days(x: np.ndarray) -> np.ndarray:
+    x = np.asarray(x, dtype=float)
+    if x.ndim == 1:
+        x = x[None, :]
+    if x.shape[1] % HOURS:
+        raise ValueError(f"samples per day ({x.shape[1]}) is not a multiple of 24")
+    return x
 
 
-def time_of_day_dependent(
-    series: pd.Series,
-    peak_fraction: float = 0.3,
-    offpeak_fraction: float = 0.9,
-    peak_hours: Tuple[int, int] = (9, 21),
-) -> Tuple[pd.Series, str, float]:
-    """Heavy reduction during peak demand hours, mild during off-peak.
-
-    The series **must** have a ``DatetimeIndex`` so that ``.hour`` is available.
-
-    Parameters
-    ----------
-    series : pd.Series
-        True consumption with a DatetimeIndex.
-    peak_fraction : float
-        Fraction reported during peak hours.
-    offpeak_fraction : float
-        Fraction reported during off-peak hours.
-    peak_hours : (int, int)
-        Start and end hour (24-h clock) defining the peak window.
-        Default is 09:00–21:00.
-
-    Returns
-    -------
-    manipulated : pd.Series
-    label : str
-    severity : float
-        Weighted-average reduction across all timesteps.
-    """
-    if not hasattr(series.index, "hour"):
-        raise TypeError(
-            "Series must have a DatetimeIndex for time-of-day attacks"
-        )
-    start_h, end_h = peak_hours
-    is_peak = series.index.hour.to_series(index=series.index).between(
-        start_h, end_h - 1
-    )
-    factors = pd.Series(
-        np.where(is_peak, peak_fraction, offpeak_fraction),
-        index=series.index,
-    )
-    manipulated = series * factors
-    severity = float(1.0 - factors.mean())
-    return manipulated, "time_of_day_dependent", severity
+def _per_sample(hourly: np.ndarray, samples_per_day: int) -> np.ndarray:
+    """Hold each hourly value for that hour's samples."""
+    return np.repeat(hourly, samples_per_day // HOURS, axis=1)
 
 
-def reverse_reporting(
-    series: pd.Series,
-) -> Tuple[pd.Series, str, float]:
-    """Meter bypassed or running backward — reports zero at every timestep.
-
-    Returns
-    -------
-    manipulated : pd.Series
-        All zeros, same shape/index as input.
-    label : str
-        ``"reverse_reporting"``.
-    severity : float
-        ``1.0`` (total theft).
-    """
-    manipulated = pd.Series(0.0, index=series.index, name=series.name)
-    return manipulated, "reverse_reporting", 1.0
+def h1(x, rng: np.random.Generator) -> Tuple[np.ndarray, dict]:
+    x = _as_days(x)
+    alpha = rng.uniform(RANGE_LO, RANGE_HI, size=(len(x), 1))
+    return alpha * x, {"alpha": alpha[:, 0]}
 
 
-def zero_reporting(
-    series: pd.Series,
-    zero_fraction: float = 0.3,
-    seed: int | None = None,
-) -> Tuple[pd.Series, str, float]:
-    """Randomly zero-out a fraction of readings.
+def h2(x, rng: np.random.Generator,
+       min_off_h: int = MIN_OFF_TIME_H) -> Tuple[np.ndarray, dict]:
+    x = _as_days(x)
+    n = len(x)
+    start = rng.integers(0, HOURS - 1 - min_off_h, size=n, endpoint=True)
+    duration = rng.integers(min_off_h, HOURS, size=n, endpoint=True)
+    end = np.minimum(start + duration, HOURS)          # clipped at 24 h (stated)
+    hour = np.arange(HOURS)[None, :]
+    beta = ~((hour >= start[:, None]) & (hour < end[:, None]))
+    return x * _per_sample(beta.astype(float), x.shape[1]), {
+        "t_start_h": start, "duration_h": duration, "t_end_h": end}
 
-    Parameters
-    ----------
-    series : pd.Series
-        True consumption values.
-    zero_fraction : float
-        Proportion of timesteps set to zero.
-    seed : int or None
-        Random seed for reproducibility.
 
-    Returns
-    -------
-    manipulated : pd.Series
-    label : str
-        ``"zero_reporting"``.
-    severity : float
-        ``zero_fraction``.
-    """
-    if not 0 < zero_fraction < 1:
-        raise ValueError(
-            f"zero_fraction must be in (0, 1), got {zero_fraction}"
-        )
-    rng = np.random.default_rng(seed)
-    mask = rng.random(len(series)) < zero_fraction
-    manipulated = series.copy()
-    manipulated[mask] = 0.0
-    severity = float(zero_fraction)
-    return manipulated, "zero_reporting", severity
+def h3(x, rng: np.random.Generator) -> Tuple[np.ndarray, dict]:
+    x = _as_days(x)
+    gamma = rng.uniform(RANGE_LO, RANGE_HI, size=(len(x), HOURS))
+    return x * _per_sample(gamma, x.shape[1]), {"gamma": gamma}
+
+
+def h4(x, rng: np.random.Generator) -> Tuple[np.ndarray, dict]:
+    x = _as_days(x)
+    gamma = rng.uniform(RANGE_LO, RANGE_HI, size=(len(x), HOURS))
+    return x.mean(axis=1, keepdims=True) * _per_sample(gamma, x.shape[1]), {"gamma": gamma}
+
+
+def h5(x, rng: np.random.Generator | None = None) -> Tuple[np.ndarray, dict]:
+    x = _as_days(x)
+    return np.repeat(x.mean(axis=1, keepdims=True), x.shape[1], axis=1), {}
+
+
+def h6(x, rng: np.random.Generator | None = None) -> Tuple[np.ndarray, dict]:
+    x = _as_days(x)
+    return x[:, ::-1].copy(), {}
+
+
+ATTACK_FUNCS: Dict[str, Callable] = {"h1": h1, "h2": h2, "h3": h3, "h4": h4, "h5": h5, "h6": h6}
+
+
+def apply_attack(kind: str, x, rng: np.random.Generator) -> Tuple[np.ndarray, dict]:
+    """Reported daily vectors under attack ``kind`` (one draw per day)."""
+    try:
+        f = ATTACK_FUNCS[kind]
+    except KeyError:
+        raise ValueError(f"attack must be one of {ATTACKS}, got {kind!r}") from None
+    return f(x, rng)
+
+
+def severity(true_energy, reported_energy) -> float:
+    """1 - sum(E_reported) / sum(E_true) (Part 2C.4); 0 if no true energy."""
+    t = float(np.nansum(true_energy))
+    return 0.0 if t <= 0 else 1.0 - float(np.nansum(reported_energy)) / t

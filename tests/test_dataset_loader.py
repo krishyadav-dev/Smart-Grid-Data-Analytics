@@ -1,10 +1,11 @@
 """
-Tests for dataset_loader — SGCC data loading and ground-truth table.
+Tests for dataset_loader — SGCC long-format loading and load-profile sampling.
 
 Acceptance criteria verified:
-    B2a. No null feeder_true_kwh values.
-    B2b. At least one row per consumer with is_theft_label = True.
     B3.  Seeded determinism.
+
+The old ground-truth table (assign_theft_labels, audit L1-5) was removed in
+Phase 2X checkpoint 3; its replacement is tested in tests/test_metering.py.
 """
 
 import pytest
@@ -98,85 +99,6 @@ class TestSampleLoadProfiles:
         p1 = sample_load_profiles(load_points, sgcc_df, seed=99)
         p2 = sample_load_profiles(load_points, sgcc_df, seed=99)
         pd.testing.assert_frame_equal(p1, p2)
-
-
-# -------------------------------------------------------------------- #
-# assign_theft_labels                                                    #
-# -------------------------------------------------------------------- #
-
-class TestAssignTheftLabels:
-    def test_theft_labels_present(self, sgcc_df, load_points):
-        """B2b — At least one consumer has is_theft_label = True."""
-        from src.data_source.dataset_loader import (
-            sample_load_profiles,
-            assign_theft_labels,
-        )
-
-        profiles = sample_load_profiles(load_points, sgcc_df, seed=42)
-        labelled = assign_theft_labels(
-            profiles, sgcc_df, load_points, theft_fraction=0.3, seed=42
-        )
-
-        assert labelled["is_theft_label"].any(), (
-            "No theft labels assigned — theft class did not survive sampling"
-        )
-
-    def test_no_null_feeder_true_kwh(self, sgcc_df, load_points):
-        """B2a — Acceptance criterion: no null feeder_true_kwh."""
-        from src.data_source.dataset_loader import (
-            sample_load_profiles,
-            assign_theft_labels,
-        )
-
-        profiles = sample_load_profiles(load_points, sgcc_df, seed=42)
-        labelled = assign_theft_labels(profiles, sgcc_df, load_points, seed=42)
-
-        assert labelled["feeder_true_kwh"].notna().all(), (
-            "Found null feeder_true_kwh values"
-        )
-
-    def test_output_schema(self, sgcc_df, load_points):
-        """Ground truth table has the required stable schema."""
-        from src.data_source.dataset_loader import (
-            sample_load_profiles,
-            assign_theft_labels,
-        )
-
-        profiles = sample_load_profiles(load_points, sgcc_df, seed=42)
-        labelled = assign_theft_labels(profiles, sgcc_df, load_points, seed=42)
-
-        expected_cols = {
-            "consumer_id", "timestamp", "reported_kwh",
-            "feeder_true_kwh", "is_theft_label", "source",
-        }
-        assert expected_cols.issubset(set(labelled.columns))
-
-    def test_is_theft_label_dtype(self, sgcc_df, load_points):
-        """is_theft_label must be boolean."""
-        from src.data_source.dataset_loader import (
-            sample_load_profiles,
-            assign_theft_labels,
-        )
-
-        profiles = sample_load_profiles(load_points, sgcc_df, seed=42)
-        labelled = assign_theft_labels(profiles, sgcc_df, load_points, seed=42)
-
-        assert labelled["is_theft_label"].dtype == bool
-
-    def test_seeded_determinism(self, sgcc_df, load_points):
-        """Same seed must produce identical ground-truth tables."""
-        from src.data_source.dataset_loader import (
-            sample_load_profiles,
-            assign_theft_labels,
-        )
-
-        profiles = sample_load_profiles(load_points, sgcc_df, seed=7)
-        t1 = assign_theft_labels(profiles, sgcc_df, load_points, seed=7)
-        t2 = assign_theft_labels(profiles, sgcc_df, load_points, seed=7)
-
-        pd.testing.assert_frame_equal(
-            t1.reset_index(drop=True), t2.reset_index(drop=True)
-        )
 
 
 # ===================================================================== #

@@ -1,7 +1,7 @@
 """
 IEEE 13-node feeder — unbalanced three-phase power flow (pandapower ``runpp_3ph``).
 
-Two modelling stages (docs/Phase_2_Modeling_Decisions_Brief.md):
+Two modelling stages (docs/Phase_2_Modeling_Decisions_Brief_v2.md):
 
 - **Stage A** — the IEEE 13-node test feeder as published (4.16 kV, 60 Hz),
   built only from :mod:`ieee13_data` and validated against Kersting's
@@ -31,7 +31,7 @@ import logging
 import math
 import warnings
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -66,8 +66,12 @@ def build_ieee13_network() -> pp.pandapowerNet:
 
 
 def _check_load_totals(net: pp.pandapowerNet) -> None:
-    """Total connected load = IEEE spot + distributed load (Kersting 1991)."""
-    loads = net.asymmetric_load[net.asymmetric_load.name.str.startswith("load_")]
+    """Total connected load = IEEE spot + distributed load (Kersting 1991).
+
+    Counts the load points (``load_*``) or, once the DTs exist (Stage B8),
+    the DT loads (``dtload_*``).
+    """
+    loads = net.asymmetric_load[net.asymmetric_load.name.str.match(r"(dt)?load_")]
     total_p = loads[["p0_a_mw", "p0_b_mw", "p0_c_mw"]].sum().sum()
     total_q = loads[["q0_a_mvar", "q0_b_mvar", "q0_c_mvar"]].sum().sum()
     for label, total, expected, unit in (
@@ -296,6 +300,40 @@ def solve_with_load_models(net: pp.pandapowerNet, tol: float = 1e-3,
 #                          LOAD POINTS                                    #
 # ===================================================================== #
 
+def _has_dts(net: pp.pandapowerNet) -> bool:
+    return ("dts" in net and isinstance(net["dts"], pd.DataFrame)
+            and "load_points" in net and isinstance(net["load_points"], pd.DataFrame))
+
+
+FEEDER_HEAD_ID = "feeder_head_650"
+
+
+def meter_points(net: pp.pandapowerNet | None = None) -> pd.DataFrame:
+    """Every Modbus meter point in unit-id order (Part 2C.3, schema 2.0).
+
+    Units 1-9: the nine load points as ``bus_virtual`` meters (sum of their
+    bus's DT meters, kept for Layer 2 compatibility); unit 10: the feeder head
+    at 650 (``feeder_head``); units 11+: one ``dt`` meter per DT at its LV
+    terminals.  Columns ``unit_id, load_id, role, bus, phase``.  With DTs every
+    bus_virtual meter is three-phase: it reads the LV side of its bus's DTs,
+    and the single-/two-phase IEEE buses are spread over a/b/c at LV (brief v2
+    X.3 item 2); the load_id keeps its IEEE name.
+    """
+    if net is None:
+        net = build_ieee13_network()
+    lp = get_load_points(net)
+    dts = _has_dts(net)
+    rows = [{"load_id": r.load_id, "role": "bus_virtual", "bus": r.bus,
+             "phase": "abc" if dts else r.phase} for r in lp.itertuples()]
+    if dts:
+        rows.append({"load_id": FEEDER_HEAD_ID, "role": "feeder_head", "bus": "650",
+                     "phase": "abc"})
+        rows += [{"load_id": d.name, "role": "dt", "bus": d.bus, "phase": "abc"}
+                 for d in net["dts"].itertuples()]
+    out = pd.DataFrame(rows)
+    out.insert(0, "unit_id", np.arange(1, len(out) + 1))
+    return out
+
 def get_load_points(net: pp.pandapowerNet | None = None) -> pd.DataFrame:
     """Return a table of every load point in the network.
 
@@ -312,10 +350,15 @@ def get_load_points(net: pp.pandapowerNet | None = None) -> pd.DataFrame:
     pd.DataFrame
         Columns: ``load_id`` (str, unique), ``bus`` (str), ``phase`` (str:
         ``'a'``, ``'b'``, ``'c'``, or ``'abc'``), ``nominal_kw`` (float),
-        ``nominal_kvar`` (float).  One row per load point.
+        ``nominal_kvar`` (float).  One row per load point.  Once Stage B8
+        has replaced the loads by DTs the table comes from
+        ``net["load_points"]`` (same load_ids, nominal IEEE values).
     """
     if net is None:
         net = build_ieee13_network()
+    if _has_dts(net):
+        return net["load_points"][["load_id", "bus", "phase", "nominal_kw",
+                                   "nominal_kvar"]].copy()
 
     rows: list[dict] = []
     # Stage A keeps nominal values in p0_*/q0_* (p_*/q_* move with the load
@@ -364,6 +407,15 @@ def get_load_points(net: pp.pandapowerNet | None = None) -> pd.DataFrame:
 #                          POWER FLOW                                    #
 # ===================================================================== #
 
+def _scaling_targets(net: pp.pandapowerNet) -> Dict[str, List[int]]:
+    """load_id -> asymmetric_load rows it scales (its DT loads once B8 ran)."""
+    if _has_dts(net):
+        d = net["dts"]
+        return {lid: d.loc[d.load_id == lid, "load"].astype(int).tolist()
+                for lid in net["load_points"].load_id}
+    return {str(n): [int(i)] for i, n in net.asymmetric_load.name.items()}
+
+
 def run_snapshot(
     net: pp.pandapowerNet | None = None,
     load_scaling: Dict[str, float] | None = None,
@@ -378,6 +430,7 @@ def run_snapshot(
         Mapping ``{load_id: scaling_factor}`` to apply before solving.
         Every load is reset to 1.0 first, so a missing load_id runs at
         1.0 regardless of earlier calls.  Unknown load_ids raise KeyError.
+        With DTs (Stage B8) a load_id scales all of its bus's DT loads.
 
     Returns
     -------
@@ -394,13 +447,12 @@ def run_snapshot(
     # scaling from a previous call on the same net.
     net.asymmetric_load["scaling"] = 1.0
     if load_scaling:
-        unknown = set(load_scaling) - set(net.asymmetric_load["name"])
+        targets = _scaling_targets(net)
+        unknown = set(load_scaling) - set(targets)
         if unknown:
             raise KeyError(f"Unknown load_id(s) in load_scaling: {sorted(unknown)}")
-        for idx in net.asymmetric_load.index:
-            load_id = net.asymmetric_load.at[idx, "name"]
-            if load_id in load_scaling:
-                net.asymmetric_load.at[idx, "scaling"] = load_scaling[load_id]
+        for load_id, factor in load_scaling.items():
+            net.asymmetric_load.loc[targets[load_id], "scaling"] = factor
 
     # IMPORTANT: Use runpp_3ph — NEVER the balanced runpp()!
     # The balanced solver silently produces wrong results for this network.
@@ -440,6 +492,152 @@ def _synthetic_daily_profile(timestamps: pd.DatetimeIndex) -> pd.Series:
     return pd.Series(profile, index=timestamps)
 
 
+FRAME_COLUMNS = [
+    "timestamp", "load_id", "bus", "phase",
+    "voltage_v", "current_a", "active_power_kw", "reactive_power_kvar",
+    "voltage_angle_deg", "load_current_a",
+]
+_VALUE_COLS = FRAME_COLUMNS[4:]
+_PH = "abc"
+_A = np.exp(2j * np.pi / 3)
+# I012 = A^-1 I_abc (zero, positive, negative sequence)
+_A_INV = np.array([[1, 1, 1], [1, _A, _A ** 2], [1, _A ** 2, _A]]) / 3.0
+
+
+class _Extractor:
+    """Index arrays for vectorised per-step results of the DT network.
+
+    Meter-point order is :func:`meter_points` (bus_virtual, feeder head, DTs).
+    Per step every quantity is a (n_points, 3) matrix; the frame keeps only
+    each point's phases.
+    """
+
+    def __init__(self, net: pp.pandapowerNet):
+        d = net["dts"]
+        self.mp = meter_points(net)
+        bus_pos = net.bus.index.get_indexer
+        trafo_pos = net.trafo.index.get_indexer
+        self.dt_load = d.load.astype(int).to_numpy()
+        self.dt_lv = bus_pos(d.lv_bus.astype(int))
+        self.dt_hv = bus_pos(d.hv_bus.astype(int))
+        self.dt_p0_kw = d.p0_w.to_numpy(float) / 1e3
+        self.dt_trafo = trafo_pos(d.trafo.astype(int))
+        self.sub = trafo_pos([int(net.trafo.index[net.trafo.name == "Sub_XFMR"][0])])[0]
+        self.b650 = bus_pos([int(net.bus.index[net.bus.name == "650"][0])])[0]
+        vn = net.bus.vn_kv.to_numpy() * 1e3 / math.sqrt(3)
+        self.vn_ln_dt = vn[self.dt_lv][:, None]
+        self.dt_i_rated_ka = (d.rating_kva.to_numpy(float)
+                              / (math.sqrt(3) * net.bus.vn_kv.to_numpy()[self.dt_lv]) / 1e3)[:, None]
+        self.vn_ln_650 = vn[self.b650]
+        self.mv = np.flatnonzero(net.bus.vn_kv.to_numpy() == config.FEEDER_VOLTAGE_KV)
+        self.lv = np.flatnonzero(net.bus.vn_kv.to_numpy() < 1.0)
+        lp = net["load_points"]
+        self.groups = [np.flatnonzero(d.load_id.to_numpy() == lid) for lid in lp.load_id]
+        self.n_dt = len(d)
+        self.dt_names = d.name.tolist()
+        sel = [(i, _PH.index(ph)) for i, r in enumerate(self.mp.itertuples())
+               for ph in (_PH if r.phase == "abc" else r.phase)]
+        self.flat = np.array([i * 3 + j for i, j in sel])
+        self.row_load_id = self.mp.load_id.to_numpy()[[i for i, _ in sel]]
+        self.row_bus = self.mp.bus.to_numpy()[[i for i, _ in sel]]
+        self.row_phase = np.array([_PH[j] for _, j in sel])
+
+    def values(self, net: pp.pandapowerNet) -> np.ndarray:
+        """(6, n_rows) values in ``_VALUE_COLS`` order for the solved step."""
+        rb = net.res_bus_3ph
+        vm = rb[["vm_a_pu", "vm_b_pu", "vm_c_pu"]].to_numpy()
+        va = rb[["va_a_degree", "va_b_degree", "va_c_degree"]].to_numpy()
+        rt = net.res_trafo_3ph
+        p_lv = -rt[["p_a_lv_mw", "p_b_lv_mw", "p_c_lv_mw"]].to_numpy() * 1e3
+        q_lv = -rt[["q_a_lv_mvar", "q_b_lv_mvar", "q_c_lv_mvar"]].to_numpy() * 1e3
+        i_lv = rt[["i_a_lv_ka", "i_b_lv_ka", "i_c_lv_ka"]].to_numpy() * 1e3
+        # DT meters at the LV terminals and the feeder head (Sub_XFMR LV = 650)
+        v_dt, a_dt = vm[self.dt_lv] * self.vn_ln_dt, va[self.dt_lv]
+        p_dt, q_dt, i_dt = p_lv[self.dt_trafo], q_lv[self.dt_trafo], i_lv[self.dt_trafo]
+        v_fh, a_fh = vm[self.b650] * self.vn_ln_650, va[self.b650]
+        # bus_virtual = sum of the bus's DT meters (voltage: mean over its DTs)
+        v_bv = np.array([v_dt[g].mean(axis=0) for g in self.groups])
+        a_bv = np.array([a_dt[g].mean(axis=0) for g in self.groups])
+        p_bv = np.array([p_dt[g].sum(axis=0) for g in self.groups])
+        q_bv = np.array([q_dt[g].sum(axis=0) for g in self.groups])
+        i_bv = np.array([i_dt[g].sum(axis=0) for g in self.groups])
+        with np.errstate(divide="ignore", invalid="ignore"):
+            il_bv = np.where(v_bv > 0, np.hypot(p_bv, q_bv) * 1e3 / v_bv, 0.0)
+        V = np.vstack([v_bv, v_fh, v_dt])
+        A = np.vstack([a_bv, a_fh, a_dt])
+        P = np.vstack([p_bv, p_lv[self.sub], p_dt])
+        Q = np.vstack([q_bv, q_lv[self.sub], q_dt])
+        I = np.vstack([i_bv, i_lv[self.sub], i_dt])
+        IL = np.vstack([il_bv, i_lv[self.sub], i_dt])
+        return np.stack([V.ravel()[self.flat], I.ravel()[self.flat], P.ravel()[self.flat],
+                         Q.ravel()[self.flat], A.ravel()[self.flat], IL.ravel()[self.flat]])
+
+    def state(self, net: pp.pandapowerNet, ts, moves: int, v_relay: float) -> dict:
+        """Network-level state of one solved step (OLTC, voltages, losses, DTs)."""
+        vm = net.res_bus_3ph[["vm_a_pu", "vm_b_pu", "vm_c_pu"]].to_numpy()
+        al = net.asymmetric_load
+        p_load = float(sum((al[f"p_{p}_mw"] * al["scaling"]).sum() for p in _PH))
+        p_in = float(sum(net.res_ext_grid_3ph[f"p_{p}_mw"].sum() for p in _PH))
+        rt = net.res_trafo_3ph
+        pl_t = rt[["pl_a_mw", "pl_b_mw", "pl_c_mw"]].to_numpy().sum(axis=1)
+        line_loss = float(sum(net.res_line_3ph[f"pl_{p}_mw"].sum() for p in _PH))
+        p_hv = rt[["p_a_hv_mw", "p_b_hv_mw", "p_c_hv_mw"]].to_numpy().sum(axis=1)
+        p_head = -float(rt[["p_a_lv_mw", "p_b_lv_mw", "p_c_lv_mw"]].to_numpy()[self.sub].sum())
+        mv, lv = vm[self.mv], vm[self.lv]
+        row = {
+            "timestamp": ts, "oltc_tap": np.nan, "tap_moved": moves,
+            "at_tap_limit": False, "v_relay_pu": v_relay,
+            "v_min_11kv_pu": float(np.nanmin(mv)), "v_max_11kv_pu": float(np.nanmax(mv)),
+            "p_in_mw": p_in, "p_load_mw": p_load, "losses_mw": p_in - p_load,
+            "branch_losses_mw": line_loss + float(pl_t.sum()),
+            "v_below_095": int((mv < 0.95).sum()), "v_above_105": int((mv > 1.05).sum()),
+            "v_min_lv_pu": float(np.nanmin(lv)), "v_max_lv_pu": float(np.nanmax(lv)),
+            "p_head_mw": p_head, "p_dt_hv_mw": float(p_hv[self.dt_trafo].sum()),
+            "line_losses_mw": line_loss, "dt_losses_mw": float(pl_t[self.dt_trafo].sum()),
+            "sub_losses_mw": float(pl_t[self.sub]),
+            # no-load part of the DT losses: P0 at the HV voltage, P0 x mean(v_hv^2) (estimate)
+            "dt_noload_mw": float((self.dt_p0_kw * (vm[self.dt_hv] ** 2).mean(axis=1)).sum() / 1e3),
+            # voltage unbalance factor |V2/V1| (pandapower res_bus_3ph.unbalance_percent)
+            "vuf_max_11kv_pct": float(np.nanmax(
+                net.res_bus_3ph["unbalance_percent"].to_numpy()[self.mv])),
+        }
+        for k, name in enumerate(self.dt_names):
+            row[f"ploss_kw_{name}"] = float(pl_t[self.dt_trafo[k]] * 1e3)
+        # DT loading per LV phase: I_phase / rated LV current (S_r / (sqrt3 x 433 V))
+        i_lv = rt[["i_a_lv_ka", "i_b_lv_ka", "i_c_lv_ka"]].to_numpy()[self.dt_trafo]
+        load_pct = 100.0 * i_lv / self.dt_i_rated_ka
+        for k, name in enumerate(self.dt_names):
+            for j, ph in enumerate(_PH):
+                row[f"load_pct_{name}_{ph}"] = float(load_pct[k, j])
+        # Sequence components of the LV current (per unit of rated current) and
+        # the HV voltage^2 per DT, for the IS 1180 loss check (brief v2 X.3.2 item 14)
+        va = net.res_bus_3ph[["va_a_degree", "va_b_degree", "va_c_degree"]].to_numpy()
+        v_lv = vm[self.dt_lv] * np.exp(1j * np.deg2rad(va[self.dt_lv])) * self.vn_ln_dt / 1e3   # kV
+        s_lv = -(rt[["p_a_lv_mw", "p_b_lv_mw", "p_c_lv_mw"]].to_numpy()
+                 + 1j * rt[["q_a_lv_mvar", "q_b_lv_mvar", "q_c_lv_mvar"]].to_numpy())[self.dt_trafo]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            i_abc = np.where(np.abs(v_lv) > 0, np.conj(s_lv / v_lv), 0.0)               # kA
+        i012 = i_abc @ _A_INV.T                                                          # (n_dt, 3): 0, 1, 2
+        k012 = np.abs(i012) / self.dt_i_rated_ka
+        v_hv2 = (vm[self.dt_hv] ** 2).mean(axis=1)
+        for k, name in enumerate(self.dt_names):
+            row[f"k0_{name}"], row[f"k1_{name}"], row[f"k2_{name}"] = (float(x) for x in k012[k])
+            row[f"vhv2_{name}"] = float(v_hv2[k])
+        if oltc.has_oltc(net):
+            t = int(net["oltc"].trafo.iloc[0])
+            tap = float(net.trafo.at[t, "tap_pos"])
+            row["oltc_tap"] = tap
+            row["at_tap_limit"] = tap in (net.trafo.at[t, "tap_min"], net.trafo.at[t, "tap_max"])
+        return row
+
+
+def dt_nominal(net: pp.pandapowerNet) -> Tuple[np.ndarray, np.ndarray]:
+    """Nominal (P kW, Q kvar) per DT and LV phase, shape (n_dt, 3)."""
+    d = net["dts"]
+    return (d[[f"p_{p}_kw" for p in _PH]].to_numpy(float),
+            d[[f"q_{p}_kvar" for p in _PH]].to_numpy(float))
+
+
 def run_timeseries(
     start: str | datetime = "2024-01-01",
     end: str | datetime = "2024-01-02",
@@ -447,47 +645,66 @@ def run_timeseries(
     net: pp.pandapowerNet | None = None,
     profiles: pd.DataFrame | None = None,
     return_state: bool = False,
+    dt_loads: Optional[Callable[[int, pd.Timestamp], Tuple[np.ndarray, np.ndarray]]] = None,
+    progress_every: int = 0,
 ) -> pd.DataFrame | Tuple[pd.DataFrame, pd.DataFrame]:
-    """Step through a time range, applying load profiles at each step.
+    """Step through a time range on the Stage B network with DTs.
 
-    If the network has a controlled OLTC (Stage B), each step is solved, the
-    tap moves at most one step towards the band and the step is re-solved.
+    Each step sets the DT loads, solves (``runpp_3ph``), moves the OLTC at
+    most one step towards its band and re-solves (the first step settles the
+    tap without counting), then extracts every meter point.
 
     Parameters
     ----------
     start, end : str or datetime
-        Inclusive bounds of the simulation window.
+        Inclusive bounds of the simulation window (IST wall time, naive).
     freq : str, optional
         Pandas frequency string (default: ``config.SIMULATION_FREQ``).
     net : pandapowerNet, optional
-        Network.  Built from scratch if *None*.
+        Stage B network (with DTs).  Built from scratch if *None*.
     profiles : DataFrame, optional
-        Index = timestamps, columns = load_id strings, values = multiplicative
-        scaling factors versus nominal.  Must cover every simulated timestamp
-        and every load_id.  If *None*, a built-in synthetic daily shape is
-        used so the function works standalone.
+        Index = timestamps, columns = load_ids, values = scaling factors of
+        the load point's nominal demand (applied to all its DTs).  Must cover
+        every simulated timestamp and load_id.  If *None* (and no
+        ``dt_loads``), the built-in synthetic daily shape is used.
     return_state : bool
-        If True, also return a per-step state frame: ``timestamp, oltc_tap,
+        Also return a per-step state frame: ``timestamp, oltc_tap,
         tap_moved, at_tap_limit, v_relay_pu, v_min_11kv_pu, v_max_11kv_pu,
         p_in_mw, p_load_mw, losses_mw, branch_losses_mw, v_below_095,
-        v_above_105`` (the last two count 11 kV bus-phases outside the
-        0.95-1.05 pu design target).
+        v_above_105`` (11 kV bus-phases outside 0.95-1.05 pu), plus
+        ``v_min_lv_pu, v_max_lv_pu, p_head_mw, p_dt_hv_mw, line_losses_mw,
+        dt_losses_mw, sub_losses_mw, dt_noload_mw, vuf_max_11kv_pct``,
+        ``load_pct_<dt>_<phase>``, ``ploss_kw_<dt>``, ``k0/k1/k2_<dt>`` (LV
+        current sequence components per unit of rated) and ``vhv2_<dt>``.
+    dt_loads : callable, optional
+        ``dt_loads(step, timestamp) -> (p_kw, q_kvar)``, each (n_dt, 3), the
+        DT LV loads of that step (e.g. the sum of true household load).
+        Overrides ``profiles``.
+    progress_every : int
+        Log progress every this many steps (0 = never).
 
     Returns
     -------
     pd.DataFrame
-        Tidy DataFrame with one row per ``(timestamp, load_id, phase)``
-        and columns: ``timestamp, load_id, bus, phase, voltage_v,
-        current_a, active_power_kw, reactive_power_kvar`` (unchanged since
-        Phase 1) plus, for schema 2.0, ``voltage_angle_deg`` (phase angle of
-        the bus voltage) and ``load_current_a`` (the load's own current,
-        |S|/|V| per phase).  Timestamps are timezone-naive IST wall time.
-        With ``return_state`` a ``(frame, state)`` tuple.
+        One row per ``(timestamp, meter point, phase)``; columns
+        ``timestamp, load_id, bus, phase, voltage_v, current_a,
+        active_power_kw, reactive_power_kvar`` (Phase 1 contract) plus
+        ``voltage_angle_deg`` and ``load_current_a`` (schema 2.0).  Meter
+        points are :func:`meter_points`: the nine load points (bus_virtual:
+        sum of their DT meters, LV voltage = mean of their DTs), the feeder
+        head ``feeder_head_650`` and one ``dt_<bus>_<k>`` per DT (abc).
+        ``current_a`` is the branch current feeding the point (sum of DT LV
+        currents for a load point), ``load_current_a`` the point's own
+        current.  Values are true (no meter error; see :mod:`metering`).
+        Timestamps are timezone-naive IST wall time.  With ``return_state``
+        a ``(frame, state)`` tuple.
 
     Raises
     ------
     KeyError
         If ``profiles`` is missing a simulated timestamp or a load_id.
+    ValueError
+        If the network has no DTs (Stage A or Stage B before B8).
     RuntimeError
         If the power flow fails at any step (no step is skipped).
     """
@@ -495,217 +712,79 @@ def run_timeseries(
         net = build_ieee13_network()
     if freq is None:
         freq = config.SIMULATION_FREQ
+    if not _has_dts(net):
+        raise ValueError("run_timeseries needs the Stage B network with DTs (step B8)")
 
     timestamps = pd.date_range(start=start, end=end, freq=freq)
+    load_ids = list(net["load_points"].load_id)
+    d = net["dts"]
+    p_nom, q_nom = dt_nominal(net)
 
-    # Load point metadata
-    lp_df = get_load_points(net)
-    load_ids = list(lp_df["load_id"])
+    if dt_loads is None:
+        if profiles is None:
+            synth = _synthetic_daily_profile(timestamps)
+            profiles = pd.DataFrame({lid: synth.values for lid in load_ids}, index=timestamps)
+        missing_ids = [lid for lid in load_ids if lid not in profiles.columns]
+        if missing_ids:
+            raise KeyError(f"profiles is missing load_id column(s): {missing_ids}")
+        missing_ts = timestamps.difference(profiles.index)
+        if len(missing_ts):
+            raise KeyError(
+                f"profiles is missing {len(missing_ts)} timestamp(s), "
+                f"first {missing_ts[0]}")
+        factors = profiles.loc[timestamps, d.load_id].to_numpy(float)     # (steps, n_dt)
 
-    # Build profiles if not provided
-    if profiles is None:
-        synth = _synthetic_daily_profile(timestamps)
-        profiles = pd.DataFrame(
-            {lid: synth.values for lid in load_ids},
-            index=timestamps,
-        )
+        def dt_loads(i, ts):
+            return p_nom * factors[i][:, None], q_nom * factors[i][:, None]
 
-    missing_ids = [lid for lid in load_ids if lid not in profiles.columns]
-    if missing_ids:
-        raise KeyError(f"profiles is missing load_id column(s): {missing_ids}")
-    missing_ts = timestamps.difference(profiles.index)
-    if len(missing_ts):
-        raise KeyError(
-            f"profiles is missing {len(missing_ts)} timestamp(s), "
-            f"first {missing_ts[0]}"
-        )
-
-    # Bus voltage nominal values (for converting pu → V)
-    bus_vn: Dict[int, float] = {}
-    for bus_idx in net.bus.index:
-        bus_vn[bus_idx] = float(net.bus.at[bus_idx, "vn_kv"]) * 1000.0  # kV → V
-
-    records: list[dict] = []
-    states: list[dict] = []
+    ex = _Extractor(net)
+    al = net.asymmetric_load
+    pcols = [f"p_{p}_mw" for p in _PH]
+    qcols = [f"q_{p}_mvar" for p in _PH]
     controlled = oltc.has_oltc(net)
+    values = np.empty((len(timestamps), len(_VALUE_COLS), len(ex.flat)))
+    states: list[dict] = []
+    al["scaling"] = 1.0
 
-    for ts in timestamps:
-        # Scaling for this timestamp (coverage checked above)
-        scaling: Dict[str, float] = {
-            lid: float(profiles.at[ts, lid]) for lid in load_ids
-        }
-
+    for i, ts in enumerate(timestamps):
         try:
-            snap = run_snapshot(net, load_scaling=scaling)
+            p_kw, q_kvar = dt_loads(i, ts)
+            al.loc[ex.dt_load, pcols] = np.asarray(p_kw, float) / 1e3
+            al.loc[ex.dt_load, qcols] = np.asarray(q_kvar, float) / 1e3
+            # IMPORTANT: runpp_3ph — never the balanced runpp().
+            pp.runpp_3ph(net)
+            moves, v_relay = 0, np.nan
             if controlled:
-                if ts == timestamps[0]:
+                if i == 0:
                     # Initial condition: settle the tap to the first step's
                     # load (not counted as tap operations).
                     oltc.regulate(net, max_moves=40)
                 # At most one OLTC move per time step (delay ignored at 15 min)
                 moves, v_relay = oltc.regulate(net, max_moves=1)
-                snap["bus_voltages"] = net.res_bus_3ph.copy()
-                snap["line_currents"] = net.res_line_3ph.copy()
-            bus_v = snap["bus_voltages"]
-            line_i = snap["line_currents"]
-
-            if bus_v.empty:
-                raise RuntimeError("no 3ph voltage results")
+            values[i] = ex.values(net)
             if return_state:
-                states.append(_state_row(net, ts, moves if controlled else 0,
-                                         v_relay if controlled else np.nan))
-
-            # For each load point, extract per-phase results
-            for _, lp_row in lp_df.iterrows():
-                load_id = lp_row["load_id"]
-                bus_name = lp_row["bus"]
-                phase_str = lp_row["phase"]
-
-                # Find bus index
-                bus_idx = None
-                for bi in net.bus.index:
-                    if net.bus.at[bi, "name"] == bus_name:
-                        bus_idx = bi
-                        break
-                if bus_idx is None:
-                    raise RuntimeError(f"bus {bus_name!r} not in network")
-
-                vn_v = bus_vn[bus_idx]
-                # Line-to-neutral nominal
-                vn_ln = vn_v / np.sqrt(3)
-
-                # Determine phases to report
-                if phase_str == "abc":
-                    phases = ["a", "b", "c"]
-                else:
-                    phases = list(phase_str)
-
-                for ph in phases:
-                    row: dict[str, Any] = {
-                        "timestamp": ts,
-                        "load_id": load_id,
-                        "bus": bus_name,
-                        "phase": ph,
-                    }
-
-                    # Voltage (line-to-neutral in V)
-                    vm_col = [c for c in bus_v.columns
-                              if f"vm_{ph}" in c.lower() and "pu" in c.lower()]
-                    if vm_col and bus_idx in bus_v.index:
-                        vm_pu = float(bus_v.at[bus_idx, vm_col[0]])
-                        row["voltage_v"] = vm_pu * vn_ln
-                        row["voltage_angle_deg"] = float(
-                            bus_v.at[bus_idx, f"va_{ph}_degree"])
-                    else:
-                        row["voltage_v"] = np.nan
-                        row["voltage_angle_deg"] = np.nan
-
-                    # Current (kA → A) — max over lines connected to this
-                    # bus and transformer windings on this bus (bus 634 is
-                    # fed only by XFM-1)
-                    branch_i: list[float] = []
-                    if not line_i.empty:
-                        connected = net.line[
-                            (net.line["from_bus"] == bus_idx)
-                            | (net.line["to_bus"] == bus_idx)
-                        ].index
-                        i_cols = [c for c in line_i.columns
-                                  if f"i_{ph}" in c.lower() and "ka" in c.lower()]
-                        if i_cols and len(connected) > 0:
-                            branch_i.append(float(
-                                line_i.loc[connected, i_cols[0]].max()))
-                    for side in ("hv", "lv"):
-                        on_bus = net.trafo.index[net.trafo[f"{side}_bus"] == bus_idx]
-                        if len(on_bus) > 0:
-                            branch_i.append(float(net.res_trafo_3ph.loc[
-                                on_bus, f"i_{ph}_{side}_ka"].max()))
-                    row["current_a"] = (
-                        max(branch_i) * 1000.0 if branch_i else np.nan  # kA → A
-                    )
-
-                    # Active power (MW → kW)
-                    # Find the asymmetric load index
-                    p_val = np.nan
-                    q_val = np.nan
-                    for li in net.asymmetric_load.index:
-                        if net.asymmetric_load.at[li, "name"] == load_id:
-                            p_col = f"p_{ph}_mw"
-                            q_col = f"q_{ph}_mvar"
-                            if p_col in net.asymmetric_load.columns:
-                                p_mw = float(net.asymmetric_load.at[li, p_col])
-                                s_factor = float(
-                                    net.asymmetric_load.at[li, "scaling"]
-                                )
-                                p_val = p_mw * s_factor * 1000.0  # MW → kW
-                            if q_col in net.asymmetric_load.columns:
-                                q_mvar = float(
-                                    net.asymmetric_load.at[li, q_col]
-                                )
-                                s_factor = float(
-                                    net.asymmetric_load.at[li, "scaling"]
-                                )
-                                q_val = q_mvar * s_factor * 1000.0  # Mvar → kvar
-                            break
-                    row["active_power_kw"] = p_val
-                    row["reactive_power_kvar"] = q_val
-                    # The load's own current (schema 2.0, audit L1-15): |S|/|V|
-                    # per phase from the solved voltage (current_a keeps its
-                    # Phase 1 meaning, the largest connected branch current).
-                    v_ph = row["voltage_v"]
-                    row["load_current_a"] = (
-                        math.hypot(p_val, q_val) * 1000.0 / v_ph if v_ph > 0 else 0.0)
-
-                    records.append(row)
-
+                states.append(ex.state(net, ts, moves, v_relay))
         except Exception as exc:
             raise RuntimeError(f"Power flow failed at {ts}: {exc}") from exc
+        if progress_every and (i + 1) % progress_every == 0:
+            logger.info("run_timeseries: %d / %d steps (%s)", i + 1, len(timestamps), ts)
 
-    df = pd.DataFrame(records)
-    if df.empty:
-        # Return empty frame with correct columns
-        df = pd.DataFrame(columns=[
-            "timestamp", "load_id", "bus", "phase",
-            "voltage_v", "current_a", "active_power_kw", "reactive_power_kvar",
-            "voltage_angle_deg", "load_current_a",
-        ])
-    value_cols = ["voltage_v", "current_a", "active_power_kw", "reactive_power_kvar",
-                  "voltage_angle_deg", "load_current_a"]
-    nan_rows = df[df[value_cols].isna().any(axis=1)]
+    n_rows = len(ex.flat)
+    df = pd.DataFrame({
+        "timestamp": np.repeat(timestamps.values, n_rows),
+        "load_id": np.tile(ex.row_load_id, len(timestamps)),
+        "bus": np.tile(ex.row_bus, len(timestamps)),
+        "phase": np.tile(ex.row_phase, len(timestamps)),
+        **{c: values[:, k, :].ravel() for k, c in enumerate(_VALUE_COLS)},
+    }, columns=FRAME_COLUMNS)
+    nan_rows = df[df[_VALUE_COLS].isna().any(axis=1)]
     if not nan_rows.empty:
         raise RuntimeError(
             f"run_timeseries produced NaN values for "
-            f"{sorted(nan_rows['load_id'].unique())}"
-        )
+            f"{sorted(nan_rows['load_id'].unique())}")
     if return_state:
         return df, pd.DataFrame(states)
     return df
-
-
-def _state_row(net: pp.pandapowerNet, ts, moves: int, v_relay: float) -> dict:
-    """Network-level state of one solved time step (OLTC, voltages, losses)."""
-    mv = net.bus.index[net.bus.vn_kv == config.FEEDER_VOLTAGE_KV]
-    vm = net.res_bus_3ph.loc[mv, ["vm_a_pu", "vm_b_pu", "vm_c_pu"]]
-    al = net.asymmetric_load
-    p_load = float(sum((al[f"p_{p}_mw"] * al["scaling"]).sum() for p in "abc"))
-    p_in = float(sum(net.res_ext_grid_3ph[f"p_{p}_mw"].sum() for p in "abc"))
-    row = {
-        "timestamp": ts, "oltc_tap": np.nan, "tap_moved": moves,
-        "at_tap_limit": False, "v_relay_pu": v_relay,
-        "v_min_11kv_pu": float(np.nanmin(vm.values)),
-        "v_max_11kv_pu": float(np.nanmax(vm.values)),
-        "p_in_mw": p_in, "p_load_mw": p_load, "losses_mw": p_in - p_load,
-        "branch_losses_mw": float(
-            sum(net.res_line_3ph[f"pl_{p}_mw"].sum() for p in "abc")
-            + sum(net.res_trafo_3ph[f"pl_{p}_mw"].sum() for p in "abc")),
-        "v_below_095": int((vm < 0.95).sum().sum()),
-        "v_above_105": int((vm > 1.05).sum().sum()),
-    }
-    if oltc.has_oltc(net):
-        t = int(net["oltc"].trafo.iloc[0])
-        tap = float(net.trafo.at[t, "tap_pos"])
-        row["oltc_tap"] = tap
-        row["at_tap_limit"] = tap in (net.trafo.at[t, "tap_min"], net.trafo.at[t, "tap_max"])
-    return row
 
 
 # ===================================================================== #

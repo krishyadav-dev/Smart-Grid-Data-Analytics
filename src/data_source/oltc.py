@@ -15,8 +15,13 @@ applied to one controlled transformer tap:
   sending-end current of the monitored line; the three phases are averaged
   because pandapower has one tap per transformer (as in Stage A).
 - At most ``max_moves`` tap steps per call; OLTC time delay is ignored at
-  15-minute resolution.  Step 0.625 % and +/-16 steps are carried over from
-  the IEEE regulator (``verify`` against a real 33/11 kV OLTC).
+  15-minute resolution.
+- Tap range and step (brief v2 X.3.2 item 21) come from the transformer
+  (``stage_b`` B4): GETCO/E/TS-XMER/R13 (2017), Data sheet A1 item 12,
+  p. 28: -5 % .. +15 % on LV, step 1.25 %.  The full band 2 x 0.0083 =
+  1.67 % exceeds the step, so the controller does not hunt
+  (:func:`check_no_hunting`; GETCO p. 106 sets the AVR bandwidth to suit the
+  1.25 % step).
 """
 
 from __future__ import annotations
@@ -62,6 +67,16 @@ def attach_oltc(net: pp.pandapowerNet, trafo_name: str, line_name: str) -> None:
         "trafo": t, "line": ln, "r_ldc_ohm": z.real, "x_ldc_ohm": z.imag,
         "set_point_pu": SET_POINT_PU, "half_band_pu": HALF_BAND_PU,
     }])
+
+
+def check_no_hunting(net: pp.pandapowerNet) -> Tuple[float, float]:
+    """Full dead band (pu) vs tap step (pu); raises if the band is not wider."""
+    c = net["oltc"].iloc[0]
+    band = 2.0 * float(c.half_band_pu)
+    step = float(net.trafo.at[int(c.trafo), "tap_step_percent"]) / 100.0
+    if not band > step:
+        raise ValueError(f"OLTC band {band:.4f} pu <= tap step {step:.4f} pu (hunting)")
+    return band, step
 
 
 def has_oltc(net: pp.pandapowerNet) -> bool:

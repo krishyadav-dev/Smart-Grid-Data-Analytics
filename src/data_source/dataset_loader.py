@@ -1,17 +1,18 @@
 """
-SGCC Theft Dataset Loader & Profile Sampler.
+SGCC Theft Dataset Loader & Profile Sampler (Phase 1 path).
 
 Loads the SGCC dataset (Zheng et al., 2018 — "Wide and Deep Convolutional
-Neural Networks for Electricity-Theft Detection to Secure Smart Grids") and
-produces two outputs:
+Neural Networks for Electricity-Theft Detection to Secure Smart Grids") in
+long format and produces **load profiles**: a ``profiles`` DataFrame with one
+column per ``load_id`` and a DatetimeIndex, containing multiplicative scaling
+factors that can be passed directly to ``run_timeseries(profiles=...)``
+(one SGCC household per load point; used by ``scripts/run_meter_server.py
+--profiles sgcc``).
 
-  1. **Realistic load profiles** — a ``profiles`` DataFrame with one column
-     per ``load_id`` and a DatetimeIndex, containing multiplicative scaling
-     factors that can be passed directly to ``run_timeseries(profiles=...)``.
-
-  2. **Ground-truth theft table** — stable schema:
-     ``consumer_id, timestamp, reported_kwh, feeder_true_kwh,
-       is_theft_label, source``
+The Part 2C metering structure (households behind DTs, Jokar theft, ground
+truth) lives in :mod:`sgcc`, :mod:`households`, :mod:`metering` and
+:mod:`simulation`.  The old ``assign_theft_labels`` / ``build_ground_truth_table``
+(fixed 60 % reporting, audit L1-5) were removed in Phase 2X checkpoint 3.
 
 Resolution bridging (SGCC daily → feeder 15-minute)
 -----------------------------------------------------
@@ -49,28 +50,6 @@ This approach preserves daily energy totals from SGCC while injecting a
 realistic intra-day shape from the power system model.  The deviation from a
 real household's 15-min shape is accepted as a limitation; a more accurate
 approach would require SGCC at sub-daily resolution, which is not available.
-
-``feeder_true_kwh`` definition
--------------------------------
-SGCC only contains meter-reported values; there is no separate "true"
-(actual) consumption for theft-labeled consumers.
-
-  - **Normal rows (is_theft=False):** ``feeder_true_kwh`` = the feeder model's
-    own per-load energy for that 15-min interval, derived from
-    ``active_power_kw × (15/60)`` from ``run_timeseries``.  When the feeder
-    timeseries is not pre-computed (lazy mode), it equals ``reported_kwh``
-    scaled by the nominal ratio.
-
-  - **Theft rows (is_theft=True):** ``feeder_true_kwh`` is set equal to the
-    *normal* consumer's feeder energy that would have been consumed.  This
-    represents the feeder's view of what should have been drawn.  Since SGCC
-    theft labels reflect the dataset's ground truth (consumer was classified
-    as a thief), ``reported_kwh`` for these rows will be lower than
-    ``feeder_true_kwh``, consistent with under-reporting theft.
-
-  The gap ``feeder_true_kwh - reported_kwh > 0`` for theft rows should be
-  treated as synthetic (not real meter-to-feeder reconciliation).  This
-  distinction is flagged in the final report.
 
 Data sourcing (two-tier)
 ------------------------
@@ -400,150 +379,3 @@ def sample_load_profiles(
         profiles[lp_row["load_id"]] = ratios * shape
 
     return pd.DataFrame(profiles, index=timestamps)
-
-
-def assign_theft_labels(
-    profiles_df: pd.DataFrame,
-    sgcc_df: pd.DataFrame,
-    load_points: pd.DataFrame,
-    theft_fraction: float | None = None,
-    seed: int | None = None,
-) -> pd.DataFrame:
-    """Replace a subset of consumers' profiles with theft-labeled series.
-
-    Builds the final ground-truth table with schema:
-    ``consumer_id, timestamp, reported_kwh, feeder_true_kwh,
-      is_theft_label, source``
-
-    Parameters
-    ----------
-    profiles_df : DataFrame
-        Profiles from ``sample_load_profiles()`` — shape (timestamps × load_ids).
-    sgcc_df : DataFrame
-        Output of ``load_sgcc()``.
-    load_points : DataFrame
-        Output of ``get_load_points()``.
-    theft_fraction : float, optional
-        Fraction of consumers to mark as theft (default: ``config.THEFT_FRACTION``).
-    seed : int or None
-        Random seed.
-
-    Returns
-    -------
-    pd.DataFrame
-        Ground-truth table with the stable schema above.
-    """
-    if theft_fraction is None:
-        theft_fraction = config.THEFT_FRACTION
-    if seed is None:
-        seed = config.RANDOM_SEED
-
-    rng = np.random.default_rng(seed)
-
-    load_ids = list(profiles_df.columns)
-    n_theft = max(1, int(len(load_ids) * theft_fraction))
-    theft_ids = list(rng.choice(load_ids, size=n_theft, replace=False))
-
-    # Nominal kW lookup
-    nominal_kw_map = dict(zip(load_points["load_id"], load_points["nominal_kw"]))
-
-    # Theft-labeled SGCC consumers
-    theft_consumers = sgcc_df[sgcc_df["is_theft"]]["consumer_id"].unique()
-
-    records: list[dict] = []
-
-    for load_id in load_ids:
-        is_theft = load_id in theft_ids
-        nominal_kw = float(nominal_kw_map.get(load_id, 1.0))
-        interval_h = (profiles_df.index[1] - profiles_df.index[0]).total_seconds() / 3600.0
-
-        for ts in profiles_df.index:
-            factor = float(profiles_df.at[ts, load_id])
-            # feeder_true_kwh: what the feeder model would draw at this timestep
-            feeder_true_kwh = nominal_kw * interval_h * factor
-
-            if is_theft and len(theft_consumers) > 0:
-                # Sample a theft-labeled SGCC consumer's pattern
-                # Use a fixed choice for reproducibility per load_id
-                chosen_theft = str(rng.choice(theft_consumers))
-                theft_data = sgcc_df[sgcc_df["consumer_id"] == chosen_theft]
-                day = ts.normalize()
-                theft_day = theft_data[pd.DatetimeIndex(theft_data["date"]).normalize() == day]
-
-                if not theft_day.empty:
-                    # Scale theft consumer's daily kWh to nominal and apply
-                    nominal_daily = nominal_kw * 24.0
-                    theft_daily = float(theft_day["kwh"].iloc[0])
-                    scale = nominal_daily / max(theft_daily, 1.0)
-                    # Sub-daily shape follows the intra-day profile
-                    n_steps = len(profiles_df[profiles_df.index.normalize() == day])
-                    reported_kwh = max(0.0, theft_daily * scale * interval_h / 24.0 * 0.6)
-                else:
-                    # No theft data for this day → report 60% of true
-                    reported_kwh = feeder_true_kwh * 0.6
-
-                source = "sgcc_theft"
-            else:
-                reported_kwh = feeder_true_kwh
-                source = "sgcc_normal"
-
-            records.append({
-                "consumer_id": load_id,
-                "timestamp": ts,
-                "reported_kwh": float(reported_kwh),
-                "feeder_true_kwh": float(feeder_true_kwh),
-                "is_theft_label": bool(is_theft),
-                "source": source,
-            })
-
-    df = pd.DataFrame(records)
-    logger.info(
-        "Ground truth table: %d rows, %d consumers, %d theft rows",
-        len(df),
-        df["consumer_id"].nunique(),
-        df["is_theft_label"].sum(),
-    )
-    return df
-
-
-def build_ground_truth_table(
-    sgcc_path: Optional[Path | str] = None,
-    start: str = "2024-01-01",
-    end: str = "2024-01-02",
-    freq: str = "15min",
-    theft_fraction: float | None = None,
-    seed: int | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Build the complete ground-truth table and profiles for the evaluation plan.
-
-    Parameters
-    ----------
-    sgcc_path : Path or str, optional
-        Explicit CSV path.  Uses fallback if None.
-    start, end, freq : str
-        Simulation window parameters.
-    theft_fraction : float, optional
-        Fraction of consumers to label as theft.
-    seed : int or None
-        Random seed.
-
-    Returns
-    -------
-    (ground_truth_df, profiles_df)
-        - ``ground_truth_df``: stable schema table for the evaluation plan.
-        - ``profiles_df``: profiles for ``run_timeseries(profiles=...)``.
-    """
-    from .feeder_model import get_load_points
-
-    load_points = get_load_points()
-    sgcc_df = load_sgcc(sgcc_path)
-
-    profiles_df = sample_load_profiles(
-        load_points, sgcc_df, start=start, end=end, freq=freq, seed=seed
-    )
-    ground_truth = assign_theft_labels(
-        profiles_df, sgcc_df, load_points,
-        theft_fraction=theft_fraction, seed=seed,
-    )
-
-    return ground_truth, profiles_df
