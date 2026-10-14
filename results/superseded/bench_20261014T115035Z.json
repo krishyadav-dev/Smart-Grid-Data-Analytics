@@ -1,0 +1,975 @@
+{
+  "created_utc": "20261014T115035Z",
+  "metadata": {
+    "python": "3.14.0",
+    "os": "Windows-11-10.0.26300-SP0",
+    "machine": "AMD64",
+    "versions": {
+      "pymodbus": "3.15.0",
+      "aiomqtt": "2.5.1",
+      "paho-mqtt": "2.1.0",
+      "fastapi": "0.142.4",
+      "uvicorn": "0.54.0",
+      "pydantic": "2.13.5",
+      "pydantic-settings": "2.15.0",
+      "pandapower": "3.5.4",
+      "pandas": "2.3.3",
+      "numpy": "2.4.6",
+      "mosquitto": "mosquitto version 2.1.2"
+    },
+    "profiles": "synthetic",
+    "simulated_window": "2024-01-01 00:00 .. 23:45 (one day)",
+    "steps": 96,
+    "meters": 23,
+    "run_timeseries_solve_s": 37.86,
+    "gateway_poll_interval_s": 0.25,
+    "speeds": [
+      900.0,
+      3600.0,
+      7200.0,
+      14400.0
+    ],
+    "LATENCY_BUDGET_MS": null,
+    "clock_note": "gateway and listener on the same host; wall clocks comparable"
+  },
+  "results": [
+    {
+      "playback_speed": 900.0,
+      "wall_s_per_step": 1.0,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 101.02,
+      "expected_messages": 2208,
+      "gateway_published": 2208,
+      "listener_received": 2277,
+      "accepted": 2208,
+      "validated_delivered": 2208,
+      "unique_meter_steps": 2208,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 22.58,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 2208,
+          "p50": 11.424,
+          "p95": 24.879,
+          "p99": 58.885,
+          "max": 92.699
+        },
+        "pub_to_recv": {
+          "n": 2208,
+          "p50": 4.119,
+          "p95": 11.032,
+          "p99": 17.876,
+          "max": 24.858
+        },
+        "total": {
+          "n": 2208,
+          "p50": 14.928,
+          "p95": 35.252,
+          "p99": 65.607,
+          "max": 95.123
+        },
+        "recv_to_validated_subscriber": {
+          "n": 2208,
+          "p50": 2.9087066650390625,
+          "p95": 8.620977401733398,
+          "p99": 15.13218879699707,
+          "max": 73.41909408569336
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "step_wall_s": 1.0,
+        "drain_s": {
+          "n": 69,
+          "median": 1.60178804397583,
+          "max": 2.136759042739868
+        },
+        "totals": {
+          "intervals": 138,
+          "late": 115,
+          "missed": 0,
+          "gap_flags": 0
+        },
+        "per_meter": {
+          "m17": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m18": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m21": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m19": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m07": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m16": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m11": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m05": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m14": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m03": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m12": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m20": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m13": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m09": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m15": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m02": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m10": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m23": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m08": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m01": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m06": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m22": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          },
+          "m04": {
+            "late": 5,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 6
+          }
+        }
+      }
+    },
+    {
+      "playback_speed": 3600.0,
+      "wall_s_per_step": 0.25,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 30.01,
+      "expected_messages": 2208,
+      "gateway_published": 2208,
+      "listener_received": 2277,
+      "accepted": 2208,
+      "validated_delivered": 2208,
+      "unique_meter_steps": 2208,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 83.19,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 2208,
+          "p50": 7.514,
+          "p95": 15.359,
+          "p99": 44.819,
+          "max": 96.205
+        },
+        "pub_to_recv": {
+          "n": 2208,
+          "p50": 2.946,
+          "p95": 7.116,
+          "p99": 10.729,
+          "max": 22.31
+        },
+        "total": {
+          "n": 2208,
+          "p50": 10.476,
+          "p95": 21.409,
+          "p99": 52.89,
+          "max": 101.05
+        },
+        "recv_to_validated_subscriber": {
+          "n": 2208,
+          "p50": 2.085447311401367,
+          "p95": 5.340099334716797,
+          "p99": 14.307498931884766,
+          "max": 23.149490356445312
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "step_wall_s": 0.25,
+        "drain_s": {
+          "n": 69,
+          "median": 1.4714980125427246,
+          "max": 2.128816843032837
+        },
+        "totals": {
+          "intervals": 447,
+          "late": 447,
+          "missed": 0,
+          "gap_flags": 0
+        },
+        "per_meter": {
+          "m17": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m23": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m14": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m19": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m01": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m07": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m15": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m05": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m10": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m16": {
+            "late": 20,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 20
+          },
+          "m13": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m06": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m04": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m12": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m18": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m08": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m20": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m09": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m11": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m22": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m02": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m03": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          },
+          "m21": {
+            "late": 19,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 19
+          }
+        }
+      }
+    },
+    {
+      "playback_speed": 7200.0,
+      "wall_s_per_step": 0.125,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 18.01,
+      "expected_messages": 2208,
+      "gateway_published": 1340,
+      "listener_received": 1409,
+      "accepted": 1340,
+      "validated_delivered": 1340,
+      "unique_meter_steps": 1340,
+      "loss_steps": 868,
+      "loss_fraction": 0.3931,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 856,
+      "gap_steps_total": 856,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 856,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 89.55,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 1340,
+          "p50": 7.7,
+          "p95": 46.208,
+          "p99": 145.762,
+          "max": 160.441
+        },
+        "pub_to_recv": {
+          "n": 1340,
+          "p50": 3.204,
+          "p95": 9.609,
+          "p99": 28.908,
+          "max": 33.506
+        },
+        "total": {
+          "n": 1340,
+          "p50": 10.747,
+          "p95": 54.352,
+          "p99": 168.811,
+          "max": 174.143
+        },
+        "recv_to_validated_subscriber": {
+          "n": 1340,
+          "p50": 2.1390914916992188,
+          "p95": 8.571147918701172,
+          "p99": 22.052526473999023,
+          "max": 28.23328971862793
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "step_wall_s": 0.125,
+        "drain_s": {
+          "n": 69,
+          "median": 1.8824541568756104,
+          "max": 2.60715913772583
+        },
+        "totals": {
+          "intervals": 1020,
+          "late": 620,
+          "missed": 400,
+          "gap_flags": 410
+        },
+        "per_meter": {
+          "m03": {
+            "late": 26,
+            "missed": 17,
+            "gap_flags": 17,
+            "intervals": 43
+          },
+          "m20": {
+            "late": 26,
+            "missed": 17,
+            "gap_flags": 17,
+            "intervals": 43
+          },
+          "m19": {
+            "late": 26,
+            "missed": 17,
+            "gap_flags": 17,
+            "intervals": 43
+          },
+          "m07": {
+            "late": 26,
+            "missed": 17,
+            "gap_flags": 17,
+            "intervals": 43
+          },
+          "m18": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 17,
+            "intervals": 44
+          },
+          "m08": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 17,
+            "intervals": 44
+          },
+          "m16": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 17,
+            "intervals": 44
+          },
+          "m14": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 17,
+            "intervals": 44
+          },
+          "m05": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 17,
+            "intervals": 44
+          },
+          "m23": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 18,
+            "intervals": 44
+          },
+          "m17": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 18,
+            "intervals": 44
+          },
+          "m15": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 18,
+            "intervals": 44
+          },
+          "m04": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 18,
+            "intervals": 44
+          },
+          "m10": {
+            "late": 27,
+            "missed": 17,
+            "gap_flags": 18,
+            "intervals": 44
+          },
+          "m12": {
+            "late": 27,
+            "missed": 18,
+            "gap_flags": 18,
+            "intervals": 45
+          },
+          "m21": {
+            "late": 27,
+            "missed": 18,
+            "gap_flags": 18,
+            "intervals": 45
+          },
+          "m09": {
+            "late": 27,
+            "missed": 18,
+            "gap_flags": 18,
+            "intervals": 45
+          },
+          "m06": {
+            "late": 27,
+            "missed": 18,
+            "gap_flags": 18,
+            "intervals": 45
+          },
+          "m01": {
+            "late": 26,
+            "missed": 18,
+            "gap_flags": 19,
+            "intervals": 44
+          },
+          "m11": {
+            "late": 28,
+            "missed": 18,
+            "gap_flags": 19,
+            "intervals": 46
+          },
+          "m02": {
+            "late": 28,
+            "missed": 18,
+            "gap_flags": 19,
+            "intervals": 46
+          },
+          "m22": {
+            "late": 28,
+            "missed": 18,
+            "gap_flags": 19,
+            "intervals": 46
+          },
+          "m13": {
+            "late": 28,
+            "missed": 18,
+            "gap_flags": 19,
+            "intervals": 46
+          }
+        }
+      }
+    },
+    {
+      "playback_speed": 14400.0,
+      "wall_s_per_step": 0.0625,
+      "poll_interval_s": 0.25,
+      "wall_duration_s": 12.01,
+      "expected_messages": 2208,
+      "gateway_published": 786,
+      "listener_received": 855,
+      "accepted": 786,
+      "validated_delivered": 786,
+      "unique_meter_steps": 786,
+      "loss_steps": 1422,
+      "loss_fraction": 0.644,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 759,
+      "gap_steps_total": 1392,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 759,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 89.45,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 786,
+          "p50": 9.442,
+          "p95": 34.361,
+          "p99": 66.796,
+          "max": 82.397
+        },
+        "pub_to_recv": {
+          "n": 786,
+          "p50": 2.925,
+          "p95": 9.405,
+          "p99": 12.163,
+          "max": 15.581
+        },
+        "total": {
+          "n": 786,
+          "p50": 11.874,
+          "p95": 45.01,
+          "p99": 76.009,
+          "max": 84.896
+        },
+        "recv_to_validated_subscriber": {
+          "n": 786,
+          "p50": 1.9910335540771484,
+          "p95": 6.484746932983398,
+          "p99": 11.286258697509766,
+          "max": 20.743370056152344
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "step_wall_s": 0.0625,
+        "drain_s": {
+          "n": 69,
+          "median": 1.380518913269043,
+          "max": 2.32008695602417
+        },
+        "totals": {
+          "intervals": 1344,
+          "late": 471,
+          "missed": 873,
+          "gap_flags": 467
+        },
+        "per_meter": {
+          "m22": {
+            "late": 20,
+            "missed": 37,
+            "gap_flags": 19,
+            "intervals": 57
+          },
+          "m12": {
+            "late": 20,
+            "missed": 37,
+            "gap_flags": 19,
+            "intervals": 57
+          },
+          "m14": {
+            "late": 20,
+            "missed": 37,
+            "gap_flags": 19,
+            "intervals": 57
+          },
+          "m16": {
+            "late": 20,
+            "missed": 37,
+            "gap_flags": 19,
+            "intervals": 57
+          },
+          "m07": {
+            "late": 20,
+            "missed": 36,
+            "gap_flags": 20,
+            "intervals": 56
+          },
+          "m06": {
+            "late": 20,
+            "missed": 36,
+            "gap_flags": 20,
+            "intervals": 56
+          },
+          "m20": {
+            "late": 20,
+            "missed": 36,
+            "gap_flags": 20,
+            "intervals": 56
+          },
+          "m15": {
+            "late": 20,
+            "missed": 36,
+            "gap_flags": 20,
+            "intervals": 56
+          },
+          "m09": {
+            "late": 20,
+            "missed": 38,
+            "gap_flags": 20,
+            "intervals": 58
+          },
+          "m21": {
+            "late": 20,
+            "missed": 38,
+            "gap_flags": 20,
+            "intervals": 58
+          },
+          "m10": {
+            "late": 20,
+            "missed": 39,
+            "gap_flags": 20,
+            "intervals": 59
+          },
+          "m05": {
+            "late": 20,
+            "missed": 39,
+            "gap_flags": 20,
+            "intervals": 59
+          },
+          "m13": {
+            "late": 21,
+            "missed": 38,
+            "gap_flags": 21,
+            "intervals": 59
+          },
+          "m04": {
+            "late": 21,
+            "missed": 39,
+            "gap_flags": 21,
+            "intervals": 60
+          },
+          "m01": {
+            "late": 21,
+            "missed": 39,
+            "gap_flags": 21,
+            "intervals": 60
+          },
+          "m03": {
+            "late": 21,
+            "missed": 38,
+            "gap_flags": 21,
+            "intervals": 59
+          },
+          "m19": {
+            "late": 21,
+            "missed": 39,
+            "gap_flags": 21,
+            "intervals": 60
+          },
+          "m02": {
+            "late": 21,
+            "missed": 39,
+            "gap_flags": 21,
+            "intervals": 60
+          },
+          "m11": {
+            "late": 21,
+            "missed": 39,
+            "gap_flags": 21,
+            "intervals": 60
+          },
+          "m18": {
+            "late": 21,
+            "missed": 39,
+            "gap_flags": 21,
+            "intervals": 60
+          },
+          "m17": {
+            "late": 21,
+            "missed": 39,
+            "gap_flags": 21,
+            "intervals": 60
+          },
+          "m23": {
+            "late": 21,
+            "missed": 39,
+            "gap_flags": 21,
+            "intervals": 60
+          },
+          "m08": {
+            "late": 21,
+            "missed": 39,
+            "gap_flags": 21,
+            "intervals": 60
+          }
+        }
+      }
+    }
+  ],
+  "characterisation": {
+    "highest_zero_loss_speed": 3600.0,
+    "note": "characterisation, not pass/fail (brief v2 X.3.1 item 13)",
+    "bursts": [
+      {
+        "event_id": 145,
+        "trigger_step": 24,
+        "bus": "652",
+        "ftype": "SLG",
+        "n_samples": 266,
+        "t_clear_s": 1.1525790456638207
+      },
+      {
+        "event_id": 39,
+        "trigger_step": 48,
+        "bus": "646",
+        "ftype": "SLG",
+        "n_samples": 263,
+        "t_clear_s": 1.1222735372329418
+      },
+      {
+        "event_id": 69,
+        "trigger_step": 72,
+        "bus": "611",
+        "ftype": "SLG",
+        "n_samples": 262,
+        "t_clear_s": 1.1184327803114997
+      }
+    ]
+  },
+  "asserted": {
+    "900x_no_interval_lost": true,
+    "3600x_no_interval_lost": true
+  }
+}

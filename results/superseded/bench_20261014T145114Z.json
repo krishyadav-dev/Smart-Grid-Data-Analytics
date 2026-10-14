@@ -1,0 +1,5062 @@
+{
+  "created_utc": "20261014T145114Z",
+  "metadata": {
+    "python": "3.14.0",
+    "os": "Windows-11-10.0.26300-SP0",
+    "machine": "AMD64",
+    "versions": {
+      "pymodbus": "3.15.0",
+      "aiomqtt": "2.5.1",
+      "paho-mqtt": "2.1.0",
+      "fastapi": "0.142.4",
+      "uvicorn": "0.54.0",
+      "pydantic": "2.13.5",
+      "pydantic-settings": "2.15.0",
+      "pandapower": "3.5.4",
+      "pandas": "2.3.3",
+      "numpy": "2.4.6",
+      "mosquitto": "mosquitto version 2.1.2"
+    },
+    "profiles": "synthetic",
+    "simulated_window": "2024-01-01 00:00 .. 23:45 (one day)",
+    "steps": 96,
+    "meters": 23,
+    "run_timeseries_solve_s": 17.96,
+    "gateway_poll_interval_s": 0.25,
+    "speeds": [
+      900,
+      3600,
+      7200,
+      14400
+    ],
+    "LATENCY_BUDGET_MS": null,
+    "clock_note": "gateway and listener on the same host; wall clocks comparable",
+    "host_note": "OneDrive client shut down (OneDrive.exe /shutdown) for the whole benchmark, restarted after; gateway series_start = 2024-01-01T00:00+05:30"
+  },
+  "results": [
+    {
+      "playback_speed": 900,
+      "wall_s_per_step": 1.0,
+      "poll_interval_s": 0.25,
+      "gateway_poll_cycle_max": {
+        "max_s": 0.267,
+        "meter_id": "m06",
+        "headroom_s": 0.733
+      },
+      "loss_accounting": {
+        "per_meter": {
+          "m01": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m02": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m03": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m04": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m05": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m06": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m07": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m08": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m09": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m10": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m11": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m12": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m13": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m14": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m15": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m16": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m17": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m18": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m19": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m20": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m21": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m22": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m23": {
+            "lost": 0,
+            "flagged": 0
+          }
+        },
+        "silent": {},
+        "no_silent_loss": true,
+        "lost_total": 0,
+        "flagged_total": 0,
+        "lost_by_step": {}
+      },
+      "wall_duration_s": 100.0,
+      "expected_messages": 2208,
+      "gateway_published": 2208,
+      "listener_received": 2277,
+      "accepted": 2208,
+      "validated_delivered": 2208,
+      "unique_meter_steps": 2208,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 22.87,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 2208,
+          "p50": 4.608,
+          "p95": 8.872,
+          "p99": 22.649,
+          "max": 26.18
+        },
+        "pub_to_recv": {
+          "n": 2208,
+          "p50": 1.118,
+          "p95": 2.854,
+          "p99": 4.777,
+          "max": 6.197
+        },
+        "total": {
+          "n": 2208,
+          "p50": 5.645,
+          "p95": 10.6,
+          "p99": 27.271,
+          "max": 29.263
+        },
+        "recv_to_validated_subscriber": {
+          "n": 2208,
+          "p50": 0.8533000946044922,
+          "p95": 2.1178722381591797,
+          "p99": 3.7496089935302734,
+          "max": 7.729530334472656
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "valid": false,
+        "note": "fitted write times later than burst publication (most steps missed); drain counts not meaningful",
+        "step_wall_s": 1.0,
+        "fitted_step_wall_s": 1.014205312186517,
+        "drain_s": {
+          "n": 69,
+          "median": 0.06709837913513184,
+          "max": 0.19855928421020508
+        },
+        "totals": {
+          "intervals": 61,
+          "late": 0,
+          "missed": 0,
+          "gap_flags": 0
+        },
+        "per_meter": {
+          "m23": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m07": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m03": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m10": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m16": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m11": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m18": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m19": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m01": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m13": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m21": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m12": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m04": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m09": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m14": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m08": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m17": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m06": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m15": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m02": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 1
+          },
+          "m05": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 1
+          },
+          "m20": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 1
+          },
+          "m22": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 1
+          }
+        }
+      },
+      "speed_achieved": {
+        "requested_x": 900,
+        "nominal_step_s": 1.0,
+        "actual_step_s": 1.0137,
+        "achieved_x": 887.8,
+        "poll_cycle_max_s": 0.267,
+        "headroom_vs_actual_s": 0.7467,
+        "headroom_vs_actual_pct": 73.7
+      },
+      "run": 1
+    },
+    {
+      "playback_speed": 900,
+      "wall_s_per_step": 1.0,
+      "poll_interval_s": 0.25,
+      "gateway_poll_cycle_max": {
+        "max_s": 0.267,
+        "meter_id": "m15",
+        "headroom_s": 0.733
+      },
+      "loss_accounting": {
+        "per_meter": {
+          "m01": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m02": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m03": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m04": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m05": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m06": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m07": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m08": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m09": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m10": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m11": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m12": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m13": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m14": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m15": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m16": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m17": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m18": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m19": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m20": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m21": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m22": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m23": {
+            "lost": 0,
+            "flagged": 0
+          }
+        },
+        "silent": {},
+        "no_silent_loss": true,
+        "lost_total": 0,
+        "flagged_total": 0,
+        "lost_by_step": {}
+      },
+      "wall_duration_s": 100.0,
+      "expected_messages": 2208,
+      "gateway_published": 2208,
+      "listener_received": 2277,
+      "accepted": 2208,
+      "validated_delivered": 2208,
+      "unique_meter_steps": 2208,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 22.84,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 2208,
+          "p50": 3.551,
+          "p95": 6.416,
+          "p99": 15.864,
+          "max": 19.43
+        },
+        "pub_to_recv": {
+          "n": 2208,
+          "p50": 1.062,
+          "p95": 2.847,
+          "p99": 3.71,
+          "max": 5.743
+        },
+        "total": {
+          "n": 2208,
+          "p50": 4.583,
+          "p95": 8.021,
+          "p99": 18.38,
+          "max": 21.017
+        },
+        "recv_to_validated_subscriber": {
+          "n": 2208,
+          "p50": 0.8218288421630859,
+          "p95": 1.8291473388671875,
+          "p99": 3.728151321411133,
+          "max": 6.778240203857422
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "valid": true,
+        "note": null,
+        "step_wall_s": 1.0,
+        "fitted_step_wall_s": 1.015476486267143,
+        "drain_s": {
+          "n": 69,
+          "median": 0.11223316192626953,
+          "max": 0.24494409561157227
+        },
+        "totals": {
+          "intervals": 69,
+          "late": 0,
+          "missed": 0,
+          "gap_flags": 0
+        },
+        "per_meter": {
+          "m11": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m12": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m10": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m16": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m04": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m18": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m21": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m02": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m07": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m09": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m03": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m22": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m01": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m14": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m23": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m17": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m20": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m19": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m13": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m05": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m08": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m06": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m15": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          }
+        }
+      },
+      "speed_achieved": {
+        "requested_x": 900,
+        "nominal_step_s": 1.0,
+        "actual_step_s": 1.0152,
+        "achieved_x": 886.5,
+        "poll_cycle_max_s": 0.267,
+        "headroom_vs_actual_s": 0.7482,
+        "headroom_vs_actual_pct": 73.7
+      },
+      "run": 2
+    },
+    {
+      "playback_speed": 900,
+      "wall_s_per_step": 1.0,
+      "poll_interval_s": 0.25,
+      "gateway_poll_cycle_max": {
+        "max_s": 0.267,
+        "meter_id": "m05",
+        "headroom_s": 0.733
+      },
+      "loss_accounting": {
+        "per_meter": {
+          "m01": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m02": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m03": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m04": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m05": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m06": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m07": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m08": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m09": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m10": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m11": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m12": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m13": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m14": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m15": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m16": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m17": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m18": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m19": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m20": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m21": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m22": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m23": {
+            "lost": 0,
+            "flagged": 0
+          }
+        },
+        "silent": {},
+        "no_silent_loss": true,
+        "lost_total": 0,
+        "flagged_total": 0,
+        "lost_by_step": {}
+      },
+      "wall_duration_s": 100.0,
+      "expected_messages": 2208,
+      "gateway_published": 2208,
+      "listener_received": 2277,
+      "accepted": 2208,
+      "validated_delivered": 2208,
+      "unique_meter_steps": 2208,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 22.88,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 2208,
+          "p50": 3.408,
+          "p95": 7.04,
+          "p99": 16.646,
+          "max": 20.884
+        },
+        "pub_to_recv": {
+          "n": 2208,
+          "p50": 1.068,
+          "p95": 2.706,
+          "p99": 4.054,
+          "max": 6.593
+        },
+        "total": {
+          "n": 2208,
+          "p50": 4.436,
+          "p95": 8.654,
+          "p99": 18.586,
+          "max": 25.811
+        },
+        "recv_to_validated_subscriber": {
+          "n": 2208,
+          "p50": 0.8258819580078125,
+          "p95": 1.9409656524658203,
+          "p99": 3.9381980895996094,
+          "max": 6.275415420532227
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "valid": false,
+        "note": "fitted write times later than burst publication (most steps missed); drain counts not meaningful",
+        "step_wall_s": 1.0,
+        "fitted_step_wall_s": 1.0149331542311884,
+        "drain_s": {
+          "n": 69,
+          "median": 0.08084225654602051,
+          "max": 0.20680952072143555
+        },
+        "totals": {
+          "intervals": 67,
+          "late": 0,
+          "missed": 0,
+          "gap_flags": 0
+        },
+        "per_meter": {
+          "m18": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m02": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m21": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m23": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m04": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m06": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m03": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m15": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m16": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m09": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m08": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m22": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m13": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m01": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m10": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m20": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m07": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m12": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m11": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m17": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m19": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m14": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m05": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          }
+        }
+      },
+      "speed_achieved": {
+        "requested_x": 900,
+        "nominal_step_s": 1.0,
+        "actual_step_s": 1.014,
+        "achieved_x": 887.6,
+        "poll_cycle_max_s": 0.267,
+        "headroom_vs_actual_s": 0.747,
+        "headroom_vs_actual_pct": 73.7
+      },
+      "run": 3
+    },
+    {
+      "playback_speed": 3600,
+      "wall_s_per_step": 0.25,
+      "poll_interval_s": 0.25,
+      "gateway_poll_cycle_max": {
+        "max_s": 0.267,
+        "meter_id": "m14",
+        "headroom_s": -0.017
+      },
+      "loss_accounting": {
+        "per_meter": {
+          "m01": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m02": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m03": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m04": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m05": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m06": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m07": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m08": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m09": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m10": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m11": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m12": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m13": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m14": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m15": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m16": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m17": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m18": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m19": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m20": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m21": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m22": {
+            "lost": 0,
+            "flagged": 0
+          },
+          "m23": {
+            "lost": 0,
+            "flagged": 0
+          }
+        },
+        "silent": {},
+        "no_silent_loss": true,
+        "lost_total": 0,
+        "flagged_total": 0,
+        "lost_by_step": {}
+      },
+      "wall_duration_s": 29.01,
+      "expected_messages": 2208,
+      "gateway_published": 2208,
+      "listener_received": 2277,
+      "accepted": 2208,
+      "validated_delivered": 2208,
+      "unique_meter_steps": 2208,
+      "loss_steps": 0,
+      "loss_fraction": 0.0,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 0,
+      "gap_steps_total": 0,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 0,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 87.07,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 2208,
+          "p50": 2.575,
+          "p95": 5.601,
+          "p99": 9.418,
+          "max": 18.163
+        },
+        "pub_to_recv": {
+          "n": 2208,
+          "p50": 1.013,
+          "p95": 2.502,
+          "p99": 3.357,
+          "max": 5.729
+        },
+        "total": {
+          "n": 2208,
+          "p50": 3.522,
+          "p95": 7.26,
+          "p99": 11.532,
+          "max": 19.192
+        },
+        "recv_to_validated_subscriber": {
+          "n": 2208,
+          "p50": 0.7393360137939453,
+          "p95": 1.5141963958740234,
+          "p99": 2.3114681243896484,
+          "max": 5.893468856811523
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "valid": false,
+        "note": "fitted write times later than burst publication (most steps missed); drain counts not meaningful",
+        "step_wall_s": 0.25,
+        "fitted_step_wall_s": 0.26540828354709184,
+        "drain_s": {
+          "n": 69,
+          "median": 0.10911273956298828,
+          "max": 0.22387003898620605
+        },
+        "totals": {
+          "intervals": 60,
+          "late": 0,
+          "missed": 0,
+          "gap_flags": 0
+        },
+        "per_meter": {
+          "m15": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m23": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m20": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m13": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m17": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m21": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m22": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m16": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m14": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m09": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m10": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m18": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m08": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m03": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 2
+          },
+          "m11": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m02": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m05": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m07": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m19": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m12": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m01": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m06": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          },
+          "m04": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 3
+          }
+        }
+      },
+      "speed_achieved": {
+        "requested_x": 3600,
+        "nominal_step_s": 0.25,
+        "actual_step_s": 0.2648,
+        "achieved_x": 3399.2,
+        "poll_cycle_max_s": 0.267,
+        "headroom_vs_actual_s": -0.0022,
+        "headroom_vs_actual_pct": -0.8
+      },
+      "run": 1
+    },
+    {
+      "playback_speed": 7200,
+      "wall_s_per_step": 0.125,
+      "poll_interval_s": 0.25,
+      "gateway_poll_cycle_max": {
+        "max_s": 0.266,
+        "meter_id": "m21",
+        "headroom_s": -0.141
+      },
+      "loss_accounting": {
+        "per_meter": {
+          "m01": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m02": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m03": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m04": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m05": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m06": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m07": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m08": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m09": {
+            "lost": 43,
+            "flagged": 43
+          },
+          "m10": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m11": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m12": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m13": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m14": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m15": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m16": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m17": {
+            "lost": 43,
+            "flagged": 43
+          },
+          "m18": {
+            "lost": 43,
+            "flagged": 43
+          },
+          "m19": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m20": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m21": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m22": {
+            "lost": 44,
+            "flagged": 44
+          },
+          "m23": {
+            "lost": 44,
+            "flagged": 44
+          }
+        },
+        "silent": {},
+        "no_silent_loss": true,
+        "lost_total": 1009,
+        "flagged_total": 1009,
+        "lost_by_step": {
+          "00:00": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "00:15": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "00:30": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "00:45": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m08",
+            "m10",
+            "m11",
+            "m14",
+            "m15",
+            "m16",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "01:00": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "01:15": [
+            "m01",
+            "m05",
+            "m08",
+            "m10",
+            "m14",
+            "m22"
+          ],
+          "01:30": [
+            "m02",
+            "m03",
+            "m04",
+            "m06",
+            "m07",
+            "m09",
+            "m11",
+            "m12",
+            "m13",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "01:45": [
+            "m01",
+            "m05",
+            "m08",
+            "m10",
+            "m14",
+            "m22"
+          ],
+          "02:00": [
+            "m03",
+            "m04",
+            "m06",
+            "m09",
+            "m11",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m21",
+            "m23"
+          ],
+          "02:15": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "02:30": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "02:45": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "03:00": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "03:15": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "03:30": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "03:45": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "04:00": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m08",
+            "m10",
+            "m11",
+            "m14",
+            "m15",
+            "m16",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "04:15": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "04:30": [
+            "m01",
+            "m05",
+            "m08",
+            "m10",
+            "m14",
+            "m22"
+          ],
+          "04:45": [
+            "m02",
+            "m03",
+            "m04",
+            "m06",
+            "m07",
+            "m09",
+            "m11",
+            "m12",
+            "m13",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "05:00": [
+            "m01",
+            "m05",
+            "m08",
+            "m10",
+            "m14",
+            "m22"
+          ],
+          "05:15": [
+            "m03",
+            "m04",
+            "m06",
+            "m09",
+            "m11",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m21",
+            "m23"
+          ],
+          "05:30": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "05:45": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "06:00": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "06:15": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "06:30": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "06:45": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "07:00": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "07:15": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m08",
+            "m10",
+            "m11",
+            "m14",
+            "m15",
+            "m16",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "07:30": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "07:45": [
+            "m01",
+            "m05",
+            "m08",
+            "m10",
+            "m14",
+            "m22"
+          ],
+          "08:00": [
+            "m02",
+            "m03",
+            "m04",
+            "m06",
+            "m07",
+            "m09",
+            "m11",
+            "m12",
+            "m13",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "08:15": [
+            "m01",
+            "m05",
+            "m08",
+            "m10",
+            "m14",
+            "m22"
+          ],
+          "08:30": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "08:45": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "09:00": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "09:15": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "09:30": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "09:45": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "10:00": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "10:15": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "10:30": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "10:45": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "11:00": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m08",
+            "m10",
+            "m11",
+            "m14",
+            "m15",
+            "m16",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "11:15": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "11:30": [
+            "m01",
+            "m05",
+            "m08",
+            "m10",
+            "m14",
+            "m22"
+          ],
+          "11:45": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "12:00": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "12:15": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "12:30": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "12:45": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "13:00": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "13:15": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "13:30": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "13:45": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m08",
+            "m10",
+            "m11",
+            "m14",
+            "m15",
+            "m16",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "14:00": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "14:15": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m08",
+            "m10",
+            "m11",
+            "m14",
+            "m15",
+            "m16",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "14:45": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "15:00": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "15:15": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "15:30": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "15:45": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "16:00": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "16:15": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "16:30": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "16:45": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "17:00": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "17:15": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "17:30": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m08",
+            "m10",
+            "m11",
+            "m14",
+            "m15",
+            "m16",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "17:45": [
+            "m02",
+            "m07",
+            "m09",
+            "m12",
+            "m13",
+            "m17",
+            "m18",
+            "m19",
+            "m20"
+          ],
+          "18:00": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m08",
+            "m10",
+            "m11",
+            "m14",
+            "m15",
+            "m16",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "18:30": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "18:45": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "19:00": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "19:15": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "19:30": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "19:45": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "20:00": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "20:15": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "20:45": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "21:15": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "21:45": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "22:15": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "22:30": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "22:45": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "23:00": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ],
+          "23:15": [
+            "m01",
+            "m02",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22"
+          ],
+          "23:30": [
+            "m03",
+            "m04",
+            "m06",
+            "m11",
+            "m15",
+            "m16",
+            "m21",
+            "m23"
+          ]
+        }
+      },
+      "wall_duration_s": 17.0,
+      "expected_messages": 2208,
+      "gateway_published": 1199,
+      "listener_received": 1268,
+      "accepted": 1199,
+      "validated_delivered": 1199,
+      "unique_meter_steps": 1199,
+      "loss_steps": 1009,
+      "loss_fraction": 0.457,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 1009,
+      "gap_steps_total": 1009,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 1009,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 88.81,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 1199,
+          "p50": 2.63,
+          "p95": 7.549,
+          "p99": 10.752,
+          "max": 12.103
+        },
+        "pub_to_recv": {
+          "n": 1199,
+          "p50": 1.017,
+          "p95": 2.582,
+          "p99": 3.47,
+          "max": 4.467
+        },
+        "total": {
+          "n": 1199,
+          "p50": 3.623,
+          "p95": 9.566,
+          "p99": 13.146,
+          "max": 15.412
+        },
+        "recv_to_validated_subscriber": {
+          "n": 1199,
+          "p50": 0.7443428039550781,
+          "p95": 1.8737316131591797,
+          "p99": 2.9036998748779297,
+          "max": 3.6783218383789062
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "valid": false,
+        "note": "fitted write times later than burst publication (most steps missed); drain counts not meaningful",
+        "step_wall_s": 0.125,
+        "fitted_step_wall_s": 0.14362847094633438,
+        "drain_s": {
+          "n": 69,
+          "median": 0.07991456985473633,
+          "max": 0.2279813289642334
+        },
+        "totals": {
+          "intervals": 84,
+          "late": 0,
+          "missed": 40,
+          "gap_flags": 44
+        },
+        "per_meter": {
+          "m15": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m23": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m21": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m16": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m06": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m03": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m11": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m04": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m22": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 3,
+            "intervals": 4
+          },
+          "m14": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 3,
+            "intervals": 4
+          },
+          "m10": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 3,
+            "intervals": 4
+          },
+          "m08": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 3,
+            "intervals": 4
+          },
+          "m01": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 3,
+            "intervals": 4
+          },
+          "m05": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 3,
+            "intervals": 4
+          },
+          "m02": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 2,
+            "intervals": 4
+          },
+          "m09": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 2,
+            "intervals": 4
+          },
+          "m18": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 2,
+            "intervals": 4
+          },
+          "m20": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 2,
+            "intervals": 4
+          },
+          "m13": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 2,
+            "intervals": 4
+          },
+          "m07": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 2,
+            "intervals": 4
+          },
+          "m19": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 2,
+            "intervals": 4
+          },
+          "m12": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 2,
+            "intervals": 4
+          },
+          "m17": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 2,
+            "intervals": 4
+          }
+        }
+      },
+      "speed_achieved": {
+        "requested_x": 7200,
+        "nominal_step_s": 0.125,
+        "actual_step_s": 0.1406,
+        "achieved_x": 6400.5,
+        "poll_cycle_max_s": 0.266,
+        "headroom_vs_actual_s": -0.1254,
+        "headroom_vs_actual_pct": -89.2
+      },
+      "run": 1
+    },
+    {
+      "playback_speed": 14400,
+      "wall_s_per_step": 0.0625,
+      "poll_interval_s": 0.25,
+      "gateway_poll_cycle_max": {
+        "max_s": 0.266,
+        "meter_id": "m01",
+        "headroom_s": -0.204
+      },
+      "loss_accounting": {
+        "per_meter": {
+          "m01": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m02": {
+            "lost": 66,
+            "flagged": 66
+          },
+          "m03": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m04": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m05": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m06": {
+            "lost": 66,
+            "flagged": 66
+          },
+          "m07": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m08": {
+            "lost": 66,
+            "flagged": 66
+          },
+          "m09": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m10": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m11": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m12": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m13": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m14": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m15": {
+            "lost": 66,
+            "flagged": 66
+          },
+          "m16": {
+            "lost": 66,
+            "flagged": 66
+          },
+          "m17": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m18": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m19": {
+            "lost": 66,
+            "flagged": 66
+          },
+          "m20": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m21": {
+            "lost": 66,
+            "flagged": 66
+          },
+          "m22": {
+            "lost": 67,
+            "flagged": 67
+          },
+          "m23": {
+            "lost": 67,
+            "flagged": 67
+          }
+        },
+        "silent": {},
+        "no_silent_loss": true,
+        "lost_total": 1534,
+        "flagged_total": 1534,
+        "lost_by_step": {
+          "00:00": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "00:15": [
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "00:30": [
+            "m01",
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m09",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "00:45": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "01:00": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m23"
+          ],
+          "01:15": [
+            "m02",
+            "m03",
+            "m04",
+            "m06",
+            "m08",
+            "m11",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "01:30": [
+            "m01",
+            "m02",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "01:45": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "02:00": [
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "02:15": [
+            "m01",
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m09",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "02:30": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "02:45": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m23"
+          ],
+          "03:00": [
+            "m02",
+            "m03",
+            "m04",
+            "m06",
+            "m08",
+            "m11",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "03:15": [
+            "m01",
+            "m02",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "03:30": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m23"
+          ],
+          "03:45": [
+            "m02",
+            "m03",
+            "m04",
+            "m06",
+            "m08",
+            "m11",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "04:00": [
+            "m01",
+            "m02",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "04:15": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "04:30": [
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "04:45": [
+            "m01",
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m09",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "05:00": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "05:15": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m23"
+          ],
+          "05:30": [
+            "m02",
+            "m03",
+            "m04",
+            "m06",
+            "m08",
+            "m11",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "05:45": [
+            "m01",
+            "m02",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m12",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "06:00": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m17",
+            "m18",
+            "m20",
+            "m23"
+          ],
+          "06:15": [
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "06:30": [
+            "m01",
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m09",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "06:45": [
+            "m01",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m17",
+            "m18",
+            "m20",
+            "m22"
+          ],
+          "07:00": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "07:15": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "07:30": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "07:45": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m23"
+          ],
+          "08:00": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "08:15": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "08:30": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "08:45": [
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "09:00": [
+            "m01",
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m09",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "09:15": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "09:30": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m23"
+          ],
+          "09:45": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "10:00": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "10:15": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "10:30": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "10:45": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "11:00": [
+            "m01",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m17",
+            "m18",
+            "m20",
+            "m22"
+          ],
+          "11:15": [
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "11:30": [
+            "m01",
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m09",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "11:45": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "12:00": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m23"
+          ],
+          "12:15": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "12:30": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "12:45": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "13:00": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "13:15": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "13:30": [
+            "m01",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m17",
+            "m18",
+            "m20",
+            "m22"
+          ],
+          "13:45": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "14:00": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "14:15": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "14:30": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m23"
+          ],
+          "14:45": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "15:00": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "15:15": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "15:30": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "15:45": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "16:00": [
+            "m01",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m17",
+            "m18",
+            "m20",
+            "m22"
+          ],
+          "16:15": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "16:30": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "16:45": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "17:00": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m23"
+          ],
+          "17:15": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "17:30": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "17:45": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "18:00": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "18:15": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "18:30": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "18:45": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "19:00": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "19:15": [
+            "m01",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m17",
+            "m18",
+            "m20",
+            "m22"
+          ],
+          "19:30": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "19:45": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "20:00": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "20:15": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "20:30": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "20:45": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "21:00": [
+            "m01",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m17",
+            "m18",
+            "m20",
+            "m22"
+          ],
+          "21:15": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "21:30": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "21:45": [
+            "m01",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m17",
+            "m18",
+            "m20",
+            "m22"
+          ],
+          "22:00": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m23"
+          ],
+          "22:15": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "22:30": [
+            "m01",
+            "m02",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m16",
+            "m17",
+            "m18",
+            "m20",
+            "m21",
+            "m22"
+          ],
+          "22:45": [
+            "m01",
+            "m03",
+            "m04",
+            "m05",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m22",
+            "m23"
+          ],
+          "23:00": [
+            "m02",
+            "m03",
+            "m06",
+            "m08",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m19",
+            "m21",
+            "m23"
+          ],
+          "23:15": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m13",
+            "m14",
+            "m15",
+            "m16",
+            "m17",
+            "m18",
+            "m19",
+            "m20",
+            "m21",
+            "m22",
+            "m23"
+          ],
+          "23:30": [
+            "m01",
+            "m04",
+            "m05",
+            "m07",
+            "m09",
+            "m10",
+            "m11",
+            "m12",
+            "m17",
+            "m18",
+            "m20",
+            "m22"
+          ]
+        }
+      },
+      "wall_duration_s": 11.0,
+      "expected_messages": 2208,
+      "gateway_published": 674,
+      "listener_received": 743,
+      "accepted": 674,
+      "validated_delivered": 674,
+      "unique_meter_steps": 674,
+      "loss_steps": 1534,
+      "loss_fraction": 0.6947,
+      "duplicates_rejected": 0,
+      "duplicates_in_validated": 0,
+      "gap_messages": 656,
+      "gap_steps_total": 1534,
+      "rejects": {
+        "MALFORMED_JSON": 0,
+        "SCHEMA_INVALID": 0,
+        "UNSUPPORTED_SCHEMA_VERSION": 0,
+        "UNKNOWN_METER": 0,
+        "DUPLICATE": 0,
+        "OUT_OF_ORDER": 0
+      },
+      "flags": {
+        "GAP": 656,
+        "NO_SIM_TIME": 0,
+        "OUT_OF_ORDER": 0,
+        "STALE": 0,
+        "ENERGY_DECREASE": 0,
+        "SUSPECT_RANGE": 0,
+        "PARTIAL_READ": 0,
+        "TORN_READ": 0
+      },
+      "throughput_msgs_per_s": 88.28,
+      "latency_ms": {
+        "poll_to_pub": {
+          "n": 674,
+          "p50": 2.239,
+          "p95": 7.588,
+          "p99": 13.186,
+          "max": 20.918
+        },
+        "pub_to_recv": {
+          "n": 674,
+          "p50": 1.003,
+          "p95": 2.347,
+          "p99": 3.103,
+          "max": 4.924
+        },
+        "total": {
+          "n": 674,
+          "p50": 3.245,
+          "p95": 9.668,
+          "p99": 15.569,
+          "max": 22.119
+        },
+        "recv_to_validated_subscriber": {
+          "n": 674,
+          "p50": 0.6988048553466797,
+          "p95": 1.6069412231445312,
+          "p99": 2.727985382080078,
+          "max": 3.2057762145996094
+        }
+      },
+      "bursts": {
+        "expected": 69,
+        "received": 69,
+        "samples": 18193
+      },
+      "event_drain": {
+        "valid": false,
+        "note": "fitted write times later than burst publication (most steps missed); drain counts not meaningful",
+        "step_wall_s": 0.0625,
+        "fitted_step_wall_s": 0.08646136965984473,
+        "drain_s": {
+          "n": 69,
+          "median": -0.12684297561645508,
+          "max": 0.20160603523254395
+        },
+        "totals": {
+          "intervals": 33,
+          "late": 0,
+          "missed": 18,
+          "gap_flags": 15
+        },
+        "per_meter": {
+          "m19": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 0
+          },
+          "m15": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 0
+          },
+          "m08": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 0
+          },
+          "m06": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 0
+          },
+          "m02": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 0
+          },
+          "m21": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 0
+          },
+          "m16": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 0,
+            "intervals": 0
+          },
+          "m22": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 0,
+            "intervals": 1
+          },
+          "m09": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 1,
+            "intervals": 1
+          },
+          "m01": {
+            "late": 0,
+            "missed": 0,
+            "gap_flags": 1,
+            "intervals": 1
+          },
+          "m17": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 1,
+            "intervals": 2
+          },
+          "m12": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 1,
+            "intervals": 2
+          },
+          "m07": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 1,
+            "intervals": 2
+          },
+          "m18": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 1,
+            "intervals": 2
+          },
+          "m20": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 1,
+            "intervals": 2
+          },
+          "m05": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 1,
+            "intervals": 2
+          },
+          "m10": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 1,
+            "intervals": 2
+          },
+          "m04": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 1,
+            "intervals": 2
+          },
+          "m11": {
+            "late": 0,
+            "missed": 1,
+            "gap_flags": 1,
+            "intervals": 2
+          },
+          "m13": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m23": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m03": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          },
+          "m14": {
+            "late": 0,
+            "missed": 2,
+            "gap_flags": 1,
+            "intervals": 3
+          }
+        }
+      },
+      "speed_achieved": {
+        "requested_x": 14400,
+        "nominal_step_s": 0.0625,
+        "actual_step_s": 0.0781,
+        "achieved_x": 11529.2,
+        "poll_cycle_max_s": 0.266,
+        "headroom_vs_actual_s": -0.1879,
+        "headroom_vs_actual_pct": -240.8
+      },
+      "run": 1
+    }
+  ],
+  "characterisation": {
+    "highest_zero_loss_speed": 3600,
+    "note": "characterisation, not pass/fail (brief v2 X.3.1 item 13)",
+    "bursts": [
+      {
+        "event_id": 145,
+        "trigger_step": 24,
+        "bus": "652",
+        "ftype": "SLG",
+        "n_samples": 266,
+        "t_clear_s": 1.1525790456638207
+      },
+      {
+        "event_id": 39,
+        "trigger_step": 48,
+        "bus": "646",
+        "ftype": "SLG",
+        "n_samples": 263,
+        "t_clear_s": 1.1222735372329418
+      },
+      {
+        "event_id": 69,
+        "trigger_step": 72,
+        "bus": "611",
+        "ftype": "SLG",
+        "n_samples": 262,
+        "t_clear_s": 1.1184327803114997
+      }
+    ]
+  },
+  "asserted": {
+    "900x_run1_no_interval_lost": true,
+    "900x_run2_no_interval_lost": true,
+    "900x_run3_no_interval_lost": true,
+    "900x_run1_no_silent_loss": true,
+    "900x_run2_no_silent_loss": true,
+    "900x_run3_no_silent_loss": true,
+    "3600x_run1_no_silent_loss": true,
+    "7200x_run1_no_silent_loss": true,
+    "14400x_run1_no_silent_loss": true
+  }
+}

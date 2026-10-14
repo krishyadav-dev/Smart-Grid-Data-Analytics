@@ -16,6 +16,9 @@ mqtt:
 
 poll_interval_s: 0.25
 expected_step_s: 900       # simulated seconds between meter updates
+series_start: null         # commissioning time, aware ISO 8601 IST (e.g. 2024-01-01T00:00:00+05:30);
+                           # set by the harness for a fresh series, so losses before a meter's
+                           # first reading are GAP-flagged. Leave null after a gateway restart.
 playback_speed: 10.0       # informational: used only for the startup sampling warning
 torn_read_retries: 3
 

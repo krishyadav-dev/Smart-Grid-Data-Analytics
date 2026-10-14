@@ -19,7 +19,11 @@ Design
 - Change detection: a reading is published only when ``t_sim`` advanced;
   repeated polls of the same step are counted (``skipped_same_t_sim``).
   If ``t_sim`` jumps by more than ``expected_step_s`` the message carries
-  ``GAP`` with ``gap_steps``.  Without a time register the gateway falls back
+  ``GAP`` with ``gap_steps``.  With ``series_start`` set (the commissioning
+  time), a meter's first reading also counts the intervals missed since
+  then; without it, losses before the first reading cannot be detected.
+  Set it only for a fresh series: after a gateway restart it would count
+  intervals the previous run already delivered.  Without a time register the gateway falls back
   to publishing on value change with ``t_sim = null`` + ``NO_SIM_TIME``.
 - Torn reads: the time register is read before and after the unit's blocks;
   if the three time values disagree the sequence is retried
@@ -204,6 +208,9 @@ class MeterPoller:
     reader: RegisterReader
     expected_step_s: float = 900.0
     torn_read_retries: int = 3
+    # Commissioning time of the series (head-end knowledge, gateway.yaml
+    # ``series_start``).  The first reading's gap is counted from it.
+    series_start: Optional[datetime] = None
 
     seq: int = 0
     last_t_sim: Optional[datetime] = None
@@ -383,6 +390,12 @@ class MeterPoller:
                 if steps > 1:
                     gap_steps = steps - 1
                     flags.append(QualityFlag.GAP)
+            elif self.last_t_sim is None and self.series_start is not None and t_sim > self.series_start:
+                # First reading: the intervals series_start ... t_sim - step were never read.
+                steps = round((t_sim - self.series_start).total_seconds() / self.expected_step_s)
+                if steps > 0:
+                    gap_steps = steps
+                    flags.append(QualityFlag.GAP)
         else:
             # No usable time register: publish on value change only.
             flags.append(QualityFlag.NO_SIM_TIME)
@@ -444,6 +457,11 @@ class Gateway:
         self.published = 0
         self.events_published = 0
         self.mqtt_connected = asyncio.Event()
+        # Longest start-to-start time between two successful polls of the same
+        # meter (s), from its first delivered reading on.  A step is
+        # overwritten unread only if this exceeds one wall step.
+        self.poll_cycle_max_s: dict[str, float] = {}
+        self._poll_cycle_max_all = 0.0
         self._stopping = asyncio.Event()
         self._last_gw_state: Optional[tuple] = None
 
@@ -505,14 +523,21 @@ class Gateway:
             regmap=self.regmap, reader=self._reader_factory(),
             expected_step_s=self.cfg.expected_step_s,
             torn_read_retries=self.cfg.torn_read_retries,
+            series_start=self.cfg.series_start,
         )
         self.pollers[meter.meter_id] = poller
         b = self.cfg.backoff
         backoff = Backoff(b.initial_s, b.max_s, b.jitter)
         topic = topics.telemetry(self.cfg.feeder_id, meter.meter_id)
         loop = asyncio.get_running_loop()
+        prev_ok_started = None      # start of the last successful poll
         while not self._stopping.is_set():
             started = loop.time()
+            # Count only once the meter's series is advancing (first reading
+            # delivered): cycles while the server has not written its first
+            # frame cannot overwrite an interval.
+            if prev_ok_started is not None and poller.last_t_sim is not None:
+                self._record_cycle(meter.meter_id, started - prev_ok_started)
             try:
                 if not poller.reader.connected:
                     await poller.reader.connect()
@@ -522,6 +547,7 @@ class Gateway:
                     break           # pymodbus turns our cancellation into an IO error
                 self._set_link(poller, MeterLinkState.UNREACHABLE, str(exc) or type(exc).__name__)
                 poller.reader.close()
+                prev_ok_started = None      # outages are reported by link state, not cycle time
                 await self._sleep(backoff.next_delay())
                 continue
             except Exception as exc:  # noqa: BLE001 — one bad unit must not stop the others
@@ -530,8 +556,10 @@ class Gateway:
                 logger.exception("%s: unexpected error while polling", meter.meter_id)
                 self._set_link(poller, MeterLinkState.UNREACHABLE, f"{type(exc).__name__}: {exc}")
                 poller.reader.close()
+                prev_ok_started = None
                 await self._sleep(backoff.next_delay())
                 continue
+            prev_ok_started = started
             backoff.reset()
             self._set_link(poller, MeterLinkState.REACHABLE, None)
             if outcome.event is not None:
@@ -542,6 +570,13 @@ class Gateway:
             elapsed = loop.time() - started
             await self._sleep(max(0.0, self.cfg.poll_interval_s - elapsed))
         poller.reader.close()
+
+    def _record_cycle(self, meter_id: str, cycle_s: float) -> None:
+        if cycle_s > self.poll_cycle_max_s.get(meter_id, 0.0):
+            self.poll_cycle_max_s[meter_id] = cycle_s
+        if cycle_s > self._poll_cycle_max_all:
+            self._poll_cycle_max_all = cycle_s
+            logger.info("poll cycle max %.3f s (%s)", cycle_s, meter_id)
 
     async def _sleep(self, seconds: float) -> None:
         try:
@@ -658,6 +693,7 @@ class Gateway:
             "torn_retries": {k: p.torn_retries_total for k, p in self.pollers.items()},
             "events_fetched": {k: p.events_fetched for k, p in self.pollers.items()},
             "events_missed": {k: p.events_missed for k, p in self.pollers.items()},
+            "poll_cycle_max_s": {k: round(v, 4) for k, v in self.poll_cycle_max_s.items()},
         }
 
 

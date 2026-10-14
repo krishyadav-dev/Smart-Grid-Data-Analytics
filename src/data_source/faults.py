@@ -115,7 +115,7 @@ ARC_FAULTS = ("3PH", "LL")               # arc resistance (Warrington), CP4 foll
 # (A.R. van C. Warrington, Protective Relays, 1962): R_a = 28 710 L / I^1.4,
 # R_a in ohm, L arc length in m, I arc current in A.
 WARRINGTON_K = 28_710.0
-ARC_LENGTH_M = 1.0                       # verify: ~11 kV phase spacing (IEEE spacing 500: 0.76-2.1 m)
+ARC_LENGTH_M = 1.0                       # verify: the IEEE 13 spacing 500 distances are only in Kersting's Fig. 1 (an image), not in repo data
 SAMPLE_MS = 10
 PRE_S, POST_S, CAP_S = 0.5, 1.0, 60.0
 N_PRE, N_POST, N_CAP = 50, 100, 6000

@@ -137,6 +137,33 @@ def test_c6_skipped_step_sets_gap(poller):
     assert msg.quality.gap_steps == 2
 
 
+def test_first_reading_gap_counted_from_series_start(poller):
+    """CP5 (brief X.3.3 item 10): intervals overwritten before a meter's first
+    read are GAP-flagged when the commissioning time is known."""
+    p, fake = poller
+    p.series_start = T0
+    fake.set_frame(T0 + timedelta(minutes=45))          # 00:00, 00:15, 00:30 never read
+    msg = run(p.poll_once()).published
+    assert QualityFlag.GAP in msg.quality.flags and msg.quality.gap_steps == 3
+    fake.set_frame(T0 + timedelta(minutes=60))          # later readings as before
+    msg = run(p.poll_once()).published
+    assert msg.quality.flags == [] and msg.quality.gap_steps == 0
+
+
+def test_first_reading_at_series_start_has_no_gap(poller):
+    p, fake = poller
+    p.series_start = T0
+    fake.set_frame(T0)
+    msg = run(p.poll_once()).published
+    assert msg.quality.flags == [] and msg.quality.gap_steps == 0
+
+
+def test_series_start_from_config():
+    cfg = load_gateway_config(series_start="2024-01-01T00:00:00+05:30")
+    assert cfg.series_start == T0
+    assert load_gateway_config().series_start is None    # default: unknown
+
+
 def test_no_publish_before_first_frame(poller):
     p, fake = poller            # all registers 0 -> t_sim register 0
     out = run(p.poll_once())
@@ -381,3 +408,6 @@ def test_one_failing_unit_does_not_stop_others():
     assert gw_status[-1]["state"] == "offline"                 # graceful shutdown
     assert all(q == 1 and r for t, p, q, r in sink if t.endswith("/status"))
     assert all(q == 1 and not r for t, p, q, r in sink if t.endswith("/telemetry"))
+    # Poll-cycle timing (CP5 headroom): start-to-start per meter.
+    cyc = gw.stats()["poll_cycle_max_s"]
+    assert expected <= set(cyc) and all(v > 0 for v in cyc.values())

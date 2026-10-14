@@ -7,6 +7,9 @@ PowerShell::
 
     python scripts/run_meter_server.py --port 5020 --speed 60
     python scripts/run_meter_server.py --profiles sgcc   # SGCC-derived load profiles
+    # CP5: the CP3 year cache (households, 23 meters) plus CP4 fault bursts
+    python scripts/run_meter_server.py --cache-frame results/year_2024/meter_frame_metered.parquet `
+        --start "2024-02-12 00:00" --end "2024-02-18 23:45" --events bursts.npz
 """
 
 from __future__ import annotations
@@ -51,6 +54,17 @@ def build_frame(start: str, end: str, profiles: str = "synthetic",
     return feeder_model.run_timeseries(start=start, end=end, profiles=prof)
 
 
+def load_cache_frame(path: str, start: str, end: str) -> pd.DataFrame:
+    """The CP3 year cache frame (Parquet; true or metered) between start and end
+    (inclusive), in ``run_timeseries`` frame layout: CP3 households on the DTs,
+    23 meter points (bus_virtual, feeder head, DT meters)."""
+    t0, t1 = pd.Timestamp(start), pd.Timestamp(end)
+    frame = pd.read_parquet(path, filters=[("timestamp", ">=", t0), ("timestamp", "<=", t1)])
+    if frame.empty:
+        raise ValueError(f"no rows in {path} between {t0} and {t1}")
+    return frame.sort_values(["timestamp", "load_id", "phase"]).reset_index(drop=True)
+
+
 async def serve(frame: pd.DataFrame, host: str, port: int, speed: float,
                 start_delay_s: float = 0.0, events: dict | None = None) -> None:
     from src.data_source import meter_server as ms
@@ -91,7 +105,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--frame-out", default=None,
                     help="write the run_timeseries frame to this CSV (ground truth)")
     ap.add_argument("--frame-in", default=None,
-                    help="serve a previously written frame instead of re-solving")
+                    help="serve a previously written frame instead of re-solving (CSV)")
+    ap.add_argument("--cache-frame", default=None,
+                    help="serve the CP3 year cache frame (Parquet, e.g. "
+                         "results/year_2024/meter_frame_metered.parquet) between --start and --end")
     ap.add_argument("--start-delay", type=float, default=0.0,
                     help="seconds to serve zeros before writing the first frame")
     ap.add_argument("--events", default=None,
@@ -103,7 +120,9 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.end is None:
         args.end = str(pd.Timestamp(args.start).normalize() + pd.Timedelta(hours=23, minutes=45))
-    if args.frame_in:
+    if args.cache_frame:
+        frame = load_cache_frame(args.cache_frame, args.start, args.end)
+    elif args.frame_in:
         frame = pd.read_csv(args.frame_in, parse_dates=["timestamp"])
     else:
         frame = build_frame(args.start, args.end, args.profiles, args.sgcc_path)
