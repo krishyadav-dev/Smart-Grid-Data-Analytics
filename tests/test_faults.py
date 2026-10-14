@@ -121,7 +121,12 @@ def test_relay_margins(nominal, relay):
 
 
 def test_earth_fault_security_over_the_year(relay):
-    """CP4 decision: max feeder-head |3I0| over the CP3 year < 0.5 x EF pickup."""
+    """CP4 decision: max feeder-head |3I0| over the CP3 year < 0.5 x EF pickup.
+
+    A model-symmetry check, not evidence of relay security: the residual is ~0
+    because pandapower lines use transposed (symmetric) sequence impedances
+    while the IEEE 13 lines are untransposed, the capacitors are symmetric and
+    every load is behind a Dyn DT."""
     r = F.head_residual_from_cache()
     print(f"\nmax feeder-head |3I0| over 2024: {r['max_3i0_a']:.3e} A at {r['at']} "
           f"(limit {0.5 * relay.ef_is_a:.1f} A)")
@@ -158,14 +163,17 @@ def test_clearing_time_idmt_plus_breaker(nominal, relay):
 
 def test_each_fault_type_burst_classification_matches(nominal, relay):
     """§2D / X.3.1 item 10: each fault type gives a 10 ms burst whose
-    classification equals the one of the simulated residual and duration."""
+    classification equals the one of the simulated residual and duration
+    (a binning self-consistency check, not validation)."""
     net, sn, _ = nominal
     import pandas as pd
     for ftype, ph in (("SLG", "b"), ("LL", "ca"), ("LLG", "ab"), ("3PH", "abc")):
-        for rf in F.RF_OHM:
+        arc = ftype in F.ARC_FAULTS
+        for rf in ([math.nan] if arc else F.RF_OHM):
             ev = pd.Series({"event_id": 1, "kind": "fault", "bus": "652", "ftype": ftype,
-                            "phases": ph, "rf_ohm": rf})
+                            "phases": ph, "rf_ohm": rf, "rf_model": "arc" if arc else "fixed"})
             out = F.run_event(net, sn, ev, relay)
+            assert out["cleared"], (ftype, rf)
             assert all(m["match"] for m in out["meters"]), (ftype, rf)
             n = {m["n_samples"] for m in out["meters"]}
             assert n == {sum(F.burst_lengths(out["t_clear_s"]))}
@@ -173,12 +181,34 @@ def test_each_fault_type_burst_classification_matches(nominal, relay):
     assert all(m["class_kind"] == "no_dip" for m in quiet["meters"])
 
 
+def test_warrington_arc_resistance(nominal):
+    """CP4 follow-up: 3PH/LL faults through Warrington's arc resistance
+    (NPAG Eq. 11.4, PDF p. 188): R_a = 28 710 L / I^1.4, solved at the fault's own current."""
+    assert F.warrington_ohm(1000.0, 1.0) == pytest.approx(28_710 / 1000 ** 1.4)
+    assert F.warrington_ohm(1800.0, 2.0) == pytest.approx(2 * F.warrington_ohm(1800.0, 1.0))
+    net, sn, v_pre = nominal
+    for ftype, ph in (("3PH", "abc"), ("LL", "bc")):
+        res = F.simulate_arc_fault(net, sn, "652", ftype, ph, v_pre)
+        i_a = 1e3 * float(res.i_fault_ka.max())
+        assert res.rf_ohm == pytest.approx(F.warrington_ohm(i_a), rel=1e-5)   # self-consistent
+        bolted = F.simulate_fault(net, sn, "652", ftype, ph, 0.0, v_pre).i_fault_ka.max()
+        print(f"\n{ftype} 652 arc: R_a {res.rf_ohm:.3f} ohm (L {F.ARC_LENGTH_M} m), I {i_a:.1f} A "
+              f"(bolted {1e3 * bolted:.1f} A)", end="")
+        assert 0 < res.rf_ohm < 10 and i_a < 1e3 * bolted
+    with pytest.raises(ValueError):
+        F.simulate_arc_fault(net, sn, "652", "SLG", "a", v_pre)
+
+
 def test_event_set_reproducible_and_scoped():
     net = build_network("B")
     a, b = F.make_event_set(net), F.make_event_set(net)
     assert a.equals(b) and len(a) == 400
     fl = a[a.kind == "fault"]
-    assert len(fl) == 200 and set(fl.ftype) == set(F.FAULT_TYPES) and set(fl.rf_ohm) == set(F.RF_OHM)
+    assert len(fl) == 200 and set(fl.ftype) == set(F.FAULT_TYPES)
+    ground = fl[fl.ftype.isin(F.GROUND_FAULTS)]
+    arcs = fl[fl.ftype.isin(F.ARC_FAULTS)]
+    assert (ground.rf_model == "fixed").all() and set(ground.rf_ohm) == set(F.RF_OHM)
+    assert (arcs.rf_model == "arc").all() and arcs.rf_ohm.isna().all()
     assert not set(fl.bus) & set(F.EXCLUDED_BUSES)
     assert set(fl.bus) <= set(F.fault_buses(net))
     assert (fl[fl.ftype == "SLG"].phases.str.len() == 1).all()

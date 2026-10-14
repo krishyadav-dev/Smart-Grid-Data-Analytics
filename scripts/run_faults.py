@@ -84,8 +84,12 @@ def network_checks(relay: F.RelaySettings) -> dict:
     return {
         "condition_numbers": {"Y0": sn.cond[0], "Y1": sn.cond[1], "Y2": sn.cond[2]},
         "hand_3ph_632": c632, "capacitor_check": cap, "relay_margins": margins,
-        "head_residual_year": {**res, "ef_pickup_a": relay.ef_is_a, "limit_a": 0.5 * relay.ef_is_a,
-                               "passed": res["max_3i0_a"] < 0.5 * relay.ef_is_a},
+        "head_residual_year": {
+            **res, "ef_pickup_a": relay.ef_is_a, "limit_a": 0.5 * relay.ef_is_a,
+            "label": "model-symmetry check, not evidence of relay security: residual ~0 because "
+                     "pandapower lines use transposed (symmetric) sequence impedances while the IEEE 13 "
+                     "lines are untransposed, the capacitors are symmetric and every load is behind a Dyn DT",
+            "passed": res["max_3i0_a"] < 0.5 * relay.ef_is_a},
         "slg_652_rf50": {"i_fault_a": float(slg50.i_fault_ka.max() * 1e3),
                          "i_relay_residual_a": slg50.i_head_residual_a,
                          "i_relay_phase_max_a": float(slg50.i_head_fault_a.max()),
@@ -131,15 +135,25 @@ def run_events(relay: F.RelaySettings, events: pd.DataFrame, progress_every: int
 def summarise(ev: pd.DataFrame, mc: pd.DataFrame, relay: F.RelaySettings) -> dict:
     fl = ev[ev.kind == "fault"].copy()
     fl["cleared"] = fl.cleared.astype(bool)
-    by_type_rf = {f"{t}|{rf:g}": {"trip": int(((fl.ftype == t) & (fl.rf_ohm == rf) & fl.cleared).sum()),
-                                  "no_trip": int(((fl.ftype == t) & (fl.rf_ohm == rf) & ~fl.cleared).sum())}
-                  for t in F.FAULT_TYPES for rf in F.RF_OHM}
-    m = mc.merge(ev[["event_id", "kind", "ftype", "rf_ohm"]], on="event_id")
+    fl["rf_class"] = np.where(fl.rf_model == "arc", "arc", fl.rf_ohm.map(lambda r: f"{r:g}"))
+    ev = ev.assign(rf_class=np.where(ev.rf_model == "arc", "arc",
+                                     ev.rf_ohm.map(lambda r: "" if pd.isna(r) else f"{r:g}")))
+    by_type_rf = {}
+    for t in F.FAULT_TYPES:
+        for rc in (["arc"] if t in F.ARC_FAULTS else [f"{r:g}" for r in F.RF_OHM]):
+            s = fl[(fl.ftype == t) & (fl.rf_class == rc)]
+            by_type_rf[f"{t}|{rc}"] = {"trip": int(s.cleared.sum()), "no_trip": int((~s.cleared).sum())}
+    arc = fl[fl.rf_model == "arc"]
+    arc_r = {t: {"n": int((arc.ftype == t).sum()),
+                 "min": float(arc[arc.ftype == t].rf_ohm_effective.min()),
+                 "median": float(arc[arc.ftype == t].rf_ohm_effective.median()),
+                 "max": float(arc[arc.ftype == t].rf_ohm_effective.max())} for t in F.ARC_FAULTS}
+    m = mc.merge(ev[["event_id", "kind", "ftype", "rf_class"]], on="event_id")
     mf = m[m.kind == "fault"]
 
     def class_counts(df):
-        return {f"{t}|{rf:g}|{c}": int(n)
-                for (t, rf, c), n in df.groupby(["ftype", "rf_ohm", "class_kind"]).size().items()}
+        return {f"{t}|{rc}|{c}": int(n)
+                for (t, rc, c), n in df.groupby(["ftype", "rf_class", "class_kind"]).size().items()}
 
     head = mf[mf.role == "feeder_head"]
     worst = mf.loc[mf.groupby("event_id").residual_pct.idxmin()]
@@ -147,17 +161,26 @@ def summarise(ev: pd.DataFrame, mc: pd.DataFrame, relay: F.RelaySettings) -> dic
     clr = fl[fl.cleared]
     return {
         "faults": int(len(fl)), "quiet_windows": int((ev.kind == "quiet").sum()),
-        "mix_note": "fault type and Rf drawn uniformly: balanced by design for classifier evaluation, "
-                    "not field fault frequencies (brief X.3.3 item 4)",
-        "type_counts": fl.ftype.value_counts().to_dict(), "rf_counts": fl.rf_ohm.value_counts().to_dict(),
+        "mix_note": "fault type drawn uniformly (balanced by design for classifier evaluation, not field "
+                    "fault frequencies, brief X.3.3 item 4); SLG/LLG Rf uniform over {0, 5, 20, 50} ohm "
+                    "(Dagenhart, ground faults); 3PH/LL arc resistance (Warrington, NPAG Eq. 11.4 p. 188, "
+                    f"arc length {F.ARC_LENGTH_M} m verify)",
+        "type_counts": fl.ftype.value_counts().to_dict(), "rf_class_counts": fl.rf_class.value_counts().to_dict(),
+        "arc_resistance_ohm": arc_r,
         "bus_counts": fl.bus.value_counts().to_dict(),
         "share_cleared": float(fl.cleared.mean()),
         "trip_no_trip_by_type_rf": by_type_rf,
+        "arc_faults_no_trip": int((~arc.cleared).sum()),
         "element_counts": fl.element.value_counts().to_dict(),
         "t_clear_s": {"min": float(clr.t_clear_s.min()), "median": float(clr.t_clear_s.median()),
                       "max": float(clr.t_clear_s.max())} if len(clr) else None,
-        "classification_matches": {"meter_bursts": int(len(mc)), "matches": int(mc.match.sum()),
-                                   "mismatches": int((~mc.match).sum()), "passed": bool(mc.match.all())},
+        "t_clear_s_by_type_rf": {f"{t}|{rc}": {"median": float(g.t_clear_s.median()), "max": float(g.t_clear_s.max())}
+                                 for (t, rc), g in clr.groupby(["ftype", "rf_class"])},
+        "classification_matches": {
+            "label": "binning self-consistency check (classifier vs the bins of the simulated residual "
+                     "and duration), not validation against measured events",
+            "meter_bursts": int(len(mc)), "matches": int(mc.match.sum()),
+            "mismatches": int((~mc.match).sum()), "passed": bool(mc.match.all())},
         "feeder_head_class_by_type_rf": class_counts(head),
         "worst_meter_class_by_type_rf": class_counts(worst),
         "quiet_meter_windows": int(len(quiet)),
@@ -199,6 +222,8 @@ def main(argv=None) -> int:
         "remote_margin_ge_1_5": checks["relay_margins"]["margin_ok"],
         "ef_security_residual_lt_half_pickup": checks["head_residual_year"]["passed"],
         "classification_matches_simulated": summary["events"]["classification_matches"]["passed"],
+        # CP4 follow-up: with arc resistance, 3PH/LL faults must all trip (X.0: stop if not)
+        "no_3ph_ll_no_trip": summary["events"]["arc_faults_no_trip"] == 0,
     }
     summary["asserted"] = asserted
     summary["passed"] = all(asserted.values())

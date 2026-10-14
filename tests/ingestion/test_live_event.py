@@ -4,10 +4,11 @@ A real fault from :mod:`src.data_source.faults` (sequence-network
 superposition on the Stage B network, CP3 relay settings) is turned into 10 ms
 bursts for all 23 meter points and served by the real meter server
 (``--events``).  Real Mosquitto, gateway and listener run as separate
-processes.  The fault is chosen to give the **longest burst** the relay
-allows (a fault below both pickups is not cleared and runs to the 60 s cap,
-6 050 samples).  Every sample must arrive at the listener; the gateway's reads
-and wall time for the burst are reported (contiguous block, no paging).
+processes.  The fault is the CP4 event set's **longest burst** (its own
+pre-fault state from the CP3 cache).  Every sample must arrive at the
+listener; the gateway's reads and wall time for the burst are reported
+(contiguous block, no paging).  The 60 s cap (6 050 samples) itself was run
+end to end before the arc-resistance follow-up (event 12, progress file).
 """
 
 from __future__ import annotations
@@ -32,37 +33,41 @@ TRIGGER_STEP = 2         # bursts written right after the 00:30 step
 EVENT_ID = 4242
 
 
+def _fault(net, sn, ev):
+    from src.data_source import faults as F
+    if ev.rf_model == "arc":
+        return F.simulate_arc_fault(net, sn, ev.bus, ev.ftype, ev.phases)
+    return F.simulate_fault(net, sn, ev.bus, ev.ftype, ev.phases, float(ev.rf_ohm))
+
+
 def _longest_fault():
-    """The CP4 event set's longest burst: the first fault event the relay does
-    not clear (60 s cap, 6 050 samples), with its own pre-fault state rebuilt
-    from the CP3 cache (DT loads and OLTC tap of its step); if every fault
-    clears, the slowest trip."""
+    """The CP4 event set's longest burst (all 200 faults scanned, each with its
+    own pre-fault state rebuilt from the CP3 cache: DT loads and OLTC tap of
+    its step).  A fault the relay does not clear would run to the 60 s cap
+    (6 050 samples); with arc resistance on 3PH/LL every fault clears and the
+    longest burst is the slowest trip."""
     from src.data_source import faults as F
     from src.data_source.feeder_model import build_network
     net = build_network("B")
     relay = F.relay_settings(F.max_head_current_a())
     events = F.make_event_set(net)
     fl = events[events.kind == "fault"]
-    # balanced 3PH faults with the highest Rf have no residual and the least current
-    order = fl.assign(pri=~((fl.ftype == "3PH") & (fl.rf_ohm == max(F.RF_OHM)))).sort_values(
-        ["pri", "event_id"])
+    cache = F.steps_from_cache(net, fl.step)
     best = None
-    for ev in order.itertuples():
-        p, q, tap = F.step_from_cache(net, ev.step)
-        F.set_prefault(net, p, q, tap)
+    for ev in fl.itertuples():
+        F.set_prefault(net, *cache[pd.Timestamp(ev.step)])
         sn = F.build_sequence_network(net)
-        res = F.simulate_fault(net, sn, ev.bus, ev.ftype, ev.phases, float(ev.rf_ohm))
+        res = _fault(net, sn, ev)
         t_rel, element = F.relay_operate(relay, float(res.i_head_fault_a.max()), res.i_head_residual_a)
         t_clear = t_rel + relay.breaker_s
         n = sum(F.burst_lengths(t_clear))
         if best is None or n > best[0]:
-            best = (n, ev, res, t_clear, element, sn)
-        if math.isinf(t_rel):
-            break
-    n, ev, res, t_clear, element, sn = best
-    p, q, tap = F.step_from_cache(net, ev.step)              # leave net in that event's state
-    F.set_prefault(net, p, q, tap)
-    return net, sn, (n, ev.bus, ev.ftype, ev.phases, float(ev.rf_ohm), res, t_clear, element,
+            best = (n, ev, t_clear, element)
+    n, ev, t_clear, element = best
+    F.set_prefault(net, *cache[pd.Timestamp(ev.step)])        # leave net in that event's state
+    sn = F.build_sequence_network(net)
+    res = _fault(net, sn, ev)
+    return net, sn, (n, ev.bus, ev.ftype, ev.phases, float(res.rf_ohm), res, t_clear, element,
                      int(ev.event_id), str(ev.step))
 
 

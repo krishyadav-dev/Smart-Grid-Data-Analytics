@@ -55,8 +55,19 @@ Protection, clearing and bursts
   §9.4 Table 9.1 IEC standard inverse t = TMS 0.14 / (I_r^0.02 - 1), TMS 0.1.
   Phase element Is = 1.2 x the maximum feeder-head load current of the CP3
   year (X.1).  Earth-fault element on the residual current 3 I0, pickup
-  30 % of the same maximum load current (NPAG §9.16 p. 145: typical 30-40 %
-  of full-load current; lower end chosen, ``verify``), TMS 0.1 (``verify``).
+  30 % of the same maximum load current (sourced: NPAG §9.16, PDF p. 145,
+  typical 30-40 % of full-load current; lower end of the range), TMS 0.1
+  (``verify``).  Limitation (stated): no downstream DT fuse grading is
+  modelled; the feeder-head relay clears every fault it detects.
+- Fault resistance by type (CP4 follow-up): SLG and LLG through Rf in
+  {0, 5, 20, 50} ohm (Dagenhart p. C4-2, ground faults); 3PH and LL through
+  Warrington's arc resistance R_a = 28 710 L / I^1.4 (NPAG §11, Eq. 11.4,
+  PDF p. 188) at the fault's own current, arc length L = 1.0 m (``verify``).
+- Earth-fault security over the CP3 year (max feeder-head |3I0|) is a
+  **model-symmetry check, not evidence of relay security**: the residual is
+  ~0 because pandapower lines use transposed (symmetric) sequence impedances
+  while the IEEE 13 lines are untransposed, the capacitors are symmetric and
+  every load is behind a Dyn DT.
 - Clearing time = fastest element + breaker breaking time 60 ms (ABB VD4X
   manual p. 7, <= 60 ms); sensitivity case 80 ms (Siemens 3AH3 catalogue
   p. 44, first shunt release).  A fault below both pickups is **not cleared**
@@ -72,6 +83,9 @@ Protection, clearing and bursts
   61000-4-30, stated): a dip starts when any phase falls below 90 % and ends
   when all phases are back at or above 90 %; the residual is the lowest phase;
   an interruption needs all phases below 5 %.  No hysteresis (stated).
+  Comparing each simulated burst's classification with the bins of its own
+  simulated residual and duration is a **binning self-consistency check**,
+  not validation against measured events.
 """
 
 from __future__ import annotations
@@ -94,7 +108,14 @@ A = np.array([[1, 1, 1], [1, _a ** 2, _a], [1, _a, _a ** 2]])     # V_abc = A V_
 A_INV = np.linalg.inv(A)
 
 FAULT_TYPES = ("SLG", "LL", "LLG", "3PH")
-RF_OHM = (0.0, 5.0, 20.0, 50.0)          # Dagenhart 2000 p. C4-2 (X.3.2 item 23)
+RF_OHM = (0.0, 5.0, 20.0, 50.0)          # Dagenhart 2000 p. C4-2 (X.3.2 item 23): ground faults
+GROUND_FAULTS = ("SLG", "LLG")           # Rf from RF_OHM (Dagenhart's set is for ground faults)
+ARC_FAULTS = ("3PH", "LL")               # arc resistance (Warrington), CP4 follow-up
+# Warrington's empirical arc resistance, NPAG §11 Equation 11.4, PDF p. 188
+# (A.R. van C. Warrington, Protective Relays, 1962): R_a = 28 710 L / I^1.4,
+# R_a in ohm, L arc length in m, I arc current in A.
+WARRINGTON_K = 28_710.0
+ARC_LENGTH_M = 1.0                       # verify: ~11 kV phase spacing (IEEE spacing 500: 0.76-2.1 m)
 SAMPLE_MS = 10
 PRE_S, POST_S, CAP_S = 0.5, 1.0, 60.0
 N_PRE, N_POST, N_CAP = 50, 100, 6000
@@ -257,6 +278,35 @@ def simulate_fault(net, sn: SequenceNetwork, bus: str, ftype: str, phases: str,
     h_f = np.array([sn.yf[s][sn.head_branch] @ v_f[s] for s in range(3)]).ravel()
     return FaultResult(bus, ftype, phases, rf_ohm, i_fault, v_pre, v_f,
                        np.abs(A @ h_pre) * ib, np.abs(A @ h_f) * ib, float(abs(3 * h_f[0]) * ib))
+
+
+def warrington_ohm(i_a: float, length_m: float = ARC_LENGTH_M) -> float:
+    """Arc resistance R_a = 28 710 L / I^1.4 (NPAG Eq. 11.4, PDF p. 188)."""
+    return WARRINGTON_K * length_m / i_a ** 1.4
+
+
+def simulate_arc_fault(net, sn: SequenceNetwork, bus: str, ftype: str, phases: str,
+                       v_pre: Optional[np.ndarray] = None, length_m: float = ARC_LENGTH_M,
+                       tol_ohm: float = 1e-6, max_iter: int = 100) -> FaultResult:
+    """3PH / LL fault through an arc: Rf = Warrington R_a at the fault's own current.
+
+    Fixed-point iteration from a bolted fault: I(R) falls as R rises, so the
+    iteration converges.  3PH: R_a in each phase to the fault point; LL: R_a
+    between the two phases (G&S Z_f).  Arc length ``length_m`` is ``verify``.
+    """
+    if ftype not in ARC_FAULTS:
+        raise ValueError(f"arc model applies to {ARC_FAULTS}, not {ftype}")
+    v_pre = prefault_v012(net, sn) if v_pre is None else v_pre
+    rf = 0.0
+    for _ in range(max_iter):
+        res = simulate_fault(net, sn, bus, ftype, phases, rf, v_pre)
+        rf_new = warrington_ohm(1e3 * float(res.i_fault_ka.max()), length_m)
+        if abs(rf_new - rf) < tol_ohm:
+            break
+        rf = rf_new
+    else:
+        raise RuntimeError(f"arc resistance did not converge at {bus} {ftype}")
+    return simulate_fault(net, sn, bus, ftype, phases, rf_new, v_pre)
 
 
 def dyn11_lv_v012(sn: SequenceNetwork, v_pre: np.ndarray, v_fault: np.ndarray,
@@ -499,10 +549,16 @@ def make_event_set(net, n_faults: int = 200, n_quiet: int = 200,
                    rng: Optional[np.random.Generator] = None) -> pd.DataFrame:
     """200 faults + 200 quiet windows, seeded (stream ``faults.events``).
 
-    Fault type and Rf uniform (balanced by design for classifier evaluation,
-    not field fault frequencies; X.3.3 item 4); bus uniform over the 11 kV
-    buses downstream of the relay; SLG phase / LL-LLG pair uniform; time
-    uniform over the 2024 steps plus a uniform offset inside the step.
+    Fault type uniform (balanced by design for classifier evaluation, not
+    field fault frequencies; X.3.3 item 4); bus uniform over the 11 kV buses
+    downstream of the relay; SLG phase / LL-LLG pair uniform; time uniform
+    over the 2024 steps plus a uniform offset inside the step.  Fault
+    resistance by type (CP4 follow-up): SLG and LLG take Rf uniform over
+    {0, 5, 20, 50} ohm (Dagenhart, ground faults); 3PH and LL are arc faults
+    (``rf_model`` "arc", Warrington R_a at the fault's own current,
+    :func:`simulate_arc_fault`).  The same random draws as before are made
+    for every event (the Rf drawn for an arc fault is discarded), so with the
+    same seed the buses, times, types and phases are unchanged.
     """
     rng = config.rng("faults.events") if rng is None else rng
     steps = pd.date_range(f"{config.SIMULATION_YEAR}-01-01", f"{config.SIMULATION_YEAR}-12-31 23:45",
@@ -518,12 +574,16 @@ def make_event_set(net, n_faults: int = 200, n_quiet: int = 200,
             ph = str(rng.choice(["ab", "bc", "ca"]))
         else:
             ph = "abc" if fault else ""
-        rows.append({"event_id": i + 1, "kind": "fault" if fault else "quiet",
-                     "step": steps[int(rng.integers(len(steps)))],
-                     "offset_s": float(np.round(rng.uniform(0, 900), 2)),
-                     "bus": str(rng.choice(buses)) if fault else "",
-                     "ftype": ftype, "phases": ph,
-                     "rf_ohm": float(rng.choice(RF_OHM)) if fault else np.nan})
+        row = {"event_id": i + 1, "kind": "fault" if fault else "quiet",
+               "step": steps[int(rng.integers(len(steps)))],
+               "offset_s": float(np.round(rng.uniform(0, 900), 2)),
+               "bus": str(rng.choice(buses)) if fault else "",
+               "ftype": ftype, "phases": ph}
+        rf = float(rng.choice(RF_OHM)) if fault else np.nan        # drawn for every fault (same stream)
+        arc = ftype in ARC_FAULTS
+        row["rf_model"] = "arc" if arc else ("fixed" if fault else "")
+        row["rf_ohm"] = np.nan if arc else rf                      # arc: set by simulate_arc_fault
+        rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -681,6 +741,26 @@ def step_from_cache(net, step, cache=config.YEAR_CACHE_DIR) -> tuple[np.ndarray,
     return p.to_numpy(float), q.to_numpy(float), float(st.oltc_tap.iloc[0])
 
 
+def steps_from_cache(net, steps, cache=config.YEAR_CACHE_DIR) -> dict:
+    """{step: (P kW, Q kvar, tap)} for many cached CP3 steps, read in one pass
+    (same content as :func:`step_from_cache`)."""
+    from pathlib import Path
+    steps = sorted({pd.Timestamp(s) for s in steps})
+    f = pd.read_parquet(Path(cache) / "meter_frame_true.parquet",
+                        columns=["timestamp", "load_id", "phase", "active_power_kw", "reactive_power_kvar"],
+                        filters=[("timestamp", "in", steps)])
+    names = list(net["dts"].name)
+    f = f[f.load_id.isin(names)]
+    st = pd.read_parquet(Path(cache) / "state.parquet", columns=["timestamp", "oltc_tap"],
+                         filters=[("timestamp", "in", steps)]).set_index("timestamp").oltc_tap
+    out = {}
+    for ts, g in f.groupby("timestamp"):
+        p = g.pivot(index="load_id", columns="phase", values="active_power_kw").loc[names, list("abc")]
+        q = g.pivot(index="load_id", columns="phase", values="reactive_power_kvar").loc[names, list("abc")]
+        out[pd.Timestamp(ts)] = (p.to_numpy(float), q.to_numpy(float), float(st.loc[ts]))
+    return out
+
+
 def steady_result(net, sn: SequenceNetwork, v_pre: np.ndarray) -> FaultResult:
     """A 'no fault' result (quiet window): fault-on values = pre-fault values."""
     ib = math.sqrt(3) * sn.base_mva / sn.head_vn_kv * 1e3
@@ -694,7 +774,11 @@ def run_event(net, sn: SequenceNetwork, ev, relay: RelaySettings, keep_bursts: b
     v_pre = prefault_v012(net, sn)
     out = {"event_id": int(ev.event_id), "kind": ev.kind}
     if ev.kind == "fault":
-        res = simulate_fault(net, sn, ev.bus, ev.ftype, ev.phases, float(ev.rf_ohm), v_pre)
+        if getattr(ev, "rf_model", "fixed") == "arc":
+            res = simulate_arc_fault(net, sn, ev.bus, ev.ftype, ev.phases, v_pre)
+        else:
+            res = simulate_fault(net, sn, ev.bus, ev.ftype, ev.phases, float(ev.rf_ohm), v_pre)
+        out["rf_ohm_effective"] = float(res.rf_ohm)
         t_rel, element = relay_operate(relay, float(res.i_head_fault_a.max()), res.i_head_residual_a)
         t_clear = t_rel + relay.breaker_s
         t_clear80 = t_rel + BREAKER_SENS_S
