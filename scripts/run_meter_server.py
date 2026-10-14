@@ -52,12 +52,12 @@ def build_frame(start: str, end: str, profiles: str = "synthetic",
 
 
 async def serve(frame: pd.DataFrame, host: str, port: int, speed: float,
-                start_delay_s: float = 0.0) -> None:
+                start_delay_s: float = 0.0, events: dict | None = None) -> None:
     from src.data_source import meter_server as ms
 
     if start_delay_s <= 0:
         await ms.start_meter_server(host=host, port=port, timeseries_data=frame,
-                                    playback_speed=speed)
+                                    playback_speed=speed, events=events)
         return
     # Same composition as start_meter_server, but the first frame is written
     # only after `start_delay_s`, so clients can connect before step 0.
@@ -69,7 +69,7 @@ async def serve(frame: pd.DataFrame, host: str, port: int, speed: float,
     async def _delayed() -> None:
         await asyncio.sleep(start_delay_s)
         logger.info("starting playback")
-        await ms._update_loop(server.context, meters, frame, speed)
+        await ms._update_loop(server.context, meters, frame, speed, events=events)
         logger.info("playback finished")
 
     asyncio.get_running_loop().create_task(_delayed())
@@ -94,6 +94,9 @@ def main(argv: list[str] | None = None) -> None:
                     help="serve a previously written frame instead of re-solving")
     ap.add_argument("--start-delay", type=float, default=0.0,
                     help="seconds to serve zeros before writing the first frame")
+    ap.add_argument("--events", default=None,
+                    help="fault bursts (.npz from meter_server.save_event_file), written to "
+                         "their meters right after their trigger step")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -109,7 +112,22 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("Serving %d rows, %d timestamps on %s:%d at %.1fx",
                 len(frame), frame["timestamp"].nunique(), args.host, args.port, args.speed)
     try:
-        asyncio.run(serve(frame, args.host, args.port, args.speed, args.start_delay))
+        events = None
+        if args.events:
+            from src.data_source import meter_server as ms
+            events = ms.load_event_file(args.events)
+            logger.info("Loaded %d burst(s) at %d trigger step(s)",
+                        sum(len(v) for v in events.values()), len(events))
+        coro = serve(frame, args.host, args.port, args.speed, args.start_delay, events)
+        if sys.platform == "win32":
+            # Selector loop on Windows, as the gateway and listener use: with the
+            # default IOCP proactor an accept failing with WinError 64 (a client
+            # closing during accept, e.g. a port probe) ends the accept loop and
+            # the server silently stops accepting connections.
+            with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+                runner.run(coro)
+        else:
+            asyncio.run(coro)
     except KeyboardInterrupt:
         pass
 

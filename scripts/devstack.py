@@ -208,7 +208,7 @@ class Stack:
     # -- meter server -----------------------------------------------------
     def start_meter(self, speed: float, frame_in: Optional[Path] = None,
                     frame_out: Optional[Path] = None, start_delay: float = 0.0,
-                    profiles: str = "synthetic") -> None:
+                    profiles: str = "synthetic", events: Optional[Path] = None) -> None:
         args = [PY, str(ROOT / "scripts" / "run_meter_server.py"), "--port", str(self.modbus_port),
                 "--speed", str(speed), "--start-delay", str(start_delay),
                 "--profiles", profiles]
@@ -216,6 +216,8 @@ class Stack:
             args += ["--frame-in", str(frame_in)]
         if frame_out:
             args += ["--frame-out", str(frame_out)]
+        if events:
+            args += ["--events", str(events)]
         self.meter = subprocess.Popen(args, cwd=ROOT, stdout=self._log("meter"),
                                       stderr=subprocess.STDOUT)
         wait_port(self.modbus_port, 180)

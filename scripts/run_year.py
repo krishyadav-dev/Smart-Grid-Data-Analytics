@@ -4,13 +4,17 @@ Writes ``results/year_2024/`` (git-ignored, regenerable from the master seed):
 meter frames (true and metered), state frame with DT loading, households
 (ground truth and daily table), the monthly AMI export, the SGCC detector
 pools and ``run_info.json`` / ``acceptance.json``.  Exits non-zero if an
-asserted check of brief v2 X.3 item 4 fails: (a) IS 17036 +/- 10 % at every
-step, (b) no DT phase above 100 % at the yearly peak except dt_634_1,
-(c) DT losses = IS 1180 P0 + Pk K^2 within 5 % at each DT's peak step.
+asserted check fails (brief v2 X.3 item 4 as revised by X.3.1 / X.3.2):
+(a) IS 17036 +/- 10 % on every 11 kV bus-phase at every step;
+(b) every DT phase <= 1.5 pu at every step (IS 2026-7 Table 4, normal cyclic
+loading of distribution transformers);
+(c) total DT loss = IS 1180 P0 v^2 + Pk (K0^2 + K1^2 + K2^2) within 5 % at
+each DT's peak step.  The lambda sweep (scripts/lambda_sweep.py) is separate
+and reported only.
 
 PowerShell::
 
-    python scripts/run_year.py                                # full 2024 (~2 h)
+    python scripts/run_year.py                                # full 2024 (~1.4 h)
     python scripts/run_year.py --start 2024-06-24 --end "2024-06-25 23:45" --out results/tmp
     python scripts/run_year.py --check-only                   # re-check an existing cache
     python scripts/run_year.py --precheck-only                # population + design-peak DT check, no power flow

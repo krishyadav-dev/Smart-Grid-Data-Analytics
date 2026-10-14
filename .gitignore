@@ -22,6 +22,8 @@ data/*
 !data/delhi_sldc_2024_25_reference.csv
 # Simulated year cache (regenerable from the master seed: scripts/run_year.py)
 results/year_2024*/
+# Fault event set (regenerable: scripts/run_faults.py)
+results/faults_2024*/
 
 # Environment variables & secrets
 .env

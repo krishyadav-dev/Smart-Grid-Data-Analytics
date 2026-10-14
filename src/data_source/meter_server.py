@@ -106,6 +106,10 @@ EVENT_VALUES_PER_SAMPLE = 6
 EVENT_MAX_SAMPLES = 6150   # 0.5 s + 60 s + 1.0 s at 10 ms
 EVENT_VOLTAGE_SCALE_PU = 1e-4
 IR_SIZE = EVENT_SAMPLES + EVENT_VALUES_PER_SAMPLE * EVENT_MAX_SAMPLES   # 37 020
+# Contiguous event block, no paging (brief v2 X.3.2 item 11/18): it must fit the
+# 16-bit address space and must not overlap the polled registers 0-57.
+assert IR_SIZE <= 65_536, IR_SIZE
+assert EVENT_HEADER >= POLL_REGISTERS and EVENT_SAMPLES >= EVENT_HEADER + EVENT_HEADER_REGISTERS
 
 IST_OFFSET = pd.Timedelta(hours=5, minutes=30)
 
@@ -371,23 +375,59 @@ def frame_readings(rows: pd.DataFrame) -> dict[str, PhaseReading]:
     return out
 
 
+def save_event_file(path, bursts: list[dict]) -> None:
+    """Write fault bursts for playback (``.npz``).
+
+    Each item: ``trigger`` (step timestamp after which the record is written),
+    ``load_id``, ``event_id``, ``t_start`` (IST wall time of the first
+    sample), ``v`` and ``i`` (n, 3) RMS samples, ``v_base_ln_v``,
+    ``phases``.  Written by :mod:`faults` / the CP4-CP5 scripts.
+    """
+    import json
+    arrays, index = {}, []
+    for k, b in enumerate(bursts):
+        arrays[f"v{k}"] = np.asarray(b["v"], float)
+        arrays[f"i{k}"] = np.asarray(b["i"], float)
+        index.append({"trigger": str(pd.Timestamp(b["trigger"])), "load_id": b["load_id"],
+                      "event_id": int(b["event_id"]), "t_start": str(pd.Timestamp(b["t_start"])),
+                      "v_base_ln_v": float(b["v_base_ln_v"]), "phases": b.get("phases", "abc")})
+    np.savez_compressed(path, index=np.array(json.dumps(index)), **arrays)
+
+
+def load_event_file(path) -> dict:
+    """{trigger timestamp: [(load_id, EventRecord), ...]} from :func:`save_event_file`."""
+    import json
+    z = np.load(path, allow_pickle=False)
+    out: dict = {}
+    for k, e in enumerate(json.loads(str(z["index"]))):
+        rec = EventRecord(event_id=e["event_id"], t_start=pd.Timestamp(e["t_start"]),
+                          sample_interval_ms=10, voltage_v=z[f"v{k}"], current_a=z[f"i{k}"],
+                          phases=e["phases"], v_base_ln_v=e["v_base_ln_v"])
+        out.setdefault(pd.Timestamp(e["trigger"]), []).append((e["load_id"], rec))
+    return out
+
+
 async def _update_loop(
     server_ctx: Any,
     meters: dict[int, MeterState],
     timeseries_data: pd.DataFrame,
     playback_speed: float,
     interval_minutes: float = 15.0,
+    events: Optional[dict] = None,
 ) -> None:
     """Background coroutine that updates meter registers from timeseries data.
 
     ``timeseries_data`` is a ``run_timeseries`` frame (columns ``timestamp,
     load_id, phase, voltage_v, current_a, active_power_kw,
     reactive_power_kvar`` and, for schema 2.0, ``voltage_angle_deg`` and
-    ``load_current_a``).
+    ``load_current_a``).  ``events`` (:func:`load_event_file`): fault bursts
+    written to their meters right after the step they are triggered by
+    (record first, then the counter: :meth:`MeterState.write_event`).
     """
     interval_hours = interval_minutes / 60.0
     wall_sleep = (interval_minutes * 60.0) / playback_speed
     by_ts = {ts: g for ts, g in timeseries_data.groupby("timestamp", sort=True)}
+    by_load_id = {m.load_id: m for m in meters.values()}
 
     for ts, ts_data in by_ts.items():
         by_load = {lid: g for lid, g in ts_data.groupby("load_id")}
@@ -398,6 +438,11 @@ async def _update_loop(
             await meter.update_registers(
                 server_ctx, frame_readings(rows), frequency_hz=50.0,
                 interval_hours=interval_hours, t_sim=ts)
+        for load_id, rec in (events or {}).get(pd.Timestamp(ts), []):
+            if load_id in by_load_id:
+                await by_load_id[load_id].write_event(server_ctx, rec)
+                logger.info("event %d written to %s (%d samples)", rec.event_id, load_id,
+                            len(rec.voltage_v))
         logger.debug("Updated meters for timestamp %s", ts)
         await asyncio.sleep(wall_sleep)
 
@@ -411,6 +456,7 @@ async def start_meter_server(
     port: int | None = None,
     timeseries_data: pd.DataFrame | None = None,
     playback_speed: float | None = None,
+    events: Optional[dict] = None,
 ) -> None:
     """Start the Modbus TCP server and background updater."""
     from pymodbus.server import ModbusTcpServer
@@ -427,7 +473,7 @@ async def start_meter_server(
     server = ModbusTcpServer(context=devices_list, address=(host, port))
     if timeseries_data is not None and not timeseries_data.empty:
         asyncio.create_task(
-            _update_loop(server.context, meters, timeseries_data, playback_speed))
+            _update_loop(server.context, meters, timeseries_data, playback_speed, events=events))
     await server.serve_forever()
 
 

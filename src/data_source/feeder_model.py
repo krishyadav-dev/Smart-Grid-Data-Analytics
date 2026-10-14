@@ -797,7 +797,15 @@ def inject_fault(
     timestamp: str | datetime | None = None,
     net: pp.pandapowerNet | None = None,
 ) -> Dict[str, Any]:
-    """Run an IEC 60909 short-circuit study and return results for one bus.
+    """Run a pandapower short-circuit study and return results for one bus.
+
+    .. deprecated:: Phase 2X CP4
+        Kept for backward compatibility (Phase 1 contract) only; **not used for
+        the fault bursts**.  Fault events use :mod:`src.data_source.faults`
+        (own sequence-network superposition with pre-fault load, LLG, the
+        faulted phase applied and the Dyn11 meter transform), because
+        ``calc_sc`` has no LLG, no pre-fault load and ignores the Dyn
+        zero-sequence magnetising branch (brief v2 X.3.1 item 8).
 
     Wraps ``pandapower.shortcircuit.calc_sc``.  Internally the full-network
     study runs at all buses; results are then filtered to the requested bus.

@@ -285,6 +285,31 @@ def test_event_overwritten_during_read_is_retried():
     assert ev is None or ev.event_id == 2
 
 
+def test_event_header_reread_detects_replacement_without_counter_change():
+    """X.3.2 item 11/18: after the last sample block the gateway re-reads the
+    header event_id with the counter; a record replaced while being read is
+    discarded and retried even if the counter did not move."""
+    from src.data_source.meter_server import EVENT_HEADER
+    p, fake = _poller("m05")
+    fake.set_frame(T0)
+    fake.set_event(_event_words(event_id=1, n=50), counter=1)
+    state = {"swapped": False}
+
+    def swap(fc, address, count):
+        if address >= 120 and not state["swapped"]:
+            state["swapped"] = True
+            words = _event_words(event_id=7, n=50)
+            fake.ir[EVENT_HEADER:EVENT_HEADER + len(words)] = words   # counter untouched
+    fake.on_read = swap
+    ev = run(p.poll_once()).event
+    assert p.torn_retries_total == 1
+    assert ev is not None and ev.event_id == 7 and ev.n_samples == 50
+    header_reads = [r for r in fake.reads if r[1] == EVENT_HEADER]
+    assert len(header_reads) == 4                     # header before + after, two attempts
+    # per attempt: header + 3 sample reads (300 words, 120 per read) + header + counter
+    assert p.last_event_reads == 2 * (1 + 3 + 2)
+
+
 def test_buffer_drop_oldest():
     async def go():
         buf = DropOldestBuffer(3)

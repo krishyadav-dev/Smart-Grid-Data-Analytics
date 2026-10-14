@@ -43,6 +43,7 @@ import argparse
 import asyncio
 import logging
 import sys
+import time
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
@@ -212,6 +213,8 @@ class MeterPoller:
     last_event_counter: Optional[int] = None
     events_fetched: int = 0
     events_missed: int = 0
+    last_event_reads: int = 0
+    last_event_read_s: float = 0.0
     link_state: Optional[MeterLinkState] = None
     link_since: Optional[datetime] = None
     last_error: Optional[str] = None
@@ -281,25 +284,47 @@ class MeterPoller:
                                        self.regmap.wire_address(r.address), r.width_registers)
         return int(r.decode(words))
 
-    async def read_event(self, counter: int) -> Optional[EventBurst]:
-        """Read the meter's current event record; ``None`` if it kept changing."""
+    async def _read_event_header(self):
         ev = self.regmap.event
+        return decode_event_header(await self.reader.read(
+            self.meter.unit_id, ev.function_code,
+            self.regmap.wire_address(ev.header_address), ev.header_registers))
+
+    async def read_event(self, counter: int) -> Optional[EventBurst]:
+        """Read the meter's current event record; ``None`` if it kept changing.
+
+        Contiguous block, no paging (brief v2 X.3.2 item 11/18): header, then
+        the samples in reads of <= 125 registers, then the header's event_id
+        is re-read together with the event counter.  If either changed the
+        record was replaced while being read: discard and retry.  Single
+        reader per meter (stated).
+        """
+        ev = self.regmap.event
+        t0 = time.perf_counter()
+        reads = 0
         for attempt in range(self.torn_read_retries + 1):
-            hdr = decode_event_header(await self.reader.read(
-                self.meter.unit_id, ev.function_code,
-                self.regmap.wire_address(ev.header_address), ev.header_registers))
+            hdr = await self._read_event_header()
+            reads += 1
             n = min(hdr.n_samples, ev.max_samples)
             words: list[int] = []
             for b in self.regmap.event_sample_blocks(n):
                 words += await self.reader.read(self.meter.unit_id, b.function_code,
                                                  self.regmap.wire_address(b.start), b.count)
-            if await self._read_counter() == counter:
+                reads += 1
+            hdr_after = await self._read_event_header()
+            counter_after = await self._read_counter()
+            reads += 2
+            if hdr_after.event_id == hdr.event_id and counter_after == counter:
                 break
             self.torn_retries_total += 1
             if attempt == self.torn_read_retries:
                 logger.warning("%s: event record changed during %d reads; skipped",
                                self.meter.meter_id, attempt + 1)
                 return None
+        self.last_event_reads = reads
+        self.last_event_read_s = time.perf_counter() - t0
+        logger.info("%s: event %d read: %d samples, %d reads, %.3f s",
+                    self.meter.meter_id, hdr.event_id, n, reads, self.last_event_read_s)
         vps = ev.values_per_sample
         phases = [p for p in hdr.phases if p in self.meter.phases_present] or hdr.phases
         idx = {"a": 0, "b": 1, "c": 2}
