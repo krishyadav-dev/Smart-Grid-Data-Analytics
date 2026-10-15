@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from .schema import MeterRole
 
@@ -91,6 +91,9 @@ class GatewayConfig(BaseModel):
     mqtt: MqttSettings = Field(default_factory=MqttSettings)
     poll_interval_s: float = Field(0.25, gt=0)
     expected_step_s: float = Field(900, gt=0)
+    # Commissioning time of the series, aware ISO 8601 (IST), set by the
+    # harness for a fresh series; None = unknown (no gap before the first read).
+    series_start: Optional[AwareDatetime] = None
     playback_speed: Optional[float] = None
     torn_read_retries: int = Field(3, ge=0)
     backoff: BackoffSettings = Field(default_factory=BackoffSettings)

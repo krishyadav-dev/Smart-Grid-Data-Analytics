@@ -7,6 +7,9 @@ PowerShell::
 
     python scripts/run_meter_server.py --port 5020 --speed 60
     python scripts/run_meter_server.py --profiles sgcc   # SGCC-derived load profiles
+    # CP5: the CP3 year cache (households, 23 meters) plus CP4 fault bursts
+    python scripts/run_meter_server.py --cache-frame results/year_2024/meter_frame_metered.parquet `
+        --start "2024-02-12 00:00" --end "2024-02-18 23:45" --events bursts.npz
 """
 
 from __future__ import annotations
@@ -51,13 +54,24 @@ def build_frame(start: str, end: str, profiles: str = "synthetic",
     return feeder_model.run_timeseries(start=start, end=end, profiles=prof)
 
 
+def load_cache_frame(path: str, start: str, end: str) -> pd.DataFrame:
+    """The CP3 year cache frame (Parquet; true or metered) between start and end
+    (inclusive), in ``run_timeseries`` frame layout: CP3 households on the DTs,
+    23 meter points (bus_virtual, feeder head, DT meters)."""
+    t0, t1 = pd.Timestamp(start), pd.Timestamp(end)
+    frame = pd.read_parquet(path, filters=[("timestamp", ">=", t0), ("timestamp", "<=", t1)])
+    if frame.empty:
+        raise ValueError(f"no rows in {path} between {t0} and {t1}")
+    return frame.sort_values(["timestamp", "load_id", "phase"]).reset_index(drop=True)
+
+
 async def serve(frame: pd.DataFrame, host: str, port: int, speed: float,
-                start_delay_s: float = 0.0) -> None:
+                start_delay_s: float = 0.0, events: dict | None = None) -> None:
     from src.data_source import meter_server as ms
 
     if start_delay_s <= 0:
         await ms.start_meter_server(host=host, port=port, timeseries_data=frame,
-                                    playback_speed=speed)
+                                    playback_speed=speed, events=events)
         return
     # Same composition as start_meter_server, but the first frame is written
     # only after `start_delay_s`, so clients can connect before step 0.
@@ -69,7 +83,7 @@ async def serve(frame: pd.DataFrame, host: str, port: int, speed: float,
     async def _delayed() -> None:
         await asyncio.sleep(start_delay_s)
         logger.info("starting playback")
-        await ms._update_loop(server.context, meters, frame, speed)
+        await ms._update_loop(server.context, meters, frame, speed, events=events)
         logger.info("playback finished")
 
     asyncio.get_running_loop().create_task(_delayed())
@@ -91,16 +105,24 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--frame-out", default=None,
                     help="write the run_timeseries frame to this CSV (ground truth)")
     ap.add_argument("--frame-in", default=None,
-                    help="serve a previously written frame instead of re-solving")
+                    help="serve a previously written frame instead of re-solving (CSV)")
+    ap.add_argument("--cache-frame", default=None,
+                    help="serve the CP3 year cache frame (Parquet, e.g. "
+                         "results/year_2024/meter_frame_metered.parquet) between --start and --end")
     ap.add_argument("--start-delay", type=float, default=0.0,
                     help="seconds to serve zeros before writing the first frame")
+    ap.add_argument("--events", default=None,
+                    help="fault bursts (.npz from meter_server.save_event_file), written to "
+                         "their meters right after their trigger step")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     if args.end is None:
         args.end = str(pd.Timestamp(args.start).normalize() + pd.Timedelta(hours=23, minutes=45))
-    if args.frame_in:
+    if args.cache_frame:
+        frame = load_cache_frame(args.cache_frame, args.start, args.end)
+    elif args.frame_in:
         frame = pd.read_csv(args.frame_in, parse_dates=["timestamp"])
     else:
         frame = build_frame(args.start, args.end, args.profiles, args.sgcc_path)
@@ -109,7 +131,22 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("Serving %d rows, %d timestamps on %s:%d at %.1fx",
                 len(frame), frame["timestamp"].nunique(), args.host, args.port, args.speed)
     try:
-        asyncio.run(serve(frame, args.host, args.port, args.speed, args.start_delay))
+        events = None
+        if args.events:
+            from src.data_source import meter_server as ms
+            events = ms.load_event_file(args.events)
+            logger.info("Loaded %d burst(s) at %d trigger step(s)",
+                        sum(len(v) for v in events.values()), len(events))
+        coro = serve(frame, args.host, args.port, args.speed, args.start_delay, events)
+        if sys.platform == "win32":
+            # Selector loop on Windows, as the gateway and listener use: with the
+            # default IOCP proactor an accept failing with WinError 64 (a client
+            # closing during accept, e.g. a port probe) ends the accept loop and
+            # the server silently stops accepting connections.
+            with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+                runner.run(coro)
+        else:
+            asyncio.run(coro)
     except KeyboardInterrupt:
         pass
 

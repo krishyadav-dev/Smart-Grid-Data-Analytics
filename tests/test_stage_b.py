@@ -14,6 +14,7 @@ import networkx as nx
 import numpy as np
 import pandapower as pp
 import pandapower.topology as top
+import pandas as pd
 import pytest
 
 from src.data_source import ieee13_data as ieee
@@ -110,9 +111,13 @@ def test_b4_substation_transformer(steps):
     b3, b4 = steps["B3"], steps["B4"]
     names = dict(zip(b4.bus.index, b4.bus.name))
     assert names[b4.ext_grid.bus.iloc[0]] == "sourcebus"
-    assert b4.bus.vn_kv[b4.bus.name == "sourcebus"].iloc[0] == 115.0
+    assert b4.bus.vn_kv[b4.bus.name == "sourcebus"].iloc[0] == 66.0
+    # CEA TPC 2025 §5.1.5: 0.8 x 31.5 kA at 66 kV
+    eg = b4.ext_grid.iloc[0]
+    assert eg.s_sc_max_mva == pytest.approx(math.sqrt(3) * 66.0 * 25.2)
+    assert eg.rx_max == 0.1
     t = b4.trafo[b4.trafo.name == "Sub_XFMR"].iloc[0]
-    assert (t.vector_group, t.sn_mva, t.vn_hv_kv, t.vn_lv_kv) == ("Dyn", 5.0, 115.0, 11.0)
+    assert (t.vector_group, t.sn_mva, t.vn_hv_kv, t.vn_lv_kv) == ("Dyn", 5.0, 66.0, 11.0)
     assert t.vk_percent == pytest.approx(math.hypot(1, 8))
     assert t.vkr_percent == 1.0
     d = 100 * (_named_v(b4).loc[_named_v(b3).index] - _named_v(b3)) / _named_v(b3)
@@ -187,6 +192,35 @@ def test_b7_oltc_replaces_regulator(final):
     assert abs(v - c.set_point_pu) <= c.half_band_pu + 1e-9
 
 
+def test_oltc_getco_range_and_no_hunting(final):
+    """X.3.2 item 21: GETCO R13 (2017) A1 item 12, p. 28: -5 % .. +15 % on LV,
+    step 1.25 % (taps -4 .. +12); full band 1.67 % > step 1.25 % (p. 106)."""
+    t = final.trafo[final.trafo.name == "Sub_XFMR"].iloc[0]
+    assert (t.tap_min, t.tap_max, t.tap_step_percent, t.tap_side) == (-4, 12, 1.25, "lv")
+    assert t.tap_min * t.tap_step_percent == pytest.approx(-5.0)
+    assert t.tap_max * t.tap_step_percent == pytest.approx(15.0)
+    band, step = oltc.check_no_hunting(final)
+    print(f"\nOLTC full band {100 * band:.3f} % > step {100 * step:.2f} %; settled tap {t.tap_pos:+.0f}")
+    assert band > step
+
+
+def test_oltc_positive_tap_raises_lv_voltage(final):
+    """Tap sign: one step up raises V_650 (the Sub_XFMR LV bus) by about the step."""
+    net = copy.deepcopy(final)
+    t = int(net["oltc"].trafo.iloc[0])
+    b650 = net.bus.index[net.bus.name == "650"][0]
+    vcols = ["vm_a_pu", "vm_b_pu", "vm_c_pu"]
+    net.trafo.at[t, "tap_pos"] = 0
+    pp.runpp_3ph(net)
+    v0 = net.res_bus_3ph.loc[b650, vcols].mean()
+    net.trafo.at[t, "tap_pos"] = 1
+    pp.runpp_3ph(net)
+    v1 = net.res_bus_3ph.loc[b650, vcols].mean()
+    print(f"\nV_650 at tap 0 {v0:.4f} pu, tap +1 {v1:.4f} pu (+{100 * (v1 / v0 - 1):.3f} %)")
+    assert v1 > v0
+    assert v1 / v0 - 1 == pytest.approx(0.0125, abs=0.003)
+
+
 def test_controller_self_check_on_stage_a():
     """Same controller on the published case lands inside the published taps."""
     net = build_network("A")
@@ -200,6 +234,28 @@ def test_controller_self_check_on_stage_a():
 
 
 # ===================================================================== #
+#  B8 distribution transformers (built in Phase 2X checkpoint 3)          #
+# ===================================================================== #
+
+def test_b8_distribution_transformers(final):
+    d = final["dts"]
+    lp = final["load_points"]
+    assert len(d) == 13 and len(lp) == 9
+    assert set(d.load_id) == set(lp.load_id)
+    assert not final.asymmetric_load.name.str.startswith("load_").any()
+    names = dict(zip(final.bus.index, final.bus.name))
+    for r in d.itertuples():
+        assert final.bus.vn_kv[r.lv_bus] == 0.433
+        assert names[r.hv_bus] == ("633" if r.bus == "634" else r.bus)
+        assert final.asymmetric_load.at[r.load, "bus"] == r.lv_bus
+    p = sum(final.asymmetric_load[f"p_{x}_mw"].sum() for x in "abc")
+    assert p == pytest.approx(3.466, rel=1e-9)     # IEEE spot + distributed kW tables
+    pre = build_stage_b(upto="B7")
+    pre_lp = pre.asymmetric_load[pre.asymmetric_load.name.str.startswith("load_")]
+    assert set(pre_lp.name) == set(lp.load_id)              # load_ids unchanged
+
+
+# ===================================================================== #
 #  B9 constant-PQ and sensitivity                                         #
 # ===================================================================== #
 
@@ -209,8 +265,11 @@ def test_b9_constant_pq_and_sensitivity(final, stage_a):
     for p in "abc":
         assert np.allclose(al[f"p_{p}_mw"], al[f"p0_{p}_mw"])
     zi = copy.deepcopy(final)
+    # Stage A model of each load point, applied to its DT loads (at DT LV)
     models = dict(zip(stage_a.asymmetric_load.name, stage_a.asymmetric_load.load_model))
-    zi.asymmetric_load["load_model"] = zi.asymmetric_load.name.map(models)
+    d = zi["dts"]
+    zi.asymmetric_load.loc[d.load.astype(int), "load_model"] = d.load_id.map(models).to_numpy()
+    assert zi.asymmetric_load.load_model.notna().all()
     solve_with_load_models(zi)
     dv = 100 * (_named_v(zi) - _named_v(final)) / _named_v(final)
     loss = lambda n: _p_in(n) - float(sum(n.asymmetric_load[f"p_{p}_mw"].sum() for p in "abc"))  # noqa: E731
@@ -227,20 +286,35 @@ def test_nominal_snapshot(final):
     v = final.res_bus_3ph.loc[mv, VCOLS]
     p_in = _p_in(final)
     p_load = float(sum(final.res_asymmetric_load_3ph[f"p_{p}_mw"].sum() for p in "abc"))
-    p_branch = float(sum(final.res_line_3ph[f"pl_{p}_mw"].sum() for p in "abc")
-                     + sum(final.res_trafo_3ph[f"pl_{p}_mw"].sum() for p in "abc"))
+    p_line = float(sum(final.res_line_3ph[f"pl_{p}_mw"].sum() for p in "abc"))
+    p_trafo = final.res_trafo_3ph[[f"pl_{p}_mw" for p in "abc"]].sum(axis=1)
+    p_sub = float(p_trafo[final.trafo.index[final.trafo.name == "Sub_XFMR"]].sum())
+    p_branch = p_line + float(p_trafo.sum())
+    mv_pct = 100 * (p_line + p_sub) / p_in
     out = (v < BAND_TARGET[0]) | (v > BAND_TARGET[1])
     worst = (v - 1.0).abs().stack().idxmax()
-    print(f"\nnominal: V {v.values.min():.4f}-{v.values.max():.4f} pu, losses "
-          f"{100 * (p_in - p_load) / p_in:.2f} %; +/-5 % target: {int(out.sum().sum())} "
-          f"bus-phases outside, worst {final.bus.name[worst[0]]}/{worst[1][3]} "
-          f"{v.loc[worst[0], worst[1]]:.4f} pu")
+    print(f"\nnominal: V {v.values.min():.4f}-{v.values.max():.4f} pu, MV losses (lines + "
+          f"substation) {mv_pct:.2f} %, total incl. DTs {100 * (p_in - p_load) / p_in:.2f} %; "
+          f"+/-5 % target: {int(out.sum().sum())} bus-phases outside, worst "
+          f"{final.bus.name[worst[0]]}/{worst[1][3]} {v.loc[worst[0], worst[1]]:.4f} pu")
     assert BAND_SOURCED[0] <= v.values.min() and v.values.max() <= BAND_SOURCED[1]
-    assert 100 * (p_in - p_load) / p_in < 5.0
+    assert mv_pct < 5.0                  # brief v2 X.3 item 4e (DTs: test below)
     assert p_in == pytest.approx(p_load + p_branch, abs=1e-3)
     g = top.create_nxgraph(final, multi=True)
     assert nx.number_connected_components(g) == 1
     assert g.number_of_edges() == g.number_of_nodes() - 1
+
+
+def test_nominal_dt_losses_is1180(final):
+    """X.3 item 4c/4e at nominal: DT losses = IS 1180 P0 + Pk K^2 within 5 %."""
+    from src.data_source.feeder_model import _Extractor
+    from src.data_source.simulation import dt_loss_check
+    st = pd.DataFrame([_Extractor(final).state(final, None, 0, float("nan"))])
+    c = dt_loss_check(st, final["dts"])
+    for r in c["rows"]:
+        print(f"\n{r['dt']}: K {r['K_phases']}, IS 1180 {r['expected_kw']:.3f} kW, "
+              f"model {r['model_kw']:.3f} kW ({100 * r['rel_error']:+.1f} %)", end="")
+    assert c["passed"], f"max |error| {100 * c['max_abs_rel_error']:.1f} %"
 
 
 @pytest.fixture(scope="module")

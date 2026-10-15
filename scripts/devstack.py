@@ -208,7 +208,9 @@ class Stack:
     # -- meter server -----------------------------------------------------
     def start_meter(self, speed: float, frame_in: Optional[Path] = None,
                     frame_out: Optional[Path] = None, start_delay: float = 0.0,
-                    profiles: str = "synthetic") -> None:
+                    profiles: str = "synthetic", events: Optional[Path] = None,
+                    cache_frame: Optional[Path] = None, start: Optional[str] = None,
+                    end: Optional[str] = None) -> None:
         args = [PY, str(ROOT / "scripts" / "run_meter_server.py"), "--port", str(self.modbus_port),
                 "--speed", str(speed), "--start-delay", str(start_delay),
                 "--profiles", profiles]
@@ -216,13 +218,18 @@ class Stack:
             args += ["--frame-in", str(frame_in)]
         if frame_out:
             args += ["--frame-out", str(frame_out)]
+        if events:
+            args += ["--events", str(events)]
+        if cache_frame:
+            args += ["--cache-frame", str(cache_frame), "--start", str(start), "--end", str(end)]
         self.meter = subprocess.Popen(args, cwd=ROOT, stdout=self._log("meter"),
                                       stderr=subprocess.STDOUT)
         wait_port(self.modbus_port, 180)
 
     # -- gateway ------------------------------------------------------------
     def start_gateway(self, poll_interval: float = 0.05, playback_speed: float = 900.0,
-                      keepalive: int = 10, backoff_max: float = 0.5) -> None:
+                      keepalive: int = 10, backoff_max: float = 0.5,
+                      series_start: Optional[str] = None) -> None:
         cfg = yaml.safe_load((ROOT / "config" / "gateway.yaml").read_text(encoding="utf-8"))
         cfg["modbus"]["port"] = self.modbus_port
         cfg["mqtt"]["port"] = self.mqtt_port
@@ -230,6 +237,7 @@ class Stack:
         cfg["poll_interval_s"] = poll_interval
         cfg["playback_speed"] = playback_speed
         cfg["backoff"] = {"initial_s": 0.1, "max_s": backoff_max, "jitter": 0.2}
+        cfg["series_start"] = series_start      # commissioning time of a fresh series
         path = self.workdir / "gateway.yaml"
         path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
         self.gateway = subprocess.Popen([PY, "-m", "src.ingestion.gateway", "--config", str(path)],

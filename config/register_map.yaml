@@ -1,28 +1,63 @@
-# Register map of the Layer 1 meter server (src/data_source/meter_server.py).
-# Verified live with scripts/dump_registers.py (see docs/ingestion_step0.md).
+# Register map v2 of the Layer 1 meter server (src/data_source/meter_server.py).
+# Schema 2.0 (brief v2 section 2E).  Every measurement is an INPUT register
+# (fc4), so nothing a client can write reaches a measured value; the server has
+# one reserved holding register (HR 0, always 0) only because pymodbus needs a
+# holding block.  A write to any other address is answered with Modbus
+# exception 2 (illegal address).
 #
 # address        : zero-based register offset within its function-code table
 # address_base   : on-wire PDU address of offset 0 (wire = address + address_base)
 # scale          : canonical_value = raw_int * scale  (canonical unit in `unit`)
-# measurement    : key in the telemetry payload; `t_sim` is the time register
-# phase          : a | b | c | total | null
+# measurement    : key in the telemetry payload; `t_sim` (simulated time, Unix
+#                  seconds of the IST instant) and `event_counter` are meta
+#                  registers, not measurements
+# phase          : a | b | c | ab | bc | ca | total | null
+# group          : poll (read every poll, default) | event (read only when the
+#                  event counter changes; see `event` below)
 # obis           : conceptual DLMS/COSEM object (documentation only)
 address_base: 0
 max_registers_per_read: 125
 registers:
-  - {name: voltage_a,  measurement: voltage_v,  phase: a, function_code: 4, address: 0,  width_registers: 2, word_order: big, signed: false, scale: 0.01,  raw_unit: "V*100", unit: V,  obis: "1-1:32.7.0"}
-  - {name: voltage_b,  measurement: voltage_v,  phase: b, function_code: 4, address: 2,  width_registers: 2, word_order: big, signed: false, scale: 0.01,  raw_unit: "V*100", unit: V,  obis: "1-1:52.7.0"}
-  - {name: voltage_c,  measurement: voltage_v,  phase: c, function_code: 4, address: 4,  width_registers: 2, word_order: big, signed: false, scale: 0.01,  raw_unit: "V*100", unit: V,  obis: "1-1:72.7.0"}
-  - {name: current_a,  measurement: current_a,  phase: a, function_code: 4, address: 6,  width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: mA,      unit: A,  obis: "1-1:31.7.0"}
-  - {name: current_b,  measurement: current_a,  phase: b, function_code: 4, address: 8,  width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: mA,      unit: A,  obis: "1-1:51.7.0"}
-  - {name: current_c,  measurement: current_a,  phase: c, function_code: 4, address: 10, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: mA,      unit: A,  obis: "1-1:71.7.0"}
-  - {name: power_a,    measurement: active_power_kw, phase: a, function_code: 4, address: 12, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: W, unit: kW, obis: "1-1:21.7.0"}
-  - {name: power_b,    measurement: active_power_kw, phase: b, function_code: 4, address: 14, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: W, unit: kW, obis: "1-1:41.7.0"}
-  - {name: power_c,    measurement: active_power_kw, phase: c, function_code: 4, address: 16, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: W, unit: kW, obis: "1-1:61.7.0"}
-  - {name: frequency,  measurement: frequency_hz, phase: null, function_code: 4, address: 18, width_registers: 2, word_order: big, signed: false, scale: 0.01, raw_unit: "Hz*100", unit: Hz, obis: "1-1:14.7.0"}
-  - {name: reactive_a, measurement: reactive_power_kvar, phase: a, function_code: 4, address: 20, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:23.7.0"}
-  - {name: reactive_b, measurement: reactive_power_kvar, phase: b, function_code: 4, address: 22, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:43.7.0"}
-  - {name: reactive_c, measurement: reactive_power_kvar, phase: c, function_code: 4, address: 24, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:63.7.0"}
-  - {name: reactive_total, measurement: reactive_power_kvar, phase: total, function_code: 4, address: 26, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:3.7.0"}
-  - {name: sim_time,   measurement: t_sim,      phase: null, function_code: 4, address: 28, width_registers: 2, word_order: big, signed: false, scale: 1, raw_unit: "unix s", unit: "unix s", obis: "0-0:1.0.0"}
-  - {name: energy_import, measurement: energy_import_kwh, phase: null, function_code: 3, address: 0, width_registers: 2, word_order: big, signed: false, scale: 0.001, raw_unit: Wh, unit: kWh, obis: "1-1:1.8.0"}
+  - {name: voltage_a,  measurement: voltage_v,  phase: a, function_code: 4, address: 0,  width_registers: 2, signed: false, scale: 0.01,  raw_unit: "V*100", unit: V,  obis: "1-1:32.7.0"}
+  - {name: voltage_b,  measurement: voltage_v,  phase: b, function_code: 4, address: 2,  width_registers: 2, signed: false, scale: 0.01,  raw_unit: "V*100", unit: V,  obis: "1-1:52.7.0"}
+  - {name: voltage_c,  measurement: voltage_v,  phase: c, function_code: 4, address: 4,  width_registers: 2, signed: false, scale: 0.01,  raw_unit: "V*100", unit: V,  obis: "1-1:72.7.0"}
+  - {name: voltage_ab, measurement: voltage_ll_v, phase: ab, function_code: 4, address: 6,  width_registers: 2, signed: false, scale: 0.01, raw_unit: "V*100", unit: V}
+  - {name: voltage_bc, measurement: voltage_ll_v, phase: bc, function_code: 4, address: 8,  width_registers: 2, signed: false, scale: 0.01, raw_unit: "V*100", unit: V}
+  - {name: voltage_ca, measurement: voltage_ll_v, phase: ca, function_code: 4, address: 10, width_registers: 2, signed: false, scale: 0.01, raw_unit: "V*100", unit: V}
+  - {name: current_a,  measurement: current_a,  phase: a, function_code: 4, address: 12, width_registers: 2, signed: false, scale: 0.001, raw_unit: mA, unit: A, obis: "1-1:31.7.0"}
+  - {name: current_b,  measurement: current_a,  phase: b, function_code: 4, address: 14, width_registers: 2, signed: false, scale: 0.001, raw_unit: mA, unit: A, obis: "1-1:51.7.0"}
+  - {name: current_c,  measurement: current_a,  phase: c, function_code: 4, address: 16, width_registers: 2, signed: false, scale: 0.001, raw_unit: mA, unit: A, obis: "1-1:71.7.0"}
+  - {name: power_a,    measurement: active_power_kw, phase: a, function_code: 4, address: 18, width_registers: 2, signed: true, scale: 0.001, raw_unit: W, unit: kW, obis: "1-1:21.7.0"}
+  - {name: power_b,    measurement: active_power_kw, phase: b, function_code: 4, address: 20, width_registers: 2, signed: true, scale: 0.001, raw_unit: W, unit: kW, obis: "1-1:41.7.0"}
+  - {name: power_c,    measurement: active_power_kw, phase: c, function_code: 4, address: 22, width_registers: 2, signed: true, scale: 0.001, raw_unit: W, unit: kW, obis: "1-1:61.7.0"}
+  - {name: reactive_a, measurement: reactive_power_kvar, phase: a, function_code: 4, address: 24, width_registers: 2, signed: true, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:23.7.0"}
+  - {name: reactive_b, measurement: reactive_power_kvar, phase: b, function_code: 4, address: 26, width_registers: 2, signed: true, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:43.7.0"}
+  - {name: reactive_c, measurement: reactive_power_kvar, phase: c, function_code: 4, address: 28, width_registers: 2, signed: true, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:63.7.0"}
+  - {name: reactive_total, measurement: reactive_power_kvar, phase: total, function_code: 4, address: 30, width_registers: 2, signed: true, scale: 0.001, raw_unit: var, unit: kvar, obis: "1-1:3.7.0"}
+  - {name: apparent_a, measurement: apparent_power_kva, phase: a, function_code: 4, address: 32, width_registers: 2, signed: false, scale: 0.001, raw_unit: VA, unit: kVA, obis: "1-1:29.7.0"}
+  - {name: apparent_b, measurement: apparent_power_kva, phase: b, function_code: 4, address: 34, width_registers: 2, signed: false, scale: 0.001, raw_unit: VA, unit: kVA, obis: "1-1:49.7.0"}
+  - {name: apparent_c, measurement: apparent_power_kva, phase: c, function_code: 4, address: 36, width_registers: 2, signed: false, scale: 0.001, raw_unit: VA, unit: kVA, obis: "1-1:69.7.0"}
+  - {name: apparent_total, measurement: apparent_power_kva, phase: total, function_code: 4, address: 38, width_registers: 2, signed: false, scale: 0.001, raw_unit: VA, unit: kVA, obis: "1-1:9.7.0"}
+  - {name: pf_a,       measurement: power_factor, phase: a, function_code: 4, address: 40, width_registers: 2, signed: true, scale: 0.0001, raw_unit: "PF*10000", unit: "1", obis: "1-1:33.7.0"}
+  - {name: pf_b,       measurement: power_factor, phase: b, function_code: 4, address: 42, width_registers: 2, signed: true, scale: 0.0001, raw_unit: "PF*10000", unit: "1", obis: "1-1:53.7.0"}
+  - {name: pf_c,       measurement: power_factor, phase: c, function_code: 4, address: 44, width_registers: 2, signed: true, scale: 0.0001, raw_unit: "PF*10000", unit: "1", obis: "1-1:73.7.0"}
+  - {name: pf_total,   measurement: power_factor, phase: total, function_code: 4, address: 46, width_registers: 2, signed: true, scale: 0.0001, raw_unit: "PF*10000", unit: "1", obis: "1-1:13.7.0"}
+  - {name: frequency,  measurement: frequency_hz, phase: null, function_code: 4, address: 48, width_registers: 2, signed: false, scale: 0.01, raw_unit: "Hz*100", unit: Hz, obis: "1-1:14.7.0"}
+  - {name: energy_import, measurement: energy_import_kwh, phase: null, function_code: 4, address: 50, width_registers: 4, signed: false, scale: 0.001, raw_unit: Wh, unit: kWh, obis: "1-1:1.8.0"}
+  - {name: sim_time,   measurement: t_sim,      phase: null, function_code: 4, address: 54, width_registers: 2, signed: false, scale: 1, raw_unit: "unix s", unit: "unix s", obis: "0-0:1.0.0"}
+  - {name: event_counter, measurement: event_counter, phase: null, function_code: 4, address: 56, width_registers: 2, signed: false, scale: 1, raw_unit: count, unit: count}
+# Event (burst) record, read only after event_counter changes.
+# Header (u16 words unless noted): event_id u32 @+0, start Unix s u32 @+2,
+# start ms @+4, sample interval ms @+5, sample count @+6, phases bitmask @+7
+# (a=1, b=2, c=4), v_base_ln V*100 u32 @+8, current scale mA/count u32 @+10.
+# Samples follow at sample_address, values_per_sample u16 words each:
+# Va, Vb, Vc in pu*10000 of v_base_ln, then Ia, Ib, Ic in counts of the
+# current scale.  max_samples = 6150 covers 0.5 s + 60 s + 1.0 s at 10 ms.
+event:
+  function_code: 4
+  header_address: 100
+  header_registers: 12
+  sample_address: 120
+  values_per_sample: 6
+  max_samples: 6150
+  voltage_scale_pu: 0.0001

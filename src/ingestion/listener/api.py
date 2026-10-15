@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..schema import utc_now
 from .service import ListenerService
@@ -66,6 +66,8 @@ class StatsResponse(BaseModel):
     latency_budget_ms: Optional[float]
     hub: dict[str, Any]
     status_parse_errors: int
+    events: dict[str, int] = Field(default_factory=dict,
+                                   description="Fault bursts accepted and their samples")
 
 
 def _svc(request: Request) -> ListenerService:

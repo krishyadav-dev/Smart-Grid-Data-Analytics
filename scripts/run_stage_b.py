@@ -66,7 +66,8 @@ def step_table() -> pd.DataFrame:
             solve_with_load_models(net)
         v = _named_v(net)
         p_in = _sum3(net.res_ext_grid_3ph, "p_{}_mw")
-        p_ld = _sum3(net.asymmetric_load[net.asymmetric_load.name.str.startswith("load_")], "p_{}_mw")
+        p_ld = _sum3(net.asymmetric_load[net.asymmetric_load.name.str.match(r"(dt)?load_")],
+                     "p_{}_mw")
         dv = np.nan if prev is None else float(np.nanmax(np.abs(
             100 * (v.loc[prev.index] - prev) / prev).values))
         rows.append({"step": name, "max_dV_vs_prev_pct": dv,
@@ -87,10 +88,10 @@ def nominal_metrics(net) -> dict:
     p_in = _sum3(net.res_ext_grid_3ph, "p_{}_mw")
     p_ld = _sum3(net.res_asymmetric_load_3ph, "p_{}_mw")
     out = {"losses_pct": 100 * (p_in - p_ld) / p_in, "sub_loading_pct": lp["Sub_XFMR"],
-           "xfm1_loading_pct": lp["XFM-1"],
+           "xfm1_loading_pct": lp.get("XFM-1", lp.get("dt_634_1")),   # XFM-1 -> dt_634_1 (B8)
            "oltc_tap": float(net.trafo.at[int(net["oltc"].trafo.iloc[0]), "tap_pos"]),
            "v_relay_pu": oltc.relay_voltage(net)[0]}
-    for b in ("632", "634", "675"):
+    for b in ("650", "632", "634", "675"):
         out[f"v_{b}"] = v.loc[b].round(4).tolist()
     sc.calc_sc(net, fault="3ph", case="max")
     names = net.bus.name
@@ -140,8 +141,9 @@ def main() -> int:
     pp.runpp_3ph(final)
     zi = copy.deepcopy(final)
     a = build_network("A")
-    zi.asymmetric_load["load_model"] = zi.asymmetric_load.name.map(
-        dict(zip(a.asymmetric_load.name, a.asymmetric_load.load_model)))
+    d = zi["dts"]
+    zi.asymmetric_load.loc[d.load.astype(int), "load_model"] = d.load_id.map(
+        dict(zip(a.asymmetric_load.name, a.asymmetric_load.load_model))).to_numpy()
     solve_with_load_models(zi)
     dv = 100 * (_named_v(zi) - _named_v(final)) / _named_v(final)
     loss = lambda n: _sum3(n.res_ext_grid_3ph, "p_{}_mw") - _sum3(n.asymmetric_load, "p_{}_mw")  # noqa: E731

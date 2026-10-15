@@ -67,7 +67,11 @@ def _mutations():
         "unknown_measurement": meas("thd_pct", 3.0),
         "unknown_flag": setv("quality", {"flags": ["WEIRD"], "gap_steps": 0}),
         "gap_negative": setv("quality", {"flags": [], "gap_steps": -1}),
-        "version_2": setv("schema_version", "2.0"),
+        "version_1": setv("schema_version", "1.0"),
+        "t_sim_naive": setv("t_sim", "2024-01-01T00:15:00"),
+        "t_sim_utc": setv("t_sim", "2024-01-01T00:15:00Z"),
+        "pair_unknown": meas("voltage_ll_v", {"ac": 1.0}),
+        "pf_string": meas("power_factor", {"a": "lagging"}),
     }
 
 
@@ -95,7 +99,7 @@ def test_wire_roundtrip_omits_absent_measurements():
     wire = json.loads(m.to_wire())
     assert "reactive_power_kvar" not in wire["measurements"]
     assert "frequency_hz" not in wire["measurements"]
-    assert wire["t_sim"] == "2024-01-01T00:15:00"
+    assert wire["t_sim"] == "2024-01-01T00:15:00+05:30"
     assert wire["measurements"]["voltage_v"] == doc["measurements"]["voltage_v"]
 
 

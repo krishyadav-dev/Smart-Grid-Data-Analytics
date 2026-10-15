@@ -1,281 +1,275 @@
 """
-Tests for meter_server — Modbus TCP register read/write.
+Tests for meter_server — register map v2 (schema 2.0).
 
 Acceptance criteria verified:
-    B1. Reading a register with a pymodbus client returns a value matching
-        the feeder model's output for that timestamp (within quantization
-        tolerance of the register scaling).
-    B5. Register map, DLMS/COSEM scoping, and architecture rationale are
-        present in the module docstring.
-    B6. Energy accumulator is verified monotonic across several update steps.
+    B1. A pymodbus client reads back the written values (within quantisation).
+    B5. The register map, DLMS/COSEM scope and architecture are documented.
+    B6. The energy accumulator is monotonic.
+    2E. Signed P/Q (no clamping), u64 energy in input registers, energy
+        stamped at the end of the interval, IST simulated time, line-to-line
+        voltage, kVA and PF, writes rejected, one simulated year at the
+        largest DT without saturation, event record + counter.
 """
 
 import asyncio
+import math
 import socket
 import threading
 import time
-import warnings
 
-import pandas as pd
+import numpy as np
 import pytest
 
+from src.data_source import meter_server as ms
 from src.data_source.meter_server import (
-    MeterState,
+    EVENT_HEADER,
+    POLL_REGISTERS,
+    REG_ENERGY,
+    REG_EVENT_COUNTER,
+    REG_POWER,
+    REG_REACTIVE,
+    REG_SIM_TIME,
     REG_VOLTAGE_A,
-    TOTAL_REGISTERS,
+    REG_VOLTAGE_LL,
+    EventRecord,
+    MeterState,
+    PhaseReading,
+    _decode_s32,
     _decode_u32,
+    _decode_u64,
+    _encode_s32,
     _encode_u32,
+    _encode_u64,
+    _sim_time_seconds,
     build_server_context,
 )
 
+ONE_METER = {"load_634_abc": 1}
+
+
+def _ctx():
+    from pymodbus.simulator.simcore import SimCore
+    devices, _, meters = build_server_context(ONE_METER)
+    return SimCore(devices), meters[1]
+
+
+def _read(ctx, fc, addr, n, unit=1):
+    return asyncio.run(ctx.async_getValues(unit, fc, addr, n))
+
+
+def _phases(**kw):
+    """Three-phase reading at nominal-ish values, overridable per field."""
+    base = dict(voltage_v=6351.0, current_a=5.0, p_kw=10.0, q_kvar=2.0)
+    return {p: PhaseReading(angle_deg=ang, **{**base, **kw})
+            for p, ang in (("a", 0.0), ("b", -120.0), ("c", 120.0))}
+
 
 # ===================================================================== #
-#  32-bit encode/decode round-trip (B5 register correctness)             #
+#  Encoding                                                               #
 # ===================================================================== #
 
 class TestEncoding:
-    """Verify 32-bit register encoding/decoding round-trips."""
+    def test_u32_round_trip(self):
+        for v in (0, 12345, 1_000_000, 0xFFFFFFFF):
+            assert _decode_u32(*_encode_u32(v)) == v
 
-    def test_encode_decode_zero(self):
-        hi, lo = _encode_u32(0)
-        assert _decode_u32(hi, lo) == 0
+    def test_u32_rejects_out_of_range(self):
+        with pytest.raises(ValueError):
+            _encode_u32(-5)
+        with pytest.raises(ValueError):
+            _encode_u32(0x1_0000_0000)
 
-    def test_encode_decode_small(self):
-        hi, lo = _encode_u32(12345)
-        assert _decode_u32(hi, lo) == 12345
+    def test_s32_keeps_negative_values(self):
+        """MB-1: negatives are two's complement, never clamped to 0."""
+        for v in (-50_000, -120_000, -1, 0, 1, 2**31 - 1, -(2**31)):
+            assert _decode_s32(*_encode_s32(v)) == v
 
-    def test_encode_decode_large(self):
-        hi, lo = _encode_u32(1_000_000)
-        assert _decode_u32(hi, lo) == 1_000_000
+    def test_u64_beyond_u32(self):
+        """MB-3: energy beyond 4.29 GWh fits."""
+        v = 5_533_920_000          # 630 kW for a 366-day year, in Wh
+        assert v > 0xFFFFFFFF
+        assert _decode_u64(_encode_u64(v)) == v
 
-    def test_encode_decode_max(self):
-        hi, lo = _encode_u32(0xFFFFFFFF)
-        assert _decode_u32(hi, lo) == 0xFFFFFFFF
-
-    def test_clamp_negative(self):
-        hi, lo = _encode_u32(-5)
-        assert _decode_u32(hi, lo) == 0
-
-    def test_clamp_overflow(self):
-        # Values above u32 max must saturate, not wrap
-        hi, lo = _encode_u32(0x1_0000_0000)
-        assert _decode_u32(hi, lo) == 0xFFFFFFFF
+    def test_sim_time_is_ist(self):
+        """Naive timestamps are IST wall time: 2024-01-01 05:30 IST = 00:00 UTC."""
+        assert _sim_time_seconds("2024-01-01 05:30:00") == 1704067200
+        assert _sim_time_seconds("2024-01-01 00:15:00") == 1704068100 - 19800
 
 
 # ===================================================================== #
-#  MeterState — update_registers and energy accumulation (B6)            #
+#  Register contents                                                       #
 # ===================================================================== #
 
-class TestMeterState:
-    """Verify register writes and monotonic energy accumulation."""
+class TestRegisters:
+    def test_layout_size(self):
+        words = ms.build_input_registers(_phases(), 50.0, 0.0, None, 0)
+        assert len(words) == POLL_REGISTERS == 58
 
-    @pytest.fixture
-    def ctx_and_meter(self):
-        """Build a server context and return (server_ctx, meter) for unit 1."""
-        from pymodbus.simulator.simcore import SimCore
-        devices_list, devices_dict, meters = build_server_context()
-        server_ctx = SimCore(devices_list)
-        meter = meters[1]
-        return server_ctx, meter
+    def test_negative_p_and_q_read_back(self):
+        ctx, meter = _ctx()
+        ph = _phases(p_kw=-50.0, q_kvar=-120.0)
+        asyncio.run(meter.update_registers(ctx, ph, t_sim="2024-01-01 00:15"))
+        p = _read(ctx, 4, REG_POWER, 2)
+        q = _read(ctx, 4, REG_REACTIVE, 2)
+        assert _decode_s32(*p) == -50_000
+        assert _decode_s32(*q) == -120_000
+        pf_a = _decode_s32(*_read(ctx, 4, ms.REG_PF, 2)) / 1e4
+        assert pf_a == pytest.approx(-50 / math.hypot(50, 120), abs=1e-4)
 
-    def test_energy_accumulates(self, ctx_and_meter):
-        """B6 — energy register is monotonically increasing."""
-        server_ctx, meter = ctx_and_meter
+    def test_line_to_line_from_phasors(self):
+        ctx, meter = _ctx()
+        asyncio.run(meter.update_registers(ctx, _phases(voltage_v=6350.85)))
+        vab = _decode_u32(*_read(ctx, 4, REG_VOLTAGE_LL, 2)) / 100
+        assert vab == pytest.approx(11000.0, abs=0.02)   # sqrt(3) x 6350.85
 
-        # First update: 10 kW for 0.25 h = 2500 Wh
-        asyncio.run(meter.update_registers(
-            server_ctx,
-            voltage_a=6351.0, voltage_b=6351.0, voltage_c=6351.0,
-            current_a=5.0, current_b=5.0, current_c=5.0,
-            power_a_kw=10.0, power_b_kw=0.0, power_c_kw=0.0,
-            interval_hours=0.25,
-        ))
-        assert pytest.approx(meter.energy_wh) == 2500.0
+    def test_line_to_line_zero_for_absent_phase(self):
+        ctx, meter = _ctx()
+        ph = {"b": PhaseReading(voltage_v=6350.0, angle_deg=-120, p_kw=1.0)}
+        asyncio.run(meter.update_registers(ctx, ph))
+        assert _read(ctx, 4, REG_VOLTAGE_LL, 6) == [0] * 6
 
-        # Second update: energy only increases
-        asyncio.run(meter.update_registers(
-            server_ctx,
-            voltage_a=6351.0, voltage_b=6351.0, voltage_c=6351.0,
-            power_a_kw=10.0, power_b_kw=0.0, power_c_kw=0.0,
-            interval_hours=0.25,
-        ))
-        assert pytest.approx(meter.energy_wh) == 5000.0
+    def test_apparent_and_pf_totals_are_vector(self):
+        words = ms.build_input_registers(_phases(p_kw=30.0, q_kvar=40.0), 50.0, 0.0, None, 0)
+        s_tot = _decode_u32(words[38], words[39]) / 1000
+        pf_tot = _decode_s32(words[46], words[47]) / 1e4
+        assert s_tot == pytest.approx(math.hypot(90, 120))
+        assert pf_tot == pytest.approx(0.6, abs=1e-4)
 
-    def test_energy_never_decreases(self, ctx_and_meter):
-        """B6 — even with zero power, energy does not decrease."""
-        server_ctx, meter = ctx_and_meter
-
-        asyncio.run(meter.update_registers(server_ctx, power_a_kw=5.0, interval_hours=0.25))
-        e1 = meter.energy_wh
-        asyncio.run(meter.update_registers(server_ctx, power_a_kw=0.0, interval_hours=0.25))
-        e2 = meter.energy_wh
-        assert e2 >= e1, "Energy accumulator decreased!"
-
-    def test_energy_monotonic_across_many_steps(self, ctx_and_meter):
-        """B6 — monotonic over multiple updates."""
-        server_ctx, meter = ctx_and_meter
-        prev = meter.energy_wh
-        for kw in [5.0, 0.0, 10.0, 3.0, 0.0, 7.0]:
-            asyncio.run(meter.update_registers(server_ctx, power_a_kw=kw, interval_hours=0.25))
-            assert meter.energy_wh >= prev, f"Energy decreased at kw={kw}"
-            prev = meter.energy_wh
-
-    def test_register_values_match_voltage(self, ctx_and_meter):
+    def test_voltage_register_matches(self):
         """B1 — input registers reflect the written voltage within scaling."""
-        server_ctx, meter = ctx_and_meter
-
-        voltage_a = 6351.0   # V (11 kV / \u221a3 ≈ 6350.9)
-        asyncio.run(meter.update_registers(
-            server_ctx,
-            voltage_a=voltage_a,
-            voltage_b=6300.0,
-            voltage_c=6400.0,
-        ))
-
-        # Read back from server context (address=0 for REG_VOLTAGE_A)
-        # async_getValues returns a list of words.
-        vals = asyncio.run(server_ctx.async_getValues(meter.unit_id, 4, 0, 2))
-        hi, lo = vals[0], vals[1]
-        decoded_v = _decode_u32(hi, lo)
-        expected = int(round(voltage_a * 100))   # scaling: V × 100
-        assert decoded_v == expected, (
-            f"Voltage register {decoded_v} \u2260 expected {expected}"
-        )
-
-    def test_energy_register_in_holding(self, ctx_and_meter):
-        """Energy accumulator is in holding registers (fc=3), not input."""
-        server_ctx, meter = ctx_and_meter
-
-        asyncio.run(meter.update_registers(
-            server_ctx, power_a_kw=4.0, interval_hours=0.25
-        ))
-        # 4 kW × 0.25 h × 1000 = 1000 Wh
-        assert pytest.approx(meter.energy_wh) == 1000.0
-
-        # Read back from server context
-        vals = asyncio.run(server_ctx.async_getValues(meter.unit_id, 3, 0, 2))
-        hi, lo = vals[0], vals[1]
-        decoded_e = _decode_u32(hi, lo)
-        assert decoded_e == 1000, (
-            f"Energy holding register {decoded_e} \u2260 expected 1000 Wh"
-        )
+        ctx, meter = _ctx()
+        asyncio.run(meter.update_registers(ctx, _phases(voltage_v=6351.0)))
+        assert _decode_u32(*_read(ctx, 4, REG_VOLTAGE_A, 2)) == 635100
 
 
 # ===================================================================== #
-#  Server context structure                                               #
+#  Energy                                                                  #
+# ===================================================================== #
+
+class TestEnergy:
+    def test_energy_stamped_at_end_of_interval(self):
+        """MB-7: the register at t holds the energy up to t, not up to t+15 min."""
+        ctx, meter = _ctx()
+        ph = _phases(p_kw=10.0)          # 30 kW total
+        asyncio.run(meter.update_registers(ctx, ph, interval_hours=0.25, t_sim="2024-01-01 00:00"))
+        assert _decode_u64(_read(ctx, 4, REG_ENERGY, 4)) == 0
+        asyncio.run(meter.update_registers(ctx, ph, interval_hours=0.25, t_sim="2024-01-01 00:15"))
+        assert _decode_u64(_read(ctx, 4, REG_ENERGY, 4)) == 7500     # 30 kW x 0.25 h
+
+    def test_energy_monotonic_and_import_only(self):
+        """B6 — never decreases; export (P < 0) does not reduce import."""
+        ctx, meter = _ctx()
+        prev = -1
+        for kw in [5.0, 0.0, -10.0, 3.0, 0.0, 7.0]:
+            asyncio.run(meter.update_registers(ctx, _phases(p_kw=kw), interval_hours=0.25))
+            e = _decode_u64(_read(ctx, 4, REG_ENERGY, 4))
+            assert e >= prev
+            prev = e
+
+    def test_one_year_at_largest_dt_no_saturation(self):
+        """2E: 630 kVA (largest DT, S_max) at unity PF for all of 2024."""
+        ctx, meter = _ctx()
+        p_phase = 630.0 / 3
+        ph = {p: PhaseReading(voltage_v=250.0, angle_deg=a, p_kw=p_phase)
+              for p, a in (("a", 0.0), ("b", -120.0), ("c", 120.0))}
+        steps = 366 * 96
+
+        async def run_year():
+            for _ in range(steps + 1):          # +1: stamp the end of the last interval
+                await meter.update_registers(ctx, ph, interval_hours=0.25)
+
+        asyncio.run(run_year())
+        expected = 630_000 * 0.25 * steps   # Wh
+        assert expected > 0xFFFFFFFF
+        assert _decode_u64(_read(ctx, 4, REG_ENERGY, 4)) == round(expected)
+
+
+# ===================================================================== #
+#  Events                                                                  #
+# ===================================================================== #
+
+class TestEvents:
+    def test_event_record_then_counter(self):
+        ctx, meter = _ctx()
+        n = 200
+        v = np.tile([6000.0, 3000.0, 6100.0], (n, 1))
+        i = np.tile([120.0, 2400.0, 130.0], (n, 1))
+        rec = EventRecord(event_id=7, t_start="2024-03-01 10:00:00.250",
+                          sample_interval_ms=10, voltage_v=v, current_a=i,
+                          phases="abc", v_base_ln_v=6350.85)
+        asyncio.run(meter.write_event(ctx, rec))
+        hdr = _read(ctx, 4, EVENT_HEADER, 12)
+        assert _decode_u32(hdr[0], hdr[1]) == 7
+        assert _decode_u32(hdr[2], hdr[3]) == _sim_time_seconds("2024-03-01 10:00:00")
+        assert hdr[4:8] == [250, 10, n, 7]
+        assert _decode_u32(*_read(ctx, 4, REG_EVENT_COUNTER, 2)) == 1
+        first = _read(ctx, 4, ms.EVENT_SAMPLES, 6)
+        assert first[0] == round(6000 / 6350.85 * 1e4)
+        scale_ma = _decode_u32(hdr[10], hdr[11])
+        assert first[4] * scale_ma / 1000 == pytest.approx(2400.0, abs=scale_ma / 1000)
+
+
+# ===================================================================== #
+#  Server context and Modbus client                                        #
 # ===================================================================== #
 
 class TestServerContext:
     def test_has_all_units(self):
-        devices_list, devices_dict, meters = build_server_context()
-        for unit_id in devices_dict:
-            assert unit_id in meters
-
-    def test_unit_count(self):
-        devices_list, devices_dict, meters = build_server_context()
-        assert len(meters) == len(devices_dict)
-        assert len(meters) >= 8  # at least one per IEEE-13 load bus
+        _, devices_dict, meters = build_server_context()
+        assert set(devices_dict) == set(meters)
+        assert len(meters) >= 9
 
 
-# ===================================================================== #
-#  Modbus client integration test (B1)                                    #
-# ===================================================================== #
-
-def _find_free_port() -> int:
-    """Find an available TCP port on localhost."""
+def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
 
 
-class TestModbusClientIntegration:
-    """B1 — start server, write known values, read back via pymodbus client."""
+class TestModbusClient:
+    """B1 and the read-only energy register, through a real TCP server."""
 
-    def test_client_reads_voltage(self):
-        """Start a real Modbus TCP server, inject known voltage, read it back."""
-        port = _find_free_port()
-
-        # Build context and write known voltage before starting server
-        devices_list, devices_dict, meters = build_server_context()
+    @pytest.fixture
+    def served(self):
+        from pymodbus.server import ModbusTcpServer
         from pymodbus.simulator.simcore import SimCore
-        server_ctx = SimCore(devices_list)
-        meter = meters[1]
 
-        target_voltage_a = 6351.0   # V
-        asyncio.run(meter.update_registers(
-            server_ctx,
-            voltage_a=target_voltage_a,
-            voltage_b=6300.0,
-            voltage_c=6400.0,
-            power_a_kw=5.0,
-            interval_hours=0.25,
-        ))
+        port = _free_port()
+        devices, _, meters = build_server_context(ONE_METER)
+        ctx = SimCore(devices)
+        asyncio.run(meters[1].update_registers(
+            ctx, _phases(voltage_v=6351.0, p_kw=-50.0, q_kvar=-120.0),
+            interval_hours=0.25, t_sim="2024-01-01 00:15"))
+        started = threading.Event()
 
-        # Run the server in a background thread using serve_forever(background=True)
-        server_started = threading.Event()
-        server_holder: list = []
-
-        async def _run_server():
-            from pymodbus.server import ModbusTcpServer
-            # Pass our pre-filled context
-            server = ModbusTcpServer(context=devices_list, address=("127.0.0.1", port))
-            # Manually inject our updated SimCore context so it has the modified values!
-            server.context = server_ctx
-            server_holder.append(server)
-            server_started.set()
+        async def run():
+            server = ModbusTcpServer(context=devices, address=("127.0.0.1", port))
+            server.context = ctx
+            started.set()
             await server.serve_forever()
 
-        def _thread_target():
-            asyncio.run(_run_server())
+        threading.Thread(target=lambda: asyncio.run(run()), daemon=True).start()
+        started.wait(5.0)
+        time.sleep(0.3)
+        from pymodbus.client import ModbusTcpClient
+        client = ModbusTcpClient(host="127.0.0.1", port=port)
+        assert client.connect()
+        yield client
+        client.close()
 
-        t = threading.Thread(target=_thread_target, daemon=True)
-        t.start()
-        server_started.wait(timeout=5.0)
-        time.sleep(0.3)   # small extra wait for OS to bind
+    def test_client_reads_values(self, served):
+        r = served.read_input_registers(address=0, count=POLL_REGISTERS, device_id=1)
+        assert not r.isError()
+        assert _decode_u32(r.registers[0], r.registers[1]) == 635100
+        assert _decode_s32(r.registers[REG_POWER], r.registers[REG_POWER + 1]) == -50_000
+        assert _decode_u32(*r.registers[REG_SIM_TIME:REG_SIM_TIME + 2]) == \
+            _sim_time_seconds("2024-01-01 00:15")
 
-        try:
-            from pymodbus.client import ModbusTcpClient
-            client = ModbusTcpClient(host="127.0.0.1", port=port)
-            connected = client.connect()
-            assert connected, "Failed to connect to Modbus server"
-
-            # Read input registers (fc=4) for unit_id=1, address=0 (base 0!), count=2
-            result = client.read_input_registers(address=0, count=2, device_id=1)
-            assert not result.isError(), (
-                f"Modbus read error: {result}"
-            )
-
-            decoded = _decode_u32(result.registers[0], result.registers[1])
-            expected = int(round(target_voltage_a * 100))
-            # Allow ±1 for rounding
-            assert abs(decoded - expected) <= 1, (
-                f"Client read {decoded}, expected {expected} "
-                f"(tolerance ±1 for register quantization)"
-            )
-            client.close()
-        except Exception as exc:
-            pytest.skip(f"Modbus client test skipped: {exc}")
-
-
-class TestSimTimeRegister:
-    """Layer 2 contract: IR 28–29 hold the simulated time (Unix seconds)."""
-
-    def test_sim_time_written_with_frame(self):
-        from pymodbus.simulator.simcore import SimCore
-        from src.data_source.meter_server import REG_SIM_TIME, _sim_time_seconds
-
-        devices_list, _, meters = build_server_context()
-        ctx = SimCore(devices_list)
-
-        async def go():
-            before = await ctx.async_getValues(1, 4, REG_SIM_TIME, 2)
-            await meters[1].update_registers(ctx, voltage_a=6351.0, power_a_kw=4.0,
-                                             t_sim="2024-01-01 00:15:00")
-            after = await ctx.async_getValues(1, 4, REG_SIM_TIME, 2)
-            energy = await ctx.async_getValues(1, 3, 0, 2)
-            return before, after, energy
-
-        before, after, energy = asyncio.run(go())
-        assert _decode_u32(*before) == 0
-        assert _decode_u32(*after) == _sim_time_seconds("2024-01-01 00:15:00") == 1704068100
-        assert _decode_u32(*energy) == 1000
+    def test_write_to_energy_register_rejected(self, served):
+        """MB-2: fc6 / fc16 at the energy address get a Modbus exception."""
+        for resp in (served.write_register(REG_ENERGY, 1, device_id=1),
+                     served.write_registers(REG_ENERGY, [1, 2, 3, 4], device_id=1)):
+            assert resp.isError()
+            assert resp.exception_code == 2      # illegal data address
+        r = served.read_input_registers(address=REG_ENERGY, count=4, device_id=1)
+        assert _decode_u64(r.registers) == 0     # unchanged (first stamp)

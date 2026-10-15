@@ -23,6 +23,7 @@ from src.data_source.feeder_model import (
     build_ieee13_network,
     get_load_points,
     inject_fault,
+    meter_points,
     run_snapshot,
     run_timeseries,
 )
@@ -46,13 +47,14 @@ class TestNetworkConstruction:
     """Verify the IEEE 13-bus network is built correctly."""
 
     def test_bus_count(self, net):
-        # 13 IEEE nodes + RG60 + distributed-load bus 670 + 115 kV sourcebus
-        assert len(net.bus) == 16
+        # 13 IEEE nodes + RG60 + distributed-load bus 670 + 66 kV sourcebus,
+        # + 12 DT LV buses (13 DTs; dt_634_1 uses node 634 as its LV bus)
+        assert len(net.bus) == 16 + 12
 
     def test_bus_650_is_11kv(self, net):
         vn = net.bus.set_index("name").vn_kv
         assert vn["650"] == config.FEEDER_VOLTAGE_KV
-        assert vn["sourcebus"] == 115.0
+        assert vn["sourcebus"] == 66.0   # 66/11 kV substation (brief v2 §2X, CP1)
         assert net.ext_grid.bus.iloc[0] == net.bus.index[net.bus.name == "sourcebus"][0]
 
     def test_total_load(self, net):
@@ -158,9 +160,11 @@ class TestRunSnapshot:
         first, second = lp["load_id"].iloc[0], lp["load_id"].iloc[1]
         run_snapshot(net, load_scaling={first: 0.5, second: 0.5})
         run_snapshot(net, load_scaling={first: 0.7})
-        scaling = net.asymmetric_load.set_index("name")["scaling"]
-        assert scaling[first] == 0.7
-        assert scaling[second] == 1.0
+        # a load_id scales all of its DT loads (Stage B8)
+        d = net["dts"]
+        scaling = net.asymmetric_load["scaling"]
+        assert (scaling[d.load[d.load_id == first]] == 0.7).all()
+        assert (scaling[d.load[d.load_id == second]] == 1.0).all()
 
     def test_snapshot_unknown_load_id_raises(self, net):
         with pytest.raises(KeyError):
@@ -227,7 +231,8 @@ class TestRunTimeseries:
             assert col in df.columns, f"Missing column: {col}"
 
     def test_timeseries_load_ids_match_get_load_points(self, net):
-        """A5 — load_ids in timeseries output ⊆ get_load_points ids."""
+        """A5 — every load point is in the output; the other ids are the
+        feeder head and the DT meters (meter_points)."""
         lp = get_load_points(net)
         df = run_timeseries(
             start="2024-01-01 00:00",
@@ -236,10 +241,8 @@ class TestRunTimeseries:
             net=net,
         )
         ts_ids = set(df["load_id"].unique())
-        lp_ids = set(lp["load_id"].unique())
-        assert ts_ids.issubset(lp_ids), (
-            f"Timeseries load_ids not in get_load_points: {ts_ids - lp_ids}"
-        )
+        assert set(lp["load_id"]) <= ts_ids
+        assert ts_ids == set(meter_points(net)["load_id"])
 
     def test_timeseries_timestamps_naive(self, net):
         """Contract: timestamps must be timezone-naive."""
@@ -269,10 +272,10 @@ class TestRunTimeseries:
         assert len(df) > 0
 
     def test_timeseries_no_nan_values(self, net):
-        """Every load point (incl. 634, fed only by XFM-1) gets real values."""
+        """Every meter point (incl. 634, behind its DT) gets real values."""
         df = run_timeseries(start="2024-01-01 00:00", end="2024-01-01 00:15",
                             net=net)
-        assert set(df["load_id"]) == set(get_load_points(net)["load_id"])
+        assert set(df["load_id"]) == set(meter_points(net)["load_id"])
         assert not df.isna().any().any()
         assert (df.loc[df.bus == "634", "current_a"] > 0).all()
 

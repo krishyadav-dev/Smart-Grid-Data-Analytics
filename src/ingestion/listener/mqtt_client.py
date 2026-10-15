@@ -67,6 +67,7 @@ class MqttIngest:
                     backoff.reset()
                     await client.subscribe(topics.telemetry_filter(s.feeder_id), qos=1)
                     await client.subscribe(topics.status_filter(s.feeder_id), qos=1)
+                    await client.subscribe(topics.event_filter(s.feeder_id), qos=1)
                     self.service.broker_connected = True
                     logger.info("connected to %s:%d (persistent_session=%s)",
                                 s.mqtt_host, s.mqtt_port, s.mqtt_persistent_session)

@@ -1,0 +1,344 @@
+{
+  "week": [
+    "2024-03-11 00:00",
+    "2024-03-17 23:45"
+  ],
+  "speed": 900.0,
+  "poll_interval_s": 0.05,
+  "timed_out": false,
+  "missing_per_meter": {},
+  "prep_s": 26.1,
+  "wall_s": 697.2,
+  "meters": 23,
+  "steps": 672,
+  "expected_messages": 15456,
+  "validated_unique": 15456,
+  "missing": 0,
+  "missing_list": [],
+  "duplicates": 0,
+  "flags": {},
+  "listener_stats": {
+    "received": 15709,
+    "accepted": 15456,
+    "rejected": 0,
+    "dlq_published": 0,
+    "steps": {
+      "parse": 15456,
+      "schema_version": 15456,
+      "model": 15456,
+      "known_meter": 15456,
+      "duplicate": 15456,
+      "ordering_staleness": 15456,
+      "plausibility": 15456,
+      "energy": 15456,
+      "accepted": 15456
+    },
+    "rejects": {
+      "MALFORMED_JSON": 0,
+      "SCHEMA_INVALID": 0,
+      "UNSUPPORTED_SCHEMA_VERSION": 0,
+      "UNKNOWN_METER": 0,
+      "DUPLICATE": 0,
+      "OUT_OF_ORDER": 0
+    },
+    "flags": {
+      "GAP": 0,
+      "NO_SIM_TIME": 0,
+      "OUT_OF_ORDER": 0,
+      "STALE": 0,
+      "ENERGY_DECREASE": 0,
+      "SUSPECT_RANGE": 0,
+      "PARTIAL_READ": 0,
+      "TORN_READ": 0
+    },
+    "per_meter": {
+      "m01": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m02": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m03": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m04": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m05": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m06": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m07": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m08": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m09": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m10": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m11": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m12": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m13": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m14": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m15": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m16": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m17": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m18": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m19": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m20": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m21": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m22": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      },
+      "m23": {
+        "accepted_total": 672,
+        "rate_per_s": 0.9166666666666666
+      }
+    },
+    "latency_ms": {
+      "poll_to_pub": {
+        "n": 10000,
+        "p50": 19.785,
+        "p95": 77.197,
+        "p99": 115.37,
+        "max": 239.393
+      },
+      "pub_to_recv": {
+        "n": 10000,
+        "p50": 4.784,
+        "p95": 12.098,
+        "p99": 16.936,
+        "max": 30.395
+      },
+      "total": {
+        "n": 10000,
+        "p50": 27.484,
+        "p95": 82.072,
+        "p99": 120.414,
+        "max": 241.377
+      }
+    },
+    "latency_budget_ms": null,
+    "hub": {
+      "published": 15709,
+      "subscribers": []
+    },
+    "status_parse_errors": 0,
+    "events": {
+      "accepted": 253,
+      "samples": 51428
+    }
+  },
+  "latency_total_ms": {
+    "p50": 33.21,
+    "p95": 113.595,
+    "max": 358.507
+  },
+  "value_check": {
+    "bad": 0,
+    "worst_abs_error": {
+      "voltage_v": 0.004999687538912667,
+      "current_a": 0.0004999980695004069,
+      "active_power_kw": 0.0004999933373621701,
+      "reactive_power_kvar": 0.0004999898419129067
+    },
+    "tolerance": {
+      "voltage_v": 0.0050000010000000004,
+      "load_current_a": 0.000500001,
+      "active_power_kw": 0.000500001,
+      "reactive_power_kvar": 0.000500001
+    }
+  },
+  "events": [
+    {
+      "event_id": 14,
+      "step": "2024-03-17 02:30:00",
+      "bus": "684",
+      "ftype": "LLG",
+      "phases": "bc",
+      "rf_ohm": 5.0,
+      "t_clear_s": 0.4358177139916376,
+      "element": "earth_fault",
+      "n_samples": 194
+    },
+    {
+      "event_id": 37,
+      "step": "2024-03-13 19:15:00",
+      "bus": "645",
+      "ftype": "LLG",
+      "phases": "bc",
+      "rf_ohm": 20.0,
+      "t_clear_s": 0.456012990508099,
+      "element": "phase",
+      "n_samples": 196
+    },
+    {
+      "event_id": 39,
+      "step": "2024-03-12 13:45:00",
+      "bus": "646",
+      "ftype": "SLG",
+      "phases": "a",
+      "rf_ohm": 50.0,
+      "t_clear_s": 1.1222735372329418,
+      "element": "earth_fault",
+      "n_samples": 263
+    },
+    {
+      "event_id": 43,
+      "step": "2024-03-14 19:30:00",
+      "bus": "675",
+      "ftype": "LL",
+      "phases": "bc",
+      "rf_ohm": 1.9552136051999822,
+      "t_clear_s": 0.541817516635482,
+      "element": "phase",
+      "n_samples": 205
+    },
+    {
+      "event_id": 52,
+      "step": "2024-03-13 08:00:00",
+      "bus": "675",
+      "ftype": "SLG",
+      "phases": "a",
+      "rf_ohm": 5.0,
+      "t_clear_s": 0.3604060333663131,
+      "element": "earth_fault",
+      "n_samples": 187
+    },
+    {
+      "event_id": 94,
+      "step": "2024-03-12 09:45:00",
+      "bus": "646",
+      "ftype": "LL",
+      "phases": "ca",
+      "rf_ohm": 1.6025237802073846,
+      "t_clear_s": 0.5152034139728339,
+      "element": "phase",
+      "n_samples": 202
+    },
+    {
+      "event_id": 97,
+      "step": "2024-03-11 20:00:00",
+      "bus": "646",
+      "ftype": "3PH",
+      "phases": "abc",
+      "rf_ohm": 1.4969445589338957,
+      "t_clear_s": 0.48960540860707585,
+      "element": "phase",
+      "n_samples": 199
+    },
+    {
+      "event_id": 159,
+      "step": "2024-03-14 22:15:00",
+      "bus": "611",
+      "ftype": "LL",
+      "phases": "ca",
+      "rf_ohm": 2.220340509406612,
+      "t_clear_s": 0.583717076493329,
+      "element": "phase",
+      "n_samples": 209
+    },
+    {
+      "event_id": 160,
+      "step": "2024-03-12 21:30:00",
+      "bus": "670",
+      "ftype": "3PH",
+      "phases": "abc",
+      "rf_ohm": 1.115757271788097,
+      "t_clear_s": 0.44748998313512317,
+      "element": "phase",
+      "n_samples": 195
+    },
+    {
+      "event_id": 161,
+      "step": "2024-03-13 15:45:00",
+      "bus": "611",
+      "ftype": "LLG",
+      "phases": "ab",
+      "rf_ohm": 5.0,
+      "t_clear_s": 0.4468265041245807,
+      "element": "earth_fault",
+      "n_samples": 195
+    },
+    {
+      "event_id": 185,
+      "step": "2024-03-13 11:00:00",
+      "bus": "670",
+      "ftype": "LLG",
+      "phases": "ab",
+      "rf_ohm": 5.0,
+      "t_clear_s": 0.40074999914971576,
+      "element": "earth_fault",
+      "n_samples": 191
+    }
+  ],
+  "bursts": {
+    "expected": 253,
+    "received": 253,
+    "ok": 253,
+    "bad": [],
+    "samples": 51428,
+    "expected_samples": 51428,
+    "gateway_reads": {
+      "n": 253,
+      "reads_per_burst": [
+        13,
+        14,
+        17
+      ],
+      "wall_s_median": 0.109,
+      "wall_s_max": 0.221
+    }
+  },
+  "passed": true
+}

@@ -1,17 +1,39 @@
-# Meter inventory.  Checked against feeder_model.get_load_points() and the live
+# Meter inventory.  Checked against feeder_model.meter_points() and the live
 # server by tests/ingestion/test_config_contract.py.
-# unit_id follows meter_server._load_id_unit_map() (row order of get_load_points).
-# v_base_ln_v = bus vn_kv * 1000 / sqrt(3) from feeder_model.build_network("B") (Stage B).
-# i_rated_a: Layer 1 has no rating data -> null.
-# role: Layer 1 only serves load-point (consumer) meters; no DT / feeder-head meter exists.
+# unit_id follows meter_server._load_id_unit_map() (order of meter_points()):
+#   1-9 load points (bus_virtual), 10 feeder head, 11-23 DT meters (Part 2C.3, 13 DTs after brief v2 X.3).
+# v_base_ln_v = vn_kv * 1000 / sqrt(3) of the bus the meter reads, from
+#   feeder_model.build_network("B"): DT LV buses 0.433 kV (IS 1180 Cl. 6.5/7.5),
+#   feeder head 11 kV.  A bus_virtual meter reads its DTs' LV side.
+# i_rated_a: DT meters = DT rated LV current S_r / (sqrt(3) x 433 V) (IS 1180
+#   rating); null where Layer 1 has no rating (bus_virtual, feeder head).
+# role: bus_virtual = sum of the bus's DT meters (with their errors); no meter error
+#   of its own; not a physical meter and excluded from meter counts and accuracy
+#   claims; kept for Layer 2 compatibility (schema 2.0).  feeder_head and dt are
+#   physical meters, class 0.5S (CEA Metering Regulations, 2019 amendment).
+#   Consumer meters (class 1.0) are not polled; they go to the AMI export.
 feeder_id: ieee13_11kv
 meters:
-  - {meter_id: m01, unit_id: 1, load_id: load_634_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 277.13,  i_rated_a: null}
-  - {meter_id: m02, unit_id: 2, load_id: load_645_b,   role: consumer, phases_present: [b],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m03, unit_id: 3, load_id: load_646_b,   role: consumer, phases_present: [b],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m04, unit_id: 4, load_id: load_652_a,   role: consumer, phases_present: [a],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m05, unit_id: 5, load_id: load_671_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m06, unit_id: 6, load_id: load_675_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m07, unit_id: 7, load_id: load_692_c,   role: consumer, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m08, unit_id: 8, load_id: load_611_c,   role: consumer, phases_present: [c],       v_base_ln_v: 6350.85, i_rated_a: null}
-  - {meter_id: m09, unit_id: 9, load_id: load_670_abc, role: consumer, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m01, unit_id: 1,  load_id: load_634_abc,    role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: null}
+  - {meter_id: m02, unit_id: 2,  load_id: load_645_b,      role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: null}
+  - {meter_id: m03, unit_id: 3,  load_id: load_646_b,      role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: null}
+  - {meter_id: m04, unit_id: 4,  load_id: load_652_a,      role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: null}
+  - {meter_id: m05, unit_id: 5,  load_id: load_671_abc,    role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: null}
+  - {meter_id: m06, unit_id: 6,  load_id: load_675_abc,    role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: null}
+  - {meter_id: m07, unit_id: 7,  load_id: load_692_c,      role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: null}
+  - {meter_id: m08, unit_id: 8,  load_id: load_611_c,      role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: null}
+  - {meter_id: m09, unit_id: 9,  load_id: load_670_abc,    role: bus_virtual, phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: null}
+  - {meter_id: m10, unit_id: 10, load_id: feeder_head_650, role: feeder_head, phases_present: [a, b, c], v_base_ln_v: 6350.85, i_rated_a: null}
+  - {meter_id: m11, unit_id: 11, load_id: dt_634_1,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 666.69}
+  - {meter_id: m12, unit_id: 12, load_id: dt_645_1,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 333.34}
+  - {meter_id: m13, unit_id: 13, load_id: dt_646_1,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 420.01}
+  - {meter_id: m14, unit_id: 14, load_id: dt_652_1,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 213.34}
+  - {meter_id: m15, unit_id: 15, load_id: dt_671_1,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 666.69}
+  - {meter_id: m16, unit_id: 16, load_id: dt_671_2,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 666.69}
+  - {meter_id: m17, unit_id: 17, load_id: dt_671_3,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 666.69}
+  - {meter_id: m18, unit_id: 18, load_id: dt_675_1,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 840.02}
+  - {meter_id: m19, unit_id: 19, load_id: dt_675_2,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 840.02}
+  - {meter_id: m20, unit_id: 20, load_id: dt_675_3,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 840.02}
+  - {meter_id: m21, unit_id: 21, load_id: dt_692_1,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 333.34}
+  - {meter_id: m22, unit_id: 22, load_id: dt_611_1,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 266.67}
+  - {meter_id: m23, unit_id: 23, load_id: dt_670_1,        role: dt,          phases_present: [a, b, c], v_base_ln_v: 249.99,  i_rated_a: 666.69}
