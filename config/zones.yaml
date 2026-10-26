@@ -1,0 +1,41 @@
+# Fault-location zones and the 11 kV feeder tree (Layer 3 P4, docs/Layer3_plan.md §1
+# Step 7).  Configuration, not labels: the fault engine reads it (zone location)
+# and so does src/analytics/evaluate.py (each fault's true bus through the same
+# table).  No DT names here: a DT's zone comes from its bus via the network's DT
+# table (src/analytics/zones.py).
+#
+# feeder_tree: parent of every bus, rooted at 650 (Sub_XFMR LV, the feeder head).
+#   650 -> 632 is the regulator stand-in switch 650-RG60 plus Line_RG60_632 (RG60
+#   merges into 650); 633 -> 634 is dt_634_1 (634 is its 0.433 kV LV bus, the IEEE
+#   XFM-1 position); 671 -> 692 is the zero-impedance switch of the IEEE 13 data
+#   (ieee13_data.py); 632 -> 670 -> 671 is line 632-671 split at the lumped
+#   distributed load (feeder_model).
+feeder_tree:
+  "632": "650"
+  "633": "632"
+  "645": "632"
+  "670": "632"
+  "634": "633"
+  "646": "645"
+  "671": "670"
+  "680": "671"
+  "684": "671"
+  "692": "671"
+  "611": "684"
+  "652": "684"
+  "675": "692"
+zones:
+  - {id: A, name: "main line 650-632", buses: ["632", "650"],
+     note: "650 is the feeder head (outside the relay zone); a fault at 632 dips all 13 DTs about equally"}
+  - {id: B, name: "633 branch", buses: ["633", "634"],
+     note: "634 is the LV bus of dt_634_1"}
+  - {id: C, name: "645-646 branch", buses: ["645", "646"],
+     note: "bus-level answer 645 vs 646 is secondary"}
+  - {id: D, name: "line to 670", buses: ["670"],
+     note: "deepest dip at dt_670_1 and every DT beyond 671"}
+  - {id: E, name: "671, the 680 stub and 692", buses: ["671", "680", "692"],
+     note: "680 has no DT; 671-692 is a zero-impedance switch in the IEEE 13 data (ieee13_data.py), so these cannot be told apart (F8)"}
+  - {id: F, name: "692-675 line", buses: ["675"],
+     note: "deepest dip at the 675 DTs"}
+  - {id: G, name: "684 branch", buses: ["684", "611", "652"],
+     note: "bus-level answer 684 vs 611 vs 652 is secondary"}

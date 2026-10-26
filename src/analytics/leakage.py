@@ -1,7 +1,8 @@
-"""Layer 3 leakage-guard list (plan §0 rule 1 and §4).
+"""Layer 3 leakage-guard list (plan §0 rule 1 and §4; Stage 1 run sheet rules 1-2).
 
 Ground truth that only ``src/analytics/evaluate.py`` may read.  The guard
-test (plan §4) fails if any engine module references one of these names.
+tests (``tests/analytics/test_leakage.py``) fail if any engine module
+references one of these names.
 """
 
 # Label files (by file name, wherever they live)
@@ -11,6 +12,8 @@ LABEL_FILES = (
     "households.parquet",               # results/year_2024: thief, attack, onset, severity
     "household_daily_labels.parquet",   # results/year_2024: would-have-reported, theft, offline (P3, N5)
     "fault_events.parquet",             # results/faults_2024: fault type, bus, Rf, clearing
+    "meter_classes.parquet",            # results/faults_2024: CP4 classification per event and meter
+    "summary.json",                     # results/faults_2024 etc.: the engine reads config/relay.yaml instead
 )
 
 # Label columns (by column name)
@@ -21,6 +24,15 @@ LABEL_COLUMNS = (
     "theft_kwh",                        # P3 (N5) theft truth
     "offline_kwh",                      # P3 (N5) offline category
     "attack_active",                    # household_daily
+    "fault_time",                       # fault_events: inception (run sheet rule 2)
+    "t_clear_s",                        # fault_events: clearing time (rule 2)
+    "offset_s",                         # fault_events: offset inside the step (rule 2)
+    "rf_ohm",                           # fault_events: fault resistance
+    "rf_model",                         # fault_events: fixed / arc
 )
 
-# The P2 unbalance-scenario labels are added here when Stage 1c writes them.
+# The event record's event_id is a label (run sheet rule 1): engines must not
+# use it to group, merge or match bursts; only evaluate.py matches on it.
+EVENT_ID_FIELD = "event_id"
+
+# The P2 unbalance-scenario labels are added here when Step B writes them.
