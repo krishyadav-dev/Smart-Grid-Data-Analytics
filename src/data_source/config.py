@@ -60,6 +60,8 @@ RANDOM_SEED = 42                  # Reproducible random number generation
 MASTER_SEED = RANDOM_SEED         # Phase 2X: every random stream derives from it
 SIMULATION_YEAR = 2024            # brief v2 X.2 (leap year, IST)
 YEAR_CACHE_DIR = PROJECT_ROOT / "results" / "year_2024"
+# Pinned households per bus (Layer 3 P3, user decision 2026-10-27; see the file's comment)
+HOUSEHOLD_COUNTS_YAML = PROJECT_ROOT / "config" / "household_counts.yaml"
 
 # Prayas eMARC household load data (brief v2 X.3.3 item 1; git-ignored, never committed)
 EMARC_DIR = PROJECT_ROOT / "data" / "emarc"

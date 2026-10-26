@@ -194,8 +194,10 @@ def test_household_counts_and_split(pop):
     assert dp["p99_9_kw"] <= dp["pool_avg_peak_kw"]
     assert pop.s_design > 1.0                                     # peak above the mean
     bus_p = {b: float(v[0].sum()) for b, v in H.lv_phase_loads().items()}
+    # Layer 3 P3: N pinned in config/household_counts.yaml, within 1 of the rule
+    assert pop.counts == H.pinned_household_counts()
     for bus, n in pop.counts.items():
-        assert n == round(bus_p[bus] / (pop.h_bar_kw * pop.s_design)), bus
+        assert abs(n - round(bus_p[bus] / (pop.h_bar_kw * pop.s_design))) <= 1, bus
         assert int((hh.bus == bus).sum()) == n
     print(f"\nh_bar {pop.h_bar_kw:.4f} kW, s_design {pop.s_design:.4f} (peak {dp['timestamp']}, "
           f"P99.9 {dp['p99_9_kw']:.4f} kW), N {pop.counts} (total {info['households']}); "
@@ -350,6 +352,43 @@ def test_reported_le_true_every_thief_every_day(pop):
         a = th.onset_day[i]
         pre = online[j, :a]
         assert np.allclose(r[j, :a][pre], t[j, :a][pre], rtol=1e-5)
+
+
+def test_would_have_reported_label_leaves_engine_inputs_unchanged(pop):
+    """Layer 3 P3 (N5).  The would-have-reported label only adds: the reported
+    daily kWh (household_daily reported / metered) and the 15-min series the AMI
+    export is built from are what they were; online the label equals reported;
+    offline it is the attacked value the meter would have shown.  Theft truth
+    and the offline category split the true energy without double counting."""
+    hh, th = pop.hh, pop.theft
+    rep = M.reported_daily_kwh(hh, th)
+    whr = M.would_have_reported_daily_kwh(hh, th)
+    off = hh.offline
+    assert np.array_equal(np.isnan(rep), off)                 # reported: NaN exactly when offline
+    assert np.array_equal(rep[~off], whr[~off])               # online: label == reported (bitwise)
+    assert np.isfinite(whr).all()
+    # AMI export source: the 15-min reported series sums to the reported daily kWh
+    for d in range(len(hh.days)):
+        day = M.reported_kw_day(hh, th, d).sum(axis=1) * S.STEP_H
+        assert np.allclose(day, rep[:, d], rtol=1e-6, atol=1e-9, equal_nan=True)
+    # household_daily keeps its columns; the labels live elsewhere
+    t = M.daily_table(hh, th, pop.gain_household)
+    assert list(t.columns) == ["household", "date", "true_kwh", "reported_kwh", "metered_kwh",
+                               "attack_active"]
+    lab = M.daily_labels(hh, th)
+    assert np.array_equal(lab.household.to_numpy(), t.household.to_numpy())
+    assert np.array_equal(lab.date.to_numpy(), t.date.to_numpy())
+    true = hh.true_kwh.astype(float).ravel()
+    online_rep = np.where(off.ravel(), 0.0, whr.ravel())
+    # exact on attack-active days (theft = true - label); before onset the label is the
+    # thief's float32 15-min series summed, equal to true to float32 rounding (as reported is)
+    assert np.allclose(true, online_rep + lab.offline_kwh + lab.theft_kwh, rtol=2.0 ** -20, atol=1e-6)
+    act = t.attack_active.to_numpy()
+    assert np.allclose(true[act], (whr.ravel() + lab.theft_kwh.to_numpy())[act], rtol=1e-12, atol=1e-12)
+    assert (lab.theft_kwh[~t.attack_active] == 0).all()
+    assert (lab.offline_kwh[~lab.offline] == 0).all()
+    n_off_thief = int(off[th.thief_rows].sum())
+    print(f"\noffline thief-days in the window: {n_off_thief}; offline household-days {int(off.sum())}")
 
 
 def test_severity_matches_definition(pop):

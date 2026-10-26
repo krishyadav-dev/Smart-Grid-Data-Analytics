@@ -5,8 +5,10 @@ Households behind the distribution transformers (Part 2C.2).
   s_design)).  The IEEE spot loads are **design peak** loads; h_bar is the
   mean household demand (kW) of all eligible SGCC candidates (:mod:`sgcc`)
   and s_design = (yearly maximum of the pool-average 15-min demand over the
-  mapped 2024 calendar) / h_bar (:func:`design_peak`).  N is computed from
-  the data and the shape, never hard-coded.
+  mapped 2024 calendar) / h_bar (:func:`design_peak`).  Since Layer 3 P3 the
+  counts are pinned in ``config/household_counts.yaml`` (the pre-fix values);
+  the rule is still computed and every pinned count must be within 1 of it
+  (:func:`check_pinned_counts`).
 - **Split:** across a bus's DTs in proportion to rating, and across LV phases
   in proportion to :func:`lv_phase_loads` (largest-remainder rounding);
   which household lands in which slot is a seeded permutation.
@@ -89,6 +91,32 @@ def lv_phase_loads() -> dict[str, tuple[np.ndarray, np.ndarray]]:
 def household_counts(bus_p_kw: dict[str, float], h_bar_kw: float, s_design: float) -> dict[str, int]:
     """N_bus = round(P_bus,nominal / (h_bar x s_design))."""
     return {bus: int(round(p / (h_bar_kw * s_design))) for bus, p in bus_p_kw.items()}
+
+
+PINNED_COUNT_MAX_DIFF = 1      # user decision 2026-10-27: pinned N_bus within 1 of the rule
+
+
+def pinned_household_counts(path=None) -> dict[str, int]:
+    """Households per bus pinned in ``config/household_counts.yaml`` (Layer 3 P3)."""
+    import yaml
+    from . import config
+    data = yaml.safe_load(open(path or config.HOUSEHOLD_COUNTS_YAML, encoding="utf-8"))
+    counts = {str(b): int(n) for b, n in data["counts"].items()}
+    if sum(counts.values()) != int(data["total"]):
+        raise ValueError(f"pinned counts sum to {sum(counts.values())}, file says {data['total']}")
+    return counts
+
+
+def check_pinned_counts(pinned: dict[str, int], computed: dict[str, int]) -> dict[str, int]:
+    """Pinned minus computed per bus; raises if a bus is missing or differs by more than 1."""
+    if set(pinned) != set(computed):
+        raise ValueError(f"pinned buses {sorted(pinned)} != computed {sorted(computed)}")
+    diff = {b: pinned[b] - computed[b] for b in computed}
+    bad = {b: d for b, d in diff.items() if abs(d) > PINNED_COUNT_MAX_DIFF}
+    if bad:
+        raise ValueError(f"pinned household counts differ from the rule by more than "
+                         f"{PINNED_COUNT_MAX_DIFF}: {bad}")
+    return diff
 
 
 def largest_remainder(total: int, weights) -> np.ndarray:

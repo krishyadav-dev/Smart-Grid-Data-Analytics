@@ -17,10 +17,11 @@ Networks for Electricity-Theft Detection to Secure Smart Grids", IEEE TII 2018
   set).  The detector split uses 80 : 20.
 
 Detector pools get Eq. (1)-(3) exactly as published.  The feeder pool gets
-the project rule instead (user decision 2026-10-12): isolated single-day gaps
-interpolated as in Eq. (1), Eq. (2) applied, genuine zeros kept, longer gap
-runs left missing (never zero-filled); Eq. (3) is not applied because the
-feeder needs kWh.
+the project rule instead (user decision 2026-10-12): leave-one-out Eq. (2)
+applied, then isolated single-day gaps interpolated from the clipped
+neighbours as in Eq. (1) (order fixed in Layer 3 P3), genuine zeros kept,
+longer gap runs left missing (never zero-filled); Eq. (3) is not applied
+because the feeder needs kWh.
 
 Calendar (user decision 2026-10-12): simulated 2024 day d maps to SGCC day
 2015-01-05 + (d - 2024-01-01).  Both anchors are Mondays, so weekdays line
@@ -182,13 +183,24 @@ def zheng_eq2_loo(x: np.ndarray) -> np.ndarray:
 
 
 def feeder_preprocess(x: np.ndarray) -> np.ndarray:
-    """Feeder pool: interpolate isolated gaps, then leave-one-out Eq. (2)
-    (:func:`zheng_eq2_loo`); longer gaps stay NaN."""
+    """Feeder pool: leave-one-out Eq. (2) (:func:`zheng_eq2_loo`) first, then
+    isolated gaps filled with the mean of their **clipped** neighbours; longer
+    gaps stay NaN.
+
+    Order fixed in Layer 3 P3 (2026-10-27).  The old order filled the gaps
+    first, so a gap next to a meter glitch took a huge value and the two then
+    masked each other in the clip: the masking :func:`zheng_eq2_loo` was meant
+    to remove (13,442 kWh) was only partly removed.  SGCC 2015-01-05 (10,016.7
+    and 13,442.3 kWh) survived as 332 and 442 kWh; clipped first, 18.9 and
+    29.1 kWh.  Which days are isolated gaps is decided on the raw vector, so
+    the offline days are the same in both orders.
+    """
     left, right = _neighbours(x)
     iso = np.isnan(x) & ~np.isnan(left) & ~np.isnan(right)
-    out = x.copy()
-    out[iso] = 0.5 * (left[iso] + right[iso])
-    return zheng_eq2_loo(out)
+    out = zheng_eq2_loo(x)
+    cl, cr = _neighbours(out)
+    out[iso] = 0.5 * (cl[iso] + cr[iso])
+    return out
 
 
 # --------------------------------------------------------------------------
