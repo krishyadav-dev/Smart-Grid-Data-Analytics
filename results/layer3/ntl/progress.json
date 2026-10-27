@@ -35,21 +35,27 @@
       "commit": "c2d7581"
     },
     "E": {
-      "status": "committed (see git log layer3-ntl-E)",
+      "status": "committed",
       "elapsed_s": 1139.4,
-      "suite": "427 passed, 0 failed, 0 skipped"
+      "suite": "427 passed, 0 failed, 0 skipped",
+      "commit": "2a20a56"
     },
     "F": {
-      "status": "run done 15:05-15:18 (SGCC test pool opened 2026-10-27T15:18:23), uncommitted; not to be re-run"
+      "status": "committed (see git log layer3-ntl-F)",
+      "run": "15:05-15:18, test pool opened 2026-10-27T15:18:23, not re-run",
+      "elapsed_s": 776.2,
+      "suite": "439 passed, 0 failed, 0 skipped (612 s)"
     },
     "G": {
       "status": "pending: Checkpoint 2 report"
     }
   },
   "deviations": [
-    "step F ran before D/E (independent of the detector); not re-run",
-    "grid amendment before D froze (user decision; tuning data only)",
-    "interruptions: session usage limit after the L_tech runs; (second interruption if any recorded here)"
+    "step F ran before D and E (independent of the detector); not re-run after the interruption",
+    "(C, gamma) grid extended before D froze (user decision, tuning data only); first-grid AUCs reused (refit check 0.0); h2 pick still on the extended grid's edge, not extended again",
+    "interruption 1: session usage limit after the L_tech runs and the first grid (resumed with the user's instructions)",
+    "interruption 2: none further at the time of commit F",
+    "transformer gate computed from the engine's own NTL_B (dt_ntl_lambda0.parquet) so that D did not depend on step C's scored run"
   ],
-  "next": "restore F files, suite, commit F, then Checkpoint 2 report"
+  "next": "Checkpoint 2 report (step G), then stop"
 }

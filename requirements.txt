@@ -26,3 +26,8 @@ jsonschema==4.26.0
 scikit-learn==1.9.1
 joblib==1.6.0
 threadpoolctl==3.7.0
+
+# --- Layer 3 SGCC check: Zheng Wide & Deep CNN (src/analytics/zheng_cnn.py) ---
+# CUDA 13.0 build (RTX 3050 used for step F); the wheel is on the PyTorch index
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch==2.14.1+cu130

@@ -731,3 +731,46 @@ def by_onset_month(scores: dict[str, pd.Series], q: dict[str, float], labels: pd
         r = r[r.scored]
         out[g] = {int(m): wilson(int(d.hit.sum()), len(d)) for m, d in r.groupby("month")}
     return out
+
+# --------------------------------------------------------------------------
+# SGCC check: Zheng Wide & Deep CNN (run sheet §5)
+# --------------------------------------------------------------------------
+SGCC_TEST_POOL = YEAR_CACHE_DIR / "sgcc_detector_test.parquet"
+# Zheng et al. 2018 Table III, Wide & Deep CNN at an 80 % training ratio
+ZHENG_TABLE_III_80 = {"auc": 0.7815, "map_at_100": 0.9503, "map_at_200": 0.9093}
+
+
+def sgcc_test_flags(path: Path = SGCC_TEST_POOL) -> pd.Series:
+    """CONS_NO -> FLAG of the SGCC test pool (scoring only)."""
+    d = pd.read_parquet(path, columns=["CONS_NO", "FLAG"])
+    return d.set_index("CONS_NO").FLAG.astype(int)
+
+
+def map_at_n(score: np.ndarray, y: np.ndarray, n: int) -> float:
+    """Zheng §V: MAP@N = (1 / r) sum_{i=1..r} P@k_i, k_i the rank of the i-th
+    thief among the top N by score, r the number of thieves in the top N."""
+    order = np.argsort(-np.asarray(score), kind="stable")[:n]
+    hits = np.asarray(y)[order] == 1
+    if not hits.any():
+        return 0.0
+    k = np.flatnonzero(hits) + 1
+    return float(np.mean(np.arange(1, len(k) + 1) / k))
+
+
+def threshold_max_f1(score: np.ndarray, y: np.ndarray) -> float:
+    """Threshold maximising F1 (flag if score >= t); ties: the lowest t."""
+    from sklearn.metrics import precision_recall_curve
+    p, r, t = precision_recall_curve(y, score)
+    f1 = np.where(p[:-1] + r[:-1] > 0, 2 * p[:-1] * r[:-1] / np.maximum(p[:-1] + r[:-1], 1e-300), 0.0)
+    return float(t[int(np.flatnonzero(f1 == f1.max())[0])])
+
+
+def sgcc_metrics(score: pd.Series, flags: pd.Series, threshold: float) -> dict:
+    """AUC, MAP@100 / @200, P / R / F1 at ``threshold`` (Wilson) and the PR curve."""
+    from sklearn.metrics import roc_auc_score
+    s, y = score.align(flags, join="inner")
+    s, y = s.to_numpy(), y.to_numpy()
+    return {"n": int(len(y)), "thieves": int(y.sum()), "auc": float(roc_auc_score(y, s)),
+            "map_at_100": map_at_n(s, y, 100), "map_at_200": map_at_n(s, y, 200),
+            "threshold": threshold, **prf(s >= threshold, y == 1),
+            "pr_curve": pr_curve(pd.Series(s), pd.Series(y.astype(float)))}
