@@ -41,13 +41,19 @@
       "commit": "2a20a56"
     },
     "F": {
-      "status": "committed (see git log layer3-ntl-F)",
+      "status": "committed",
       "run": "15:05-15:18, test pool opened 2026-10-27T15:18:23, not re-run",
       "elapsed_s": 776.2,
-      "suite": "439 passed, 0 failed, 0 skipped (612 s)"
+      "suite": "439 passed, 0 failed, 0 skipped (612 s)",
+      "commit": "654b479"
     },
     "G": {
-      "status": "pending: Checkpoint 2 report"
+      "status": "Checkpoint 2 report delivered; stopped, waiting for the user"
+    },
+    "H": {
+      "status": "committed (see git log layer3-ntl-H)",
+      "label": "post-hoc, after Checkpoint 2",
+      "suite": "439 passed, 0 failed, 0 skipped"
     }
   },
   "deviations": [
@@ -57,5 +63,5 @@
     "interruption 2: none further at the time of commit F",
     "transformer gate computed from the engine's own NTL_B (dt_ntl_lambda0.parquet) so that D did not depend on step C's scored run"
   ],
-  "next": "Checkpoint 2 report (step G), then stop"
+  "next": "wait for the user (do not start Stage 3)"
 }
