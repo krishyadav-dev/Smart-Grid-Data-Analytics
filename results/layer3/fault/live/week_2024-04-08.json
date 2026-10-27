@@ -1,0 +1,58 @@
+{
+  "name": "week_2024-04-08",
+  "start": "2024-04-08 00:00:00",
+  "end": "2024-04-14 23:45:00",
+  "speed": 900.0,
+  "wall_s": 691.3,
+  "timed_out": false,
+  "events_replayed": 11,
+  "faults": 8,
+  "quiet_windows": 3,
+  "bursts_expected": 154,
+  "bursts_received": 154,
+  "telemetry_expected": 9408,
+  "telemetry_received_unique": 9408,
+  "gap_flagged_messages": 0,
+  "gap_steps_total": 0,
+  "gateway_events_missed_log_lines": 0,
+  "subscriber_errors": [],
+  "alarms": 8,
+  "latency_ms": {
+    "n": 8,
+    "p50": 22.121499999999997,
+    "p95": 32.404700000000005,
+    "p99": 33.11534,
+    "max": 33.293000000000006
+  },
+  "alarm_latencies_ms": [
+    9.713,
+    19.364,
+    33.293000000000006,
+    28.093,
+    30.755000000000003,
+    24.878999999999998,
+    13.599,
+    10.161
+  ],
+  "burst_processing_latency_ms": {
+    "n": 154,
+    "p50": 51.4525,
+    "p95": 75.22415,
+    "p99": 77.46332,
+    "max": 78.477
+  },
+  "live_batch": {
+    "events_live": 8,
+    "events_batch": 8,
+    "differences": [],
+    "identical": true
+  },
+  "live_false_alarms": {
+    "engine_events_matching_no_fault": 0,
+    "engine_events_in_quiet_windows": 0,
+    "flat_burst_alerts_matching_no_fault": 0,
+    "flat_stream_alerts": 0,
+    "unbalance_weekly_alarms": 0
+  },
+  "detected_faults_live": 8
+}

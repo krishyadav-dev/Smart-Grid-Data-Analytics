@@ -109,6 +109,7 @@ class EngineSubscriber:
         self.flat_burst: list[int] = []
         self.errors: list[str] = []
         self.n_bursts = 0
+        self.burst_latency_ms: list[float] = []      # t_poll_utc -> burst analysed (every burst)
         self._lock = threading.Lock()
         self.connected = threading.Event()
         self._c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"layer3-engine-{time.time_ns()}",
@@ -132,6 +133,8 @@ class EngineSubscriber:
                 if "/validated_event/" in msg.topic:
                     self.n_bursts += 1
                     self.engine.on_burst(doc)
+                    self.burst_latency_ms.append(
+                        (pd.Timestamp.now(tz="UTC") - pd.Timestamp(doc["t_poll_utc"])).total_seconds() * 1e3)
                     self.flat_burst += self.E.flat_alerts_burst(self.E.burst_from_doc(doc))
                 else:
                     self.tel.append(flatten_doc(doc))
@@ -179,6 +182,11 @@ def replay(start: str, end: str, speed: float, params, events_path: Path, n_burs
     return {"sub": sub, "tel": tel, "wall_s": wall, "timed_out": timed_out, "steps": steps,
             "expected_telemetry": expected,
             "events_missed_in_gateway_log": gw_log.count("missed")}
+
+
+def _pct(x: np.ndarray) -> dict:
+    return {"n": int(len(x)), **({"p50": float(np.percentile(x, 50)), "p95": float(np.percentile(x, 95)),
+                                  "p99": float(np.percentile(x, 99)), "max": float(x.max())} if len(x) else {})}
 
 
 def compare(live_ev: pd.DataFrame, batch_ev: pd.DataFrame) -> dict:
@@ -240,6 +248,9 @@ def run_one(name: str, start: str, end: str, speed: float, params, labels, docs_
                                                    "p95": float(np.percentile(lat, 95)),
                                                    "p99": float(np.percentile(lat, 99)),
                                                    "max": float(lat.max())} if len(lat) else {})},
+           "alarm_latencies_ms": [float(x) for x in lat],
+           "burst_processing_latency_ms": _pct(np.array(sub.burst_latency_ms, float)),
+           "burst_latencies_ms": [float(x) for x in sub.burst_latency_ms],
            "live_batch": cmp_,
            "live_false_alarms": {"engine_events_matching_no_fault": int(len(unmatched)),
                                  "engine_events_in_quiet_windows": int(live_tab.matched.isin(quiet_ids).sum()),
@@ -253,9 +264,54 @@ def run_one(name: str, start: str, end: str, speed: float, params, labels, docs_
     return out
 
 
+def pooled_stats(results: list[dict]) -> dict:
+    pooled = {}
+    for spd in sorted({r["speed"] for r in results}):
+        rs = [r for r in results if r["speed"] == spd]
+        pooled[f"{spd:g}x"] = {
+            "runs": [r["name"] for r in rs],
+            "alarm_latency_ms": _pct(np.array([x for r in rs for x in r["alarm_latencies_ms"]], float)),
+            "burst_processing_latency_ms": (
+                _pct(np.array([x for r in rs for x in r["burst_latencies_ms"]], float))
+                if all("burst_latencies_ms" in r for r in rs) else
+                {"note": "raw per-burst latencies were not stored by these runs; per-run percentiles below",
+                 "per_run": {r["name"]: r["burst_processing_latency_ms"] for r in rs},
+                 "max_p99": max(r["burst_processing_latency_ms"]["p99"] for r in rs)}),
+            "events": sum(r["events_replayed"] for r in rs), "faults": sum(r["faults"] for r in rs),
+            "quiet_windows": sum(r["quiet_windows"] for r in rs),
+            "alarms": sum(r["alarms"] for r in rs), "bursts": sum(r["bursts_received"] for r in rs),
+            "bursts_expected": sum(r["bursts_expected"] for r in rs),
+            "telemetry": sum(r["telemetry_received_unique"] for r in rs),
+            "telemetry_expected": sum(r["telemetry_expected"] for r in rs),
+            "gap_flagged_messages": sum(r["gap_flagged_messages"] for r in rs),
+            "live_false_alarms": {k: sum(r["live_false_alarms"][k] for r in rs)
+                                  for k in rs[0]["live_false_alarms"]},
+            "live_batch_identical": all(r["live_batch"]["identical"] for r in rs),
+            "wall_s": sum(r["wall_s"] for r in rs)}
+    return pooled
+
+
+def build_summary(plan: dict) -> int:
+    """Live summary from the six week files and the 1x file (Step F after the
+    27 Oct interruption: the weeks are not rerun)."""
+    names = [f"week_{w['start']}" for w in plan["weeks"]] + ["one_x"]
+    missing = [n for n in names if not (LIVE / f"{n}.json").exists()]
+    if missing:
+        print(f"missing run files: {missing}", file=sys.stderr)
+        return 1
+    results = [json.loads((LIVE / f"{n}.json").read_text(encoding="utf-8")) for n in names]
+    ok = all(r["live_batch"]["identical"] and not r["timed_out"] and not r["subscriber_errors"] for r in results)
+    out = {"plan": plan, "pooled": pooled_stats(results), "runs": results, "passed": ok,
+           "note": "the six 900x weeks ran on 27 Oct 07:20-08:31; the machine shut down during the 1x window, "
+                   "which was rerun alone, shortened to three steps (user instruction)"}
+    (LIVE / "summary.json").write_text(json.dumps(out, indent=2, default=str), encoding="utf-8")
+    print(json.dumps({"passed": ok, "pooled": out["pooled"]}, indent=2, default=str))
+    return 0 if ok else 1
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["plan", "run", "check"])
+    ap.add_argument("cmd", choices=["plan", "run", "check", "one_x", "summary"])
     ap.add_argument("--start", help="check: window start (tuning-only mechanics check)")
     ap.add_argument("--end")
     ap.add_argument("--speed", type=float, default=900.0)
@@ -264,6 +320,8 @@ def main(argv=None) -> int:
     warnings.simplefilter("ignore", FutureWarning)
     LIVE.mkdir(parents=True, exist_ok=True)
     plan = plan_weeks()
+    if args.cmd == "summary":
+        return build_summary(plan)
     if args.cmd == "plan":
         (LIVE / "plan.json").write_text(json.dumps(plan, indent=2), encoding="utf-8")
         print(json.dumps(plan, indent=2))
@@ -281,6 +339,10 @@ def main(argv=None) -> int:
     results = []
     if args.cmd == "check":
         results.append(run_one("check", args.start, args.end, args.speed, params, labels, docs_all, records))
+    elif args.cmd == "one_x":
+        o = plan["one_x"]
+        results.append(run_one("one_x", args.start or o["start"], args.end or o["end"], 1.0,
+                               params, labels, docs_all, records))
     else:
         for w in plan["weeks"]:
             s = pd.Timestamp(w["start"])
@@ -295,7 +357,8 @@ def main(argv=None) -> int:
             o = plan["one_x"]
             results.append(run_one("one_x", o["start"], o["end"], 1.0, params, labels, docs_all, records))
     ok = all(r["live_batch"]["identical"] and not r["timed_out"] and not r["subscriber_errors"] for r in results)
-    (LIVE / f"summary_{args.cmd}.json").write_text(json.dumps({"plan": plan, "runs": results, "passed": ok},
+    (LIVE / f"summary_{args.cmd}.json").write_text(json.dumps({"plan": plan, "pooled": pooled_stats(results),
+                                                               "runs": results, "passed": ok},
                                                               indent=2, default=str), encoding="utf-8")
     print(json.dumps({"passed": ok, "runs": [{k: r[k] for k in ("name", "latency_ms", "live_batch")}
                                              for r in results]}, indent=2, default=str))
