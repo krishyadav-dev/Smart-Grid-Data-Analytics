@@ -1,0 +1,86 @@
+tuned_on:
+  window: '2024-01-01..2024-06-30 (inner split: train Jan-Apr, validate May-Jun)'
+  svm_params: 300 households, rng 20261027; mean per-household day-level ROC AUC,
+    May-Jun days vs synthetic attacked versions (fold's attacks)
+  threshold: 'household-level F1 on May-Jun; positives: thieves of the fold''s training
+    attacks active on >= 1 May-Jun day; negatives: honest households'
+folds:
+  h1:
+    C: 0.0625
+    gamma: 0.5
+    mean_auc: 0.7596179221474076
+    q: 0.6557377049180327
+    q_gated: 0.6557377049180327
+  h2:
+    C: 256.0
+    gamma: 0.0001220703125
+    mean_auc: 0.77665114510754
+    q: 0.576271186440678
+    q_gated: 0.576271186440678
+  h3:
+    C: 16.0
+    gamma: 0.00048828125
+    mean_auc: 0.7552566447870074
+    q: 0.6071428571428571
+    q_gated: 0.6071428571428571
+  h4:
+    C: 64.0
+    gamma: 0.00048828125
+    mean_auc: 0.755342613061585
+    q: 0.5573770491803278
+    q_gated: 0.5573770491803278
+  h5:
+    C: 64.0
+    gamma: 0.00048828125
+    mean_auc: 0.7865086419230592
+    q: 0.5245901639344263
+    q_gated: 0.5
+  h6:
+    C: 16.0
+    gamma: 0.00048828125
+    mean_auc: 0.7794567051370221
+    q: 0.711864406779661
+    q_gated: 0.711864406779661
+  circular:
+    C: 16.0
+    gamma: 0.00048828125
+    mean_auc: 0.7646923990889986
+    q: 0.5737704918032787
+    q_gated: 0.5737704918032787
+day_score: SVC decision_function (ovr), malicious class column [our choice, user decision
+  27 Oct]
+household_score: share of online scored days flagged (predicted class = malicious)
+flag_rule: household flagged if score >= q
+kmeans:
+  k_range:
+  - 2
+  - 3
+  - 4
+  rule: 'argmax mean silhouette; ties: smaller k'
+  min_cluster_share: 0.05
+  random_state: 20261027
+min_train_days: 30
+seed: 20261027
+grid:
+  C:
+  - 0.015625
+  - 0.0625
+  - 0.25
+  - 1.0
+  - 4.0
+  - 16.0
+  - 64.0
+  - 256.0
+  gamma:
+  - 0.0001220703125
+  - 0.00048828125
+  - 0.001953125
+  - 0.0078125
+  - 0.03125
+  - 0.125
+  - 0.5
+  - 2.0
+  amended: 27 Oct before freezing (user decision, tuning data only); first grid C
+    [1.0, 4.0, 16.0, 64.0, 256.0], gamma [0.0078125, 0.03125, 0.125, 0.5]; first-grid
+    AUCs reused
+primary: ungated (q); gated uses q_gated

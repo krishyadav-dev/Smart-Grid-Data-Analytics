@@ -641,3 +641,93 @@ def worked_example(est: dict, truth: dict, cache: Path = YEAR_CACHE_DIR) -> dict
         "true_theft_all_attacks_mwh": float(truth["feeder_theft_all_attacks"].sum() / 1e3),
         "note": "engine_estimated: metered head energy, L^_tech and E^_offline; true_losses_and_offline: "
                 "the plan's table (true head, true losses, would-have-reported offline energy)"}
+
+
+# --------------------------------------------------------------------------
+# Consumer detector scoring (run sheet §4)
+# --------------------------------------------------------------------------
+
+def fold_targets(labels: pd.DataFrame, households, fold_attacks, window) -> pd.Series:
+    """Household targets for one fold and window: 1 = thief whose attack is in
+    ``fold_attacks`` and active on at least one day of ``window`` (onset on or
+    before its end; attacks persist after onset), 0 = honest, NaN = excluded
+    (other thieves: held-out attack in tuning, other attacks in test)."""
+    h = labels.reindex(list(households))
+    pos = h.thief & h.attack.isin(list(fold_attacks)) & (h.onset <= pd.Timestamp(window[1]))
+    y = pd.Series(np.nan, index=h.index)
+    y[~h.thief.astype(bool)] = 0.0
+    y[pos.astype(bool)] = 1.0
+    return y
+
+
+def prf(pred: np.ndarray, y: np.ndarray) -> dict:
+    """Precision, recall, F1 with Wilson intervals for P and R."""
+    pred, y = np.asarray(pred, bool), np.asarray(y, bool)
+    tp, fp, fn = int((pred & y).sum()), int((pred & ~y).sum()), int((~pred & y).sum())
+    p, r = wilson(tp, tp + fp), wilson(tp, tp + fn)
+    return {"tp": tp, "fp": fp, "fn": fn, "precision": p, "recall": r, "f1": _f1(p["p"], r["p"])}
+
+
+def best_threshold(score: pd.Series, y: pd.Series) -> dict:
+    """q maximising household-level F1 (flag if score >= q) over the observed
+    scores; ties: the lowest q (run sheet §4 tuning step 3)."""
+    s = pd.concat([score, y], axis=1, keys=["s", "y"]).dropna()
+    if s.y.sum() == 0 or (s.y == 0).sum() == 0:
+        raise ValueError("tuning objective undefined: no positives or no negatives (run sheet §6)")
+    best = None
+    for q in np.unique(s.s.to_numpy()):
+        pred = s.s.to_numpy() >= q
+        f1 = prf(pred, s.y.to_numpy() == 1)["f1"] or 0.0
+        if best is None or f1 > best[1]:
+            best = (float(q), f1)
+    return {"q": best[0], "f1": best[1], "positives": int(s.y.sum()), "negatives": int((s.y == 0).sum())}
+
+
+PR_POINTS = 201          # stored points per PR curve (evenly spaced over the thresholds)
+
+
+def pr_curve(score: pd.Series, y: pd.Series) -> dict:
+    """Precision-recall curve and average precision (scikit-learn)."""
+    from sklearn.metrics import average_precision_score, precision_recall_curve
+    s = pd.concat([score, y], axis=1, keys=["s", "y"]).dropna()
+    p, r, t = precision_recall_curve(s.y.to_numpy(), s.s.to_numpy())
+    keep = np.unique(np.linspace(0, len(t) - 1, min(len(t), PR_POINTS)).round().astype(int))
+    return {"average_precision": float(average_precision_score(s.y.to_numpy(), s.s.to_numpy())),
+            "prevalence": float(s.y.mean()), "points": int(len(t)), "stored_points": int(len(keep)),
+            "precision": [float(x) for x in p[keep]], "recall": [float(x) for x in r[keep]],
+            "thresholds": [float(x) for x in t[keep]]}
+
+
+def fold_metrics(score: pd.Series, y: pd.Series, q: float) -> dict:
+    s = pd.concat([score, y], axis=1, keys=["s", "y"]).dropna()
+    m = prf(s.s.to_numpy() >= q, s.y.to_numpy() == 1)
+    return {"q": q, "households_scored": int(len(s)), "positives": int(s.y.sum()), **m,
+            "pr_curve": pr_curve(score, y)}
+
+
+def macro(per_fold: dict, folds) -> dict:
+    """Unweighted means of precision, recall, F1 and AP over ``folds``."""
+    def mean(f):
+        v = [f(per_fold[k]) for k in folds]
+        v = [x for x in v if x is not None]
+        return float(np.mean(v)) if v else None
+    return {"folds": list(folds), "precision": mean(lambda m: m["precision"]["p"]),
+            "recall": mean(lambda m: m["recall"]["p"]), "f1": mean(lambda m: m["f1"]),
+            "average_precision": mean(lambda m: m["pr_curve"]["average_precision"])}
+
+
+def by_onset_month(scores: dict[str, pd.Series], q: dict[str, float], labels: pd.DataFrame,
+                   groups: dict[str, tuple]) -> dict:
+    """Recall by onset month, pooled over the folds of each group, each thief
+    scored in the fold that holds its attack out (Wilson intervals)."""
+    out = {}
+    for g, folds in groups.items():
+        rows = []
+        for k in folds:
+            th = labels[labels.thief.astype(bool) & (labels.attack == k)]
+            s = scores[k].reindex(th.index)
+            rows.append(pd.DataFrame({"month": th.onset.dt.month, "hit": s >= q[k], "scored": s.notna()}))
+        r = pd.concat(rows)
+        r = r[r.scored]
+        out[g] = {int(m): wilson(int(d.hit.sum()), len(d)) for m, d in r.groupby("month")}
+    return out

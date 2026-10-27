@@ -21,3 +21,8 @@ pydantic-settings==2.15.0
 PyYAML==6.0.3
 httpx==0.28.1
 jsonschema==4.26.0
+
+# --- Layer 3 theft engine: Jokar consumer detector (src/analytics/ntl_engine.py) ---
+scikit-learn==1.9.1
+joblib==1.6.0
+threadpoolctl==3.7.0
