@@ -1218,5 +1218,503 @@
     "overlapping_pairs": 0
   },
   "run_time_s": 16.5,
-  "bursts_time_s": 13.7
+  "bursts_time_s": 13.7,
+  "unbalance_per_meter_2024": {
+    "label": "consistency check against the power flow: VU from line-to-line magnitudes is an exact identity and meter error does not touch voltage, so agreement is expected; not detection skill",
+    "decision": "unbalance check runs at the DT meters as well as the feeder head (user decision at Checkpoint 1: IS 17036 supply-quality limit; the DT LV side is the supply point)",
+    "engine_totals_reproduce_step_e": true,
+    "per_meter": {
+      "m10 feeder_head_650": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 0.7084134578108043,
+        "vu_max_pct_truth": 0.7084486896844884,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 5,
+          "alarms": 5,
+          "precision": {
+            "k": 5,
+            "n": 5,
+            "p": 1.0,
+            "lo": 0.5655085052479191,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 5,
+            "n": 5,
+            "p": 1.0,
+            "lo": 0.5655085052479191,
+            "hi": 1.0
+          }
+        }
+      },
+      "m11 dt_634_1": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.4853229185345973,
+        "vu_max_pct_truth": 1.4851230220350076,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 13,
+          "alarms": 13,
+          "precision": {
+            "k": 13,
+            "n": 13,
+            "p": 1.0,
+            "lo": 0.7718981569447083,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 13,
+            "n": 13,
+            "p": 1.0,
+            "lo": 0.7718981569447083,
+            "hi": 1.0
+          }
+        }
+      },
+      "m12 dt_645_1": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.6904640765058643,
+        "vu_max_pct_truth": 1.6914835641321166,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 12,
+          "alarms": 12,
+          "precision": {
+            "k": 12,
+            "n": 12,
+            "p": 1.0,
+            "lo": 0.7574992425007574,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 12,
+            "n": 12,
+            "p": 1.0,
+            "lo": 0.7574992425007574,
+            "hi": 1.0
+          }
+        }
+      },
+      "m13 dt_646_1": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.3002072883284848,
+        "vu_max_pct_truth": 1.3008379388719145,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 12,
+          "alarms": 12,
+          "precision": {
+            "k": 12,
+            "n": 12,
+            "p": 1.0,
+            "lo": 0.7574992425007574,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 12,
+            "n": 12,
+            "p": 1.0,
+            "lo": 0.7574992425007574,
+            "hi": 1.0
+          }
+        }
+      },
+      "m14 dt_652_1": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.9419796692552278,
+        "vu_max_pct_truth": 1.9424207396028292,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 15,
+          "alarms": 15,
+          "precision": {
+            "k": 15,
+            "n": 15,
+            "p": 1.0,
+            "lo": 0.7961107336956521,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 15,
+            "n": 15,
+            "p": 1.0,
+            "lo": 0.7961107336956521,
+            "hi": 1.0
+          }
+        }
+      },
+      "m15 dt_671_1": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.6453864875800088,
+        "vu_max_pct_truth": 1.6461955999815177,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 17,
+          "alarms": 17,
+          "precision": {
+            "k": 17,
+            "n": 17,
+            "p": 1.0,
+            "lo": 0.8156763396284354,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 17,
+            "n": 17,
+            "p": 1.0,
+            "lo": 0.8156763396284354,
+            "hi": 1.0
+          }
+        }
+      },
+      "m16 dt_671_2": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.7346527209191622,
+        "vu_max_pct_truth": 1.7345493823531972,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 15,
+          "alarms": 15,
+          "precision": {
+            "k": 15,
+            "n": 15,
+            "p": 1.0,
+            "lo": 0.7961107336956521,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 15,
+            "n": 15,
+            "p": 1.0,
+            "lo": 0.7961107336956521,
+            "hi": 1.0
+          }
+        }
+      },
+      "m17 dt_671_3": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.8408194849898498,
+        "vu_max_pct_truth": 1.8407481740352178,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 16,
+          "alarms": 16,
+          "precision": {
+            "k": 16,
+            "n": 16,
+            "p": 1.0,
+            "lo": 0.8063865817272802,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 16,
+            "n": 16,
+            "p": 1.0,
+            "lo": 0.8063865817272802,
+            "hi": 1.0
+          }
+        }
+      },
+      "m18 dt_675_1": {
+        "weeks": 53,
+        "engine_weekly_alarms": 4,
+        "truth_weeks_exceeding": 4,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 2.4362236101186205,
+        "vu_max_pct_truth": 2.4364901493591695,
+        "weeks_alarmed": [
+          "2024-06-24",
+          "2024-07-08",
+          "2024-07-22",
+          "2024-07-29"
+        ],
+        "p2": {
+          "positives": 15,
+          "alarms": 15,
+          "precision": {
+            "k": 15,
+            "n": 15,
+            "p": 1.0,
+            "lo": 0.7961107336956521,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 15,
+            "n": 15,
+            "p": 1.0,
+            "lo": 0.7961107336956521,
+            "hi": 1.0
+          }
+        }
+      },
+      "m19 dt_675_2": {
+        "weeks": 53,
+        "engine_weekly_alarms": 4,
+        "truth_weeks_exceeding": 4,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 2.4462919415775826,
+        "vu_max_pct_truth": 2.4468789559063784,
+        "weeks_alarmed": [
+          "2024-06-24",
+          "2024-07-08",
+          "2024-07-22",
+          "2024-07-29"
+        ],
+        "p2": {
+          "positives": 15,
+          "alarms": 15,
+          "precision": {
+            "k": 15,
+            "n": 15,
+            "p": 1.0,
+            "lo": 0.7961107336956521,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 15,
+            "n": 15,
+            "p": 1.0,
+            "lo": 0.7961107336956521,
+            "hi": 1.0
+          }
+        }
+      },
+      "m20 dt_675_3": {
+        "weeks": 53,
+        "engine_weekly_alarms": 4,
+        "truth_weeks_exceeding": 4,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 2.4468058088340383,
+        "vu_max_pct_truth": 2.4470820421920596,
+        "weeks_alarmed": [
+          "2024-06-24",
+          "2024-07-08",
+          "2024-07-22",
+          "2024-07-29"
+        ],
+        "p2": {
+          "positives": 14,
+          "alarms": 14,
+          "precision": {
+            "k": 14,
+            "n": 14,
+            "p": 1.0,
+            "lo": 0.7846829880728186,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 14,
+            "n": 14,
+            "p": 1.0,
+            "lo": 0.7846829880728186,
+            "hi": 1.0
+          }
+        }
+      },
+      "m21 dt_692_1": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.810225800705708,
+        "vu_max_pct_truth": 1.810164198209986,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 16,
+          "alarms": 16,
+          "precision": {
+            "k": 16,
+            "n": 16,
+            "p": 1.0,
+            "lo": 0.8063865817272802,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 16,
+            "n": 16,
+            "p": 1.0,
+            "lo": 0.8063865817272802,
+            "hi": 1.0
+          }
+        }
+      },
+      "m22 dt_611_1": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.7731072119535067,
+        "vu_max_pct_truth": 1.7733626123556963,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 16,
+          "alarms": 16,
+          "precision": {
+            "k": 16,
+            "n": 16,
+            "p": 1.0,
+            "lo": 0.8063865817272802,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 16,
+            "n": 16,
+            "p": 1.0,
+            "lo": 0.8063865817272802,
+            "hi": 1.0
+          }
+        }
+      },
+      "m23 dt_670_1": {
+        "weeks": 53,
+        "engine_weekly_alarms": 0,
+        "truth_weeks_exceeding": 0,
+        "agreement_weeks": 53,
+        "vu_max_pct_engine": 1.6703293321660873,
+        "vu_max_pct_truth": 1.670281283397292,
+        "weeks_alarmed": [],
+        "p2": {
+          "positives": 12,
+          "alarms": 12,
+          "precision": {
+            "k": 12,
+            "n": 12,
+            "p": 1.0,
+            "lo": 0.7574992425007574,
+            "hi": 1.0
+          },
+          "recall": {
+            "k": 12,
+            "n": 12,
+            "p": 1.0,
+            "lo": 0.7574992425007574,
+            "hi": 1.0
+          }
+        }
+      }
+    }
+  },
+  "addendum_g": {
+    "note": "new analyses of the frozen Step E outputs; the engine was not changed, re-tuned or re-run",
+    "detection_delay_ms": {
+      "engine": {
+        "n": 100,
+        "min": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "flat_baseline": {
+        "n": 100,
+        "min": 0.0,
+        "p50": 0.0,
+        "p95": 1070.5,
+        "max": 1160.0
+      },
+      "engine_no_dip": {
+        "n": 11,
+        "min": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "flat_baseline_no_dip": {
+        "n": 11,
+        "min": 0.0,
+        "p50": 1070.0,
+        "p95": 1145.0,
+        "max": 1160.0
+      }
+    },
+    "observed_clearing_ms_from_inception": {
+      "n": 100,
+      "min": 300.0,
+      "p50": 510.0,
+      "p95": 1070.5,
+      "max": 1160.0
+    },
+    "detected_before_breaker_clears": {
+      "engine": {
+        "detected": 100,
+        "before_breaker_clears": 100,
+        "at_or_after_clearing": 0
+      },
+      "flat_baseline": {
+        "detected": 100,
+        "before_breaker_clears": 92,
+        "at_or_after_clearing": 8
+      },
+      "engine_no_dip": {
+        "detected": 11,
+        "before_breaker_clears": 11,
+        "at_or_after_clearing": 0
+      },
+      "flat_baseline_no_dip": {
+        "detected": 11,
+        "before_breaker_clears": 3,
+        "at_or_after_clearing": 8
+      }
+    },
+    "no_dip_test_faults": [
+      20,
+      39,
+      86,
+      114,
+      129,
+      145,
+      146,
+      147,
+      152,
+      157,
+      197
+    ],
+    "rho_margin": {
+      "rho_star": 1.7,
+      "min_head_rho_no_dip_faults": 1.7684348723078371,
+      "min_at_event": 114,
+      "head_rho_no_dip_faults": {
+        "20": 3.5603467815049887,
+        "39": 2.5969628565565377,
+        "86": 4.1252390057361366,
+        "114": 1.7684348723078371,
+        "129": 2.8175477027728153,
+        "145": 2.012502117567337,
+        "146": 4.869690484030295,
+        "147": 2.5209740321506726,
+        "152": 2.1212228937077833,
+        "157": 2.761939686785454,
+        "197": 3.7004150992346587
+      },
+      "max_head_rho_quiet_test": 1.0000000000000013,
+      "max_rho_any_meter_quiet_test": 1.0000000000000013,
+      "margin_above_rho_star": 0.06843487230783718,
+      "margin_below_rho_star_head": 0.6999999999999986,
+      "label": "descriptive only; rho* stays 1.70 (frozen, commit 70b0941)"
+    }
+  }
 }
