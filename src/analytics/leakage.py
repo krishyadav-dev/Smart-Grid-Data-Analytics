@@ -14,6 +14,11 @@ LABEL_FILES = (
     "fault_events.parquet",             # results/faults_2024: fault type, bus, Rf, clearing
     "meter_classes.parquet",            # results/faults_2024: CP4 classification per event and meter
     "summary.json",                     # results/faults_2024 etc.: the engine reads config/relay.yaml instead
+    "event_records.npz",                # results/faults_2024: meter-side records; the engine reads telemetry
+    "unbalance_labels.parquet",         # results/unbalance_scenarios: V_N / V_P per step and meter (P2)
+    "unbalance_weekly_labels.parquet",  # results/unbalance_scenarios: weekly IS 17036 flags (P2)
+    "baseline_true_frame.parquet",      # results/unbalance_scenarios: s = 0 true frame (P2)
+    "states.parquet",                   # results/unbalance_scenarios: power-flow states (P2)
 )
 
 # Label columns (by column name)
@@ -29,10 +34,10 @@ LABEL_COLUMNS = (
     "offset_s",                         # fault_events: offset inside the step (rule 2)
     "rf_ohm",                           # fault_events: fault resistance
     "rf_model",                         # fault_events: fixed / arc
+    "vu_true_pct",                      # P2 labels: true V_N / V_P
+    "exceeds_limit",                    # P2 labels: weekly IS 17036 flag
 )
 
 # The event record's event_id is a label (run sheet rule 1): engines must not
 # use it to group, merge or match bursts; only evaluate.py matches on it.
 EVENT_ID_FIELD = "event_id"
-
-# The P2 unbalance-scenario labels are added here when Step B writes them.

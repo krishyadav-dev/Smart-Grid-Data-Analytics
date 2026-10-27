@@ -24,6 +24,13 @@ data/*
 results/year_2024*/
 # Fault event set (regenerable: scripts/run_faults.py)
 results/faults_2024*/
+# Layer 3 regenerable data: P2 scenario frames and labels (scripts/run_unbalance_scenarios.py;
+# only the summaries are versioned), batch documents and live-replay records (run_layer3_*.py)
+results/unbalance_scenarios/*
+!results/unbalance_scenarios/summary.json
+!results/unbalance_scenarios/scenarios.json
+results/layer3/fault/batch/
+results/layer3/fault/live/*.npz
 
 # Environment variables & secrets
 .env
