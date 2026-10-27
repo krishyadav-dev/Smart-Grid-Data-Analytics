@@ -1,0 +1,1078 @@
+{
+  "balance": {
+    "label": "theft energy estimation (h1-h4 truth); test window Jul-Dec, Jan-Jun as reference",
+    "energy_identity_test_window": {
+      "window": [
+        "2024-07-01",
+        "2024-12-31"
+      ],
+      "steps": 17664,
+      "household_days": 1475680,
+      "head_metered_kwh": 7908370.743276823,
+      "billed_kwh": 7495537.543449379,
+      "losses_kwh": 172437.48632264204,
+      "theft_kwh": 215387.87229729665,
+      "offline_kwh": 52512.41287635744,
+      "meter_error_kwh": -27504.4939739611,
+      "residual_kwh": -0.0776948903221637,
+      "tolerance_kwh": 1.0090507554917119,
+      "closes": true
+    },
+    "a_minus_ltech": {
+      "year": {
+        "days": 366,
+        "head_mwh": 15789.959017129593,
+        "A_mwh": 287.9319982343033,
+        "ltech_mwh": 346.0210376614938,
+        "residual_mwh": -58.0890394271905,
+        "residual_share_of_head": -0.003678859417188679,
+        "daily_residual_kwh": {
+          "mean": -158.71322247866257,
+          "mae": 158.71322247866257,
+          "min": -235.4415243792405,
+          "max": -127.20007702120131
+        }
+      },
+      "jul_dec_test": {
+        "days": 184,
+        "head_mwh": 7908.370743276823,
+        "A_mwh": 143.48264142600001,
+        "ltech_mwh": 172.5224156111014,
+        "residual_mwh": -29.039774185101365,
+        "residual_share_of_head": -0.00367202994495283,
+        "daily_residual_kwh": {
+          "mean": -157.82485970163785,
+          "mae": 157.82485970163785,
+          "min": -225.7642977254543,
+          "max": -127.20007702120131
+        }
+      },
+      "jan_jun_reference": {
+        "days": 182,
+        "head_mwh": 7881.588273852768,
+        "A_mwh": 144.44935680830324,
+        "ltech_mwh": 173.49862205039238,
+        "residual_mwh": -29.049265242089138,
+        "residual_share_of_head": -0.0036857120966925293,
+        "daily_residual_kwh": {
+          "mean": -159.61134748400625,
+          "mae": 159.61134748400625,
+          "min": -235.4415243792405,
+          "max": -131.383723334892
+        }
+      }
+    },
+    "ltech_vs_true_losses": {
+      "year": {
+        "ltech_mwh": 346.0210376614938,
+        "ltech_lines_mwh": 210.97961929146584,
+        "ltech_dts_mwh": 135.0414183700279,
+        "true_mwh": 345.8435835146775,
+        "true_lines_mwh": 210.79458358301898,
+        "true_dts_mwh": 135.0489999316585
+      },
+      "jul_dec_test": {
+        "ltech_mwh": 172.5224156111014,
+        "ltech_lines_mwh": 105.02983241155194,
+        "ltech_dts_mwh": 67.49258319954947,
+        "true_mwh": 172.43748632264203,
+        "true_lines_mwh": 104.940177846659,
+        "true_dts_mwh": 67.49730847598303
+      },
+      "jan_jun_reference": {
+        "ltech_mwh": 173.49862205039238,
+        "ltech_lines_mwh": 105.94978687991392,
+        "ltech_dts_mwh": 67.54883517047845,
+        "true_mwh": 173.40609719203545,
+        "true_lines_mwh": 105.85440573635994,
+        "true_dts_mwh": 67.5516914556755
+      }
+    },
+    "offline_estimate": {
+      "offline_household_days": 19491,
+      "rule_counts": {
+        "same_month_day_type": 19483,
+        "nearest_month_day_type": 8,
+        "all_online_days": 0,
+        "no_online_days": 0
+      },
+      "vs_would_have_reported": {
+        "year": {
+          "estimate_mwh": 95.93687125048926,
+          "true_mwh": 98.54240761285985,
+          "per_day": {
+            "n": 366,
+            "bias_kwh": -7.118951809755725,
+            "mae_kwh": 21.090283999831595,
+            "corr": 0.9958961806937627,
+            "mean_truth_kwh": 269.24155085480834,
+            "mean_estimate_kwh": 262.12259904505265
+          }
+        },
+        "jul_dec_test": {
+          "estimate_mwh": 50.61003492500167,
+          "true_mwh": 52.51241287635744,
+          "per_day": {
+            "n": 184,
+            "bias_kwh": -10.339010605194414,
+            "mae_kwh": 21.17836413697132,
+            "corr": 0.9975864377080875,
+            "mean_truth_kwh": 285.39354824107306,
+            "mean_estimate_kwh": 275.05453763587866
+          }
+        },
+        "jan_jun_reference": {
+          "estimate_mwh": 45.32683632548759,
+          "true_mwh": 46.02999473650241,
+          "per_day": {
+            "n": 182,
+            "bias_kwh": -3.8635077528286983,
+            "mae_kwh": 21.001235949096923,
+            "corr": 0.9886585462455925,
+            "mean_truth_kwh": 252.9120589917715,
+            "mean_estimate_kwh": 249.0485512389428
+          }
+        }
+      }
+    },
+    "feeder": {
+      "jul_dec_test": {
+        "netted": {
+          "n": 184,
+          "bias_kwh": -139.60392905796348,
+          "mae_kwh": 145.23843553502755,
+          "corr": 0.9561257168074323,
+          "mean_truth_kwh": 1170.5862621630802,
+          "mean_estimate_kwh": 1030.9823331051166
+        },
+        "un_netted_C": {
+          "n": 184,
+          "bias_kwh": 1073.0724325512922,
+          "mae_kwh": 1073.0724325512922,
+          "corr": 0.32127149406130756,
+          "mean_truth_kwh": 1170.5862621630802,
+          "mean_estimate_kwh": 2243.6586947143724
+        }
+      },
+      "jan_jun_reference": {
+        "netted": {
+          "n": 182,
+          "bias_kwh": -144.85143233584535,
+          "mae_kwh": 144.85143233584535,
+          "corr": 0.991339861439505,
+          "mean_truth_kwh": 408.02008315634083,
+          "mean_estimate_kwh": 263.16865082049543
+        },
+        "un_netted_C": {
+          "n": 182,
+          "bias_kwh": 1057.4862510481105,
+          "mae_kwh": 1057.4862510481105,
+          "corr": 0.6932816215812734,
+          "mean_truth_kwh": 408.02008315634083,
+          "mean_estimate_kwh": 1465.5063342044512
+        }
+      }
+    },
+    "dt": {
+      "jul_dec_test": {
+        "netted_lambda_0": {
+          "all_dt_days": {
+            "n": 2392,
+            "bias_kwh": 1.401610049513417,
+            "mae_kwh": 11.641193084867139,
+            "corr": 0.947535160494594,
+            "mean_truth_kwh": 90.0450970894677,
+            "mean_estimate_kwh": 91.44670713898113
+          },
+          "fully_online_dt_days": {
+            "n": 461,
+            "bias_kwh": -1.1724347731518687,
+            "mae_kwh": 8.391754408135395,
+            "corr": 0.9670816881547926,
+            "mean_truth_kwh": 79.06378374311727,
+            "mean_estimate_kwh": 77.89134896996539
+          }
+        },
+        "un_netted_B": {
+          "all_dt_days": {
+            "n": 2392,
+            "bias_kwh": 22.559651406119468,
+            "mae_kwh": 26.880993707606315,
+            "corr": 0.6887444685175667,
+            "mean_truth_kwh": 90.0450970894677,
+            "mean_estimate_kwh": 112.60474849558717
+          },
+          "fully_online_dt_days": {
+            "n": 461,
+            "bias_kwh": -1.1724347731518687,
+            "mae_kwh": 8.391754408135395,
+            "corr": 0.9670816881547926,
+            "mean_truth_kwh": 79.06378374311727,
+            "mean_estimate_kwh": 77.89134896996539
+          }
+        }
+      },
+      "jan_jun_reference": {
+        "netted_lambda_0": {
+          "all_dt_days": {
+            "n": 2366,
+            "bias_kwh": 1.1353780883200555,
+            "mae_kwh": 11.432267441822457,
+            "corr": 0.9094871574462625,
+            "mean_truth_kwh": 31.386160242795444,
+            "mean_estimate_kwh": 32.521538331115494
+          },
+          "fully_online_dt_days": {
+            "n": 429,
+            "bias_kwh": 0.06950222261957924,
+            "mae_kwh": 9.056895773089636,
+            "corr": 0.9461131387552759,
+            "mean_truth_kwh": 36.631090719406735,
+            "mean_estimate_kwh": 36.70059294202631
+          }
+        },
+        "un_netted_B": {
+          "all_dt_days": {
+            "n": 2366,
+            "bias_kwh": 20.292958952854114,
+            "mae_kwh": 24.429242242158328,
+            "corr": 0.7083673650269067,
+            "mean_truth_kwh": 31.386160242795444,
+            "mean_estimate_kwh": 51.679119195649555
+          },
+          "fully_online_dt_days": {
+            "n": 429,
+            "bias_kwh": 0.06950222261957924,
+            "mae_kwh": 9.056895773089636,
+            "corr": 0.9461131387552759,
+            "mean_truth_kwh": 36.631090719406735,
+            "mean_estimate_kwh": 36.70059294202631
+          }
+        }
+      }
+    },
+    "lambda_sweep_assumed_true_0": {
+      "0.00": {
+        "jul_dec_test": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2392,
+              "bias_kwh": 1.401610049513417,
+              "mae_kwh": 11.641193084867139,
+              "corr": 0.947535160494594,
+              "mean_truth_kwh": 90.0450970894677,
+              "mean_estimate_kwh": 91.44670713898113
+            },
+            "fully_online_dt_days": {
+              "n": 461,
+              "bias_kwh": -1.1724347731518687,
+              "mae_kwh": 8.391754408135395,
+              "corr": 0.9670816881547926,
+              "mean_truth_kwh": 79.06378374311727,
+              "mean_estimate_kwh": 77.89134896996539
+            }
+          }
+        },
+        "jan_jun_reference": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2366,
+              "bias_kwh": 1.1353780883200555,
+              "mae_kwh": 11.432267441822457,
+              "corr": 0.9094871574462625,
+              "mean_truth_kwh": 31.386160242795444,
+              "mean_estimate_kwh": 32.521538331115494
+            },
+            "fully_online_dt_days": {
+              "n": 429,
+              "bias_kwh": 0.06950222261957924,
+              "mae_kwh": 9.056895773089636,
+              "corr": 0.9461131387552759,
+              "mean_truth_kwh": 36.631090719406735,
+              "mean_estimate_kwh": 36.70059294202631
+            }
+          }
+        }
+      },
+      "0.01": {
+        "jul_dec_test": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2392,
+              "bias_kwh": -29.934249245843525,
+              "mae_kwh": 30.312215539464564,
+              "corr": 0.9216279405240334,
+              "mean_truth_kwh": 90.0450970894677,
+              "mean_estimate_kwh": 60.110847843624185
+            },
+            "fully_online_dt_days": {
+              "n": 461,
+              "bias_kwh": -26.67139570493115,
+              "mae_kwh": 26.67139570493115,
+              "corr": 0.9469857748539547,
+              "mean_truth_kwh": 79.06378374311727,
+              "mean_estimate_kwh": 52.39238803818612
+            }
+          }
+        },
+        "jan_jun_reference": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2366,
+              "bias_kwh": -31.049178636225836,
+              "mae_kwh": 31.074357078691513,
+              "corr": 0.8512851016137689,
+              "mean_truth_kwh": 31.386160242795444,
+              "mean_estimate_kwh": 0.33698160656960424
+            },
+            "fully_online_dt_days": {
+              "n": 429,
+              "bias_kwh": -27.672126107907783,
+              "mae_kwh": 27.672126107907783,
+              "corr": 0.8760631528388442,
+              "mean_truth_kwh": 36.631090719406735,
+              "mean_estimate_kwh": 8.958964611498946
+            }
+          }
+        }
+      },
+      "0.02": {
+        "jul_dec_test": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2392,
+              "bias_kwh": -61.27010854120045,
+              "mae_kwh": 61.37435272244261,
+              "corr": 0.8080560428621253,
+              "mean_truth_kwh": 90.0450970894677,
+              "mean_estimate_kwh": 28.77498854826725
+            },
+            "fully_online_dt_days": {
+              "n": 461,
+              "bias_kwh": -52.17035663671044,
+              "mae_kwh": 52.17035663671044,
+              "corr": 0.8499375663269375,
+              "mean_truth_kwh": 79.06378374311727,
+              "mean_estimate_kwh": 26.893427106406833
+            }
+          }
+        },
+        "jan_jun_reference": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2366,
+              "bias_kwh": -63.233735360771725,
+              "mae_kwh": 63.233735360771725,
+              "corr": 0.6380187096224708,
+              "mean_truth_kwh": 31.386160242795444,
+              "mean_estimate_kwh": -31.847575117976294
+            },
+            "fully_online_dt_days": {
+              "n": 429,
+              "bias_kwh": -55.413754438435156,
+              "mae_kwh": 55.413754438435156,
+              "corr": 0.5986809530914339,
+              "mean_truth_kwh": 36.631090719406735,
+              "mean_estimate_kwh": -18.782663719028417
+            }
+          }
+        }
+      },
+      "0.03": {
+        "jul_dec_test": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2392,
+              "bias_kwh": -92.60596783655738,
+              "mae_kwh": 92.61263243885175,
+              "corr": 0.5531058978426638,
+              "mean_truth_kwh": 90.0450970894677,
+              "mean_estimate_kwh": -2.56087074708968
+            },
+            "fully_online_dt_days": {
+              "n": 461,
+              "bias_kwh": -77.6693175684897,
+              "mae_kwh": 77.6693175684897,
+              "corr": 0.6219029716071376,
+              "mean_truth_kwh": 79.06378374311727,
+              "mean_estimate_kwh": 1.3944661746275537
+            }
+          }
+        },
+        "jan_jun_reference": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2366,
+              "bias_kwh": -95.41829208531763,
+              "mae_kwh": 95.41829208531763,
+              "corr": 0.3624856761896446,
+              "mean_truth_kwh": 31.386160242795444,
+              "mean_estimate_kwh": -64.03213184252219
+            },
+            "fully_online_dt_days": {
+              "n": 429,
+              "bias_kwh": -83.15538276896253,
+              "mae_kwh": 83.15538276896253,
+              "corr": 0.19362286491429312,
+              "mean_truth_kwh": 36.631090719406735,
+              "mean_estimate_kwh": -46.52429204955578
+            }
+          }
+        }
+      },
+      "0.05": {
+        "jul_dec_test": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2392,
+              "bias_kwh": -155.27768642727128,
+              "mae_kwh": 155.27768642727128,
+              "corr": -0.035855454656987536,
+              "mean_truth_kwh": 90.0450970894677,
+              "mean_estimate_kwh": -65.23258933780357
+            },
+            "fully_online_dt_days": {
+              "n": 461,
+              "bias_kwh": -128.6672394320483,
+              "mae_kwh": 128.6672394320483,
+              "corr": 0.03395763636489441,
+              "mean_truth_kwh": 79.06378374311727,
+              "mean_estimate_kwh": -49.603455688931014
+            }
+          }
+        },
+        "jan_jun_reference": {
+          "netted": {
+            "all_dt_days": {
+              "n": 2366,
+              "bias_kwh": -159.7874055344094,
+              "mae_kwh": 159.7874055344094,
+              "corr": -0.0020924360581768453,
+              "mean_truth_kwh": 31.386160242795444,
+              "mean_estimate_kwh": -128.40124529161398
+            },
+            "fully_online_dt_days": {
+              "n": 429,
+              "bias_kwh": -138.63863943001724,
+              "mae_kwh": 138.63863943001724,
+              "corr": -0.27631856210686345,
+              "mean_truth_kwh": 36.631090719406735,
+              "mean_estimate_kwh": -102.00754871061052
+            }
+          }
+        }
+      }
+    },
+    "worked_example": {
+      "units": "MWh (except share_of_head and the ratio)",
+      "engine_estimated": {
+        "head_energy": 15789.959017129593,
+        "household_metered": 15110.403664476939,
+        "C_un_netted": 679.555352652654,
+        "technical_losses_lines": 210.97961929146584,
+        "technical_losses_dts": 135.0414183700279,
+        "offline": 95.93687125048926,
+        "netted_estimate": 237.59744374067103,
+        "true_energy_theft_h1_h4": 289.6475273724608,
+        "netted_minus_true_theft": -52.050083631789775,
+        "share_of_head": {
+          "C_un_netted": 0.04303718280176944,
+          "technical_losses_lines": 0.013361631848606228,
+          "technical_losses_dts": 0.008552360283109631,
+          "offline": 0.006075815088969707,
+          "netted_estimate": 0.015047375581083879,
+          "true_energy_theft_h1_h4": 0.018343779553717608
+        },
+        "un_netted_over_true_theft": 2.346145878810858
+      },
+      "true_losses_and_offline": {
+        "head_energy": 15844.909225039048,
+        "household_metered": 15110.403664476939,
+        "C_un_netted": 734.5055605621096,
+        "technical_losses_lines": 210.79458358301898,
+        "technical_losses_dts": 135.0489999316585,
+        "offline": 98.54240761285985,
+        "netted_estimate": 290.11956943457227,
+        "true_energy_theft_h1_h4": 289.6475273724608,
+        "netted_minus_true_theft": 0.47204206211143174,
+        "share_of_head": {
+          "C_un_netted": 0.04635593363964503,
+          "technical_losses_lines": 0.013303615728508505,
+          "technical_losses_dts": 0.008523179149442284,
+          "offline": 0.006219184105967448,
+          "netted_estimate": 0.0183099546557268,
+          "true_energy_theft_h1_h4": 0.018280163253617313
+        },
+        "un_netted_over_true_theft": 2.5358599371628716
+      },
+      "true_theft_all_attacks_mwh": 289.6475274221869,
+      "note": "engine_estimated: metered head energy, L^_tech and E^_offline; true_losses_and_offline: the plan's table (true head, true losses, would-have-reported offline energy)"
+    },
+    "lambda_grid_true_x_assumed": {
+      "0.00": {
+        "0.00": {
+          "jul_dec_test": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2392,
+                "bias_kwh": 1.401610049513421,
+                "mae_kwh": 11.641193084867139,
+                "corr": 0.9475351604945937,
+                "mean_truth_kwh": 90.0450970894677,
+                "mean_estimate_kwh": 91.44670713898113
+              },
+              "fully_online_dt_days": {
+                "n": 461,
+                "bias_kwh": -1.1724347731518627,
+                "mae_kwh": 8.391754408135391,
+                "corr": 0.9670816881547928,
+                "mean_truth_kwh": 79.06378374311727,
+                "mean_estimate_kwh": 77.8913489699654
+              }
+            }
+          },
+          "jan_jun_reference": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2366,
+                "bias_kwh": 1.1353780883200555,
+                "mae_kwh": 11.432267441822457,
+                "corr": 0.9094871574462625,
+                "mean_truth_kwh": 31.386160242795444,
+                "mean_estimate_kwh": 32.521538331115494
+              },
+              "fully_online_dt_days": {
+                "n": 429,
+                "bias_kwh": 0.06950222261956811,
+                "mae_kwh": 9.05689577308964,
+                "corr": 0.9461131387552761,
+                "mean_truth_kwh": 36.631090719406735,
+                "mean_estimate_kwh": 36.700592942026304
+              }
+            }
+          }
+        },
+        "0.02": {
+          "jul_dec_test": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2392,
+                "bias_kwh": -61.27010854120045,
+                "mae_kwh": 61.37435272244261,
+                "corr": 0.8080560428621253,
+                "mean_truth_kwh": 90.0450970894677,
+                "mean_estimate_kwh": 28.774988548267256
+              },
+              "fully_online_dt_days": {
+                "n": 461,
+                "bias_kwh": -52.17035663671042,
+                "mae_kwh": 52.17035663671042,
+                "corr": 0.8499375663269373,
+                "mean_truth_kwh": 79.06378374311727,
+                "mean_estimate_kwh": 26.893427106406836
+              }
+            }
+          },
+          "jan_jun_reference": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2366,
+                "bias_kwh": -63.23373536077174,
+                "mae_kwh": 63.23373536077174,
+                "corr": 0.6380187096224709,
+                "mean_truth_kwh": 31.386160242795444,
+                "mean_estimate_kwh": -31.847575117976294
+              },
+              "fully_online_dt_days": {
+                "n": 429,
+                "bias_kwh": -55.41375443843516,
+                "mae_kwh": 55.41375443843516,
+                "corr": 0.5986809530914338,
+                "mean_truth_kwh": 36.631090719406735,
+                "mean_estimate_kwh": -18.782663719028427
+              }
+            }
+          }
+        },
+        "0.04": {
+          "jul_dec_test": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2392,
+                "bias_kwh": -123.94182713191432,
+                "mae_kwh": 123.94182713191432,
+                "corr": 0.22869567964426063,
+                "mean_truth_kwh": 90.0450970894677,
+                "mean_estimate_kwh": -33.89673004244662
+              },
+              "fully_online_dt_days": {
+                "n": 461,
+                "bias_kwh": -103.168278500269,
+                "mae_kwh": 103.168278500269,
+                "corr": 0.30894741469733283,
+                "mean_truth_kwh": 79.06378374311727,
+                "mean_estimate_kwh": -24.10449475715173
+              }
+            }
+          },
+          "jan_jun_reference": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2366,
+                "bias_kwh": -127.6028488098635,
+                "mae_kwh": 127.6028488098635,
+                "corr": 0.14475666986053215,
+                "mean_truth_kwh": 31.386160242795444,
+                "mean_estimate_kwh": -96.21668856706809
+              },
+              "fully_online_dt_days": {
+                "n": 429,
+                "bias_kwh": -110.8970110994899,
+                "mae_kwh": 110.8970110994899,
+                "corr": -0.10282667321155937,
+                "mean_truth_kwh": 36.631090719406735,
+                "mean_estimate_kwh": -74.26592038008316
+              }
+            }
+          }
+        }
+      },
+      "0.02": {
+        "0.00": {
+          "jul_dec_test": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2392,
+                "bias_kwh": 66.03526490998075,
+                "mae_kwh": 66.03741924651084,
+                "corr": 0.889769200704172,
+                "mean_truth_kwh": 90.0450970894677,
+                "mean_estimate_kwh": 156.08036199944843
+              },
+              "fully_online_dt_days": {
+                "n": 461,
+                "bias_kwh": 48.32151551424919,
+                "mae_kwh": 48.32151551424919,
+                "corr": 0.9240725492688261,
+                "mean_truth_kwh": 79.06378374311727,
+                "mean_estimate_kwh": 127.38529925736644
+              }
+            }
+          },
+          "jan_jun_reference": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2366,
+                "bias_kwh": 66.8314211786277,
+                "mae_kwh": 66.8314211786277,
+                "corr": 0.8174661427074539,
+                "mean_truth_kwh": 31.386160242795444,
+                "mean_estimate_kwh": 98.21758142142315
+              },
+              "fully_online_dt_days": {
+                "n": 429,
+                "bias_kwh": 55.573036196622716,
+                "mae_kwh": 55.573036196622716,
+                "corr": 0.9051474326380278,
+                "mean_truth_kwh": 36.631090719406735,
+                "mean_estimate_kwh": 92.20412691602942
+              }
+            }
+          }
+        },
+        "0.02": {
+          "jul_dec_test": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2392,
+                "bias_kwh": 3.3635463192668786,
+                "mae_kwh": 14.195286368247872,
+                "corr": 0.9140511265319399,
+                "mean_truth_kwh": 90.0450970894677,
+                "mean_estimate_kwh": 93.40864340873459
+              },
+              "fully_online_dt_days": {
+                "n": 461,
+                "bias_kwh": -2.676406349309373,
+                "mae_kwh": 9.627285978929491,
+                "corr": 0.9513041943233553,
+                "mean_truth_kwh": 79.06378374311727,
+                "mean_estimate_kwh": 76.38737739380788
+              }
+            }
+          },
+          "jan_jun_reference": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2366,
+                "bias_kwh": 2.46230772953591,
+                "mae_kwh": 13.645243237527154,
+                "corr": 0.8863418802904709,
+                "mean_truth_kwh": 31.386160242795444,
+                "mean_estimate_kwh": 33.848467972331356
+              },
+              "fully_online_dt_days": {
+                "n": 429,
+                "bias_kwh": 0.0897795355679767,
+                "mae_kwh": 12.046717897953537,
+                "corr": 0.9271786534107683,
+                "mean_truth_kwh": 36.631090719406735,
+                "mean_estimate_kwh": 36.720870254974706
+              }
+            }
+          }
+        },
+        "0.04": {
+          "jul_dec_test": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2392,
+                "bias_kwh": -59.308172271447,
+                "mae_kwh": 59.49989535054284,
+                "corr": 0.8417192554095676,
+                "mean_truth_kwh": 90.0450970894677,
+                "mean_estimate_kwh": 30.736924818020714
+              },
+              "fully_online_dt_days": {
+                "n": 461,
+                "bias_kwh": -53.67432821286794,
+                "mae_kwh": 53.67432821286794,
+                "corr": 0.8622831276059766,
+                "mean_truth_kwh": 79.06378374311727,
+                "mean_estimate_kwh": 25.389455530249325
+              }
+            }
+          },
+          "jan_jun_reference": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2366,
+                "bias_kwh": -61.906805719555884,
+                "mae_kwh": 61.906805719555884,
+                "corr": 0.7130775294856381,
+                "mean_truth_kwh": 31.386160242795444,
+                "mean_estimate_kwh": -30.52064547676044
+              },
+              "fully_online_dt_days": {
+                "n": 429,
+                "bias_kwh": -55.393477125486754,
+                "mae_kwh": 55.393477125486754,
+                "corr": 0.713085308458833,
+                "mean_truth_kwh": 36.631090719406735,
+                "mean_estimate_kwh": -18.762386406080022
+              }
+            }
+          }
+        }
+      },
+      "0.04": {
+        "0.00": {
+          "jul_dec_test": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2392,
+                "bias_kwh": 130.6689197704481,
+                "mae_kwh": 130.6689197704481,
+                "corr": 0.8272040694363962,
+                "mean_truth_kwh": 90.0450970894677,
+                "mean_estimate_kwh": 220.71401685991577
+              },
+              "fully_online_dt_days": {
+                "n": 461,
+                "bias_kwh": 97.81546580165025,
+                "mae_kwh": 97.81546580165025,
+                "corr": 0.8685878457549208,
+                "mean_truth_kwh": 79.06378374311727,
+                "mean_estimate_kwh": 176.8792495447675
+              }
+            }
+          },
+          "jan_jun_reference": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2366,
+                "bias_kwh": 132.52746426893535,
+                "mae_kwh": 132.52746426893535,
+                "corr": 0.7347178780126193,
+                "mean_truth_kwh": 31.386160242795444,
+                "mean_estimate_kwh": 163.9136245117308
+              },
+              "fully_online_dt_days": {
+                "n": 429,
+                "bias_kwh": 111.07657017062586,
+                "mae_kwh": 111.07657017062586,
+                "corr": 0.860860643407386,
+                "mean_truth_kwh": 36.631090719406735,
+                "mean_estimate_kwh": 147.70766089003257
+              }
+            }
+          }
+        },
+        "0.02": {
+          "jul_dec_test": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2392,
+                "bias_kwh": 67.99720117973422,
+                "mae_kwh": 67.9986083951429,
+                "corr": 0.8407649142775585,
+                "mean_truth_kwh": 90.0450970894677,
+                "mean_estimate_kwh": 158.04229826920192
+              },
+              "fully_online_dt_days": {
+                "n": 461,
+                "bias_kwh": 46.81754393809168,
+                "mae_kwh": 46.81754393809168,
+                "corr": 0.8898145309937256,
+                "mean_truth_kwh": 79.06378374311727,
+                "mean_estimate_kwh": 125.88132768120894
+              }
+            }
+          },
+          "jan_jun_reference": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2366,
+                "bias_kwh": 68.15835081984358,
+                "mae_kwh": 68.15835081984358,
+                "corr": 0.7880966236964121,
+                "mean_truth_kwh": 31.386160242795444,
+                "mean_estimate_kwh": 99.54451106263902
+              },
+              "fully_online_dt_days": {
+                "n": 429,
+                "bias_kwh": 55.59331350957114,
+                "mae_kwh": 55.59331350957114,
+                "corr": 0.8829353001091605,
+                "mean_truth_kwh": 36.631090719406735,
+                "mean_estimate_kwh": 92.22440422897786
+              }
+            }
+          }
+        },
+        "0.04": {
+          "jul_dec_test": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2392,
+                "bias_kwh": 5.325482589020342,
+                "mae_kwh": 20.54559004186115,
+                "corr": 0.8456348490929787,
+                "mean_truth_kwh": 90.0450970894677,
+                "mean_estimate_kwh": 95.37057967848806
+              },
+              "fully_online_dt_days": {
+                "n": 461,
+                "bias_kwh": -4.180377925466878,
+                "mae_kwh": 13.934758647733663,
+                "corr": 0.8992058880613147,
+                "mean_truth_kwh": 79.06378374311727,
+                "mean_estimate_kwh": 74.88340581765038
+              }
+            }
+          },
+          "jan_jun_reference": {
+            "netted": {
+              "all_dt_days": {
+                "n": 2366,
+                "bias_kwh": 3.7892373707517746,
+                "mae_kwh": 18.792180932818816,
+                "corr": 0.8292550315162519,
+                "mean_truth_kwh": 31.386160242795444,
+                "mean_estimate_kwh": 35.17539761354722
+              },
+              "fully_online_dt_days": {
+                "n": 429,
+                "bias_kwh": 0.11005684851640384,
+                "mae_kwh": 18.806055041982596,
+                "corr": 0.8801637390285476,
+                "mean_truth_kwh": 36.631090719406735,
+                "mean_estimate_kwh": 36.74114756792314
+              }
+            }
+          }
+        }
+      }
+    },
+    "ideal_meter": {
+      "a_minus_ltech": {
+        "year": {
+          "days": 366,
+          "head_mwh": 15844.909225039048,
+          "A_mwh": 345.8435188778171,
+          "ltech_mwh": 345.8435792812626,
+          "residual_mwh": -6.040344545886e-05,
+          "residual_share_of_head": -3.81216734037245e-09,
+          "daily_residual_kwh": {
+            "mean": -0.00016503673622639346,
+            "mae": 0.00016560076044665477,
+            "min": -0.0002472507611628316,
+            "max": 2.6499066734686494e-05
+          }
+        },
+        "jul_dec_test": {
+          "days": 184,
+          "head_mwh": 7935.892449704098,
+          "A_mwh": 172.43745374565725,
+          "ltech_mwh": 172.43748417350855,
+          "residual_mwh": -3.0427851304466457e-05,
+          "residual_share_of_head": -3.834206612212973e-09,
+          "daily_residual_kwh": {
+            "mean": -0.00016536875708949162,
+            "mae": 0.00016542824474803953,
+            "min": -0.00021941785394119506,
+            "max": 2.994191163452342e-06
+          }
+        },
+        "jan_jun_reference": {
+          "days": 182,
+          "head_mwh": 7909.0167753349515,
+          "A_mwh": 173.40606513215985,
+          "ltech_mwh": 173.40609510775403,
+          "residual_mwh": -2.997559415439355e-05,
+          "residual_share_of_head": -3.7900531767583795e-09,
+          "daily_residual_kwh": {
+            "mean": -0.00016470106678238212,
+            "mae": 0.00016577517192217783,
+            "min": -0.0002472507611628316,
+            "max": 2.6499066734686494e-05
+          }
+        }
+      },
+      "feeder": {
+        "jul_dec_test": {
+          "netted": {
+            "n": 184,
+            "bias_kwh": 10.297709171792302,
+            "mae_kwh": 21.16123290517873,
+            "corr": 0.9599448189771281,
+            "mean_truth_kwh": 1170.5862621630802,
+            "mean_estimate_kwh": 1180.8839713348725
+          },
+          "un_netted_C": {
+            "n": 184,
+            "bias_kwh": 1222.5533780619498,
+            "mae_kwh": 1222.5533780619498,
+            "corr": 0.3235893458965677,
+            "mean_truth_kwh": 1170.5862621630802,
+            "mean_estimate_kwh": 2393.13964022503
+          }
+        },
+        "jan_jun_reference": {
+          "netted": {
+            "n": 182,
+            "bias_kwh": 3.868611727621187,
+            "mae_kwh": 20.949746830869845,
+            "corr": 0.9928457597804393,
+            "mean_truth_kwh": 408.02008315634083,
+            "mean_estimate_kwh": 411.888694883962
+          },
+          "un_netted_C": {
+            "n": 182,
+            "bias_kwh": 1205.6923953288524,
+            "mae_kwh": 1205.6923953288524,
+            "corr": 0.6896390327576358,
+            "mean_truth_kwh": 408.02008315634083,
+            "mean_estimate_kwh": 1613.712478485193
+          }
+        }
+      },
+      "dt": {
+        "jul_dec_test": {
+          "netted_lambda_0": {
+            "all_dt_days": {
+              "n": 2392,
+              "bias_kwh": 0.7921441954268671,
+              "mae_kwh": 2.6689739865572024,
+              "corr": 0.9882209911240287,
+              "mean_truth_kwh": 90.0450970894677,
+              "mean_estimate_kwh": 90.83724128489457
+            },
+            "fully_online_dt_days": {
+              "n": 461,
+              "bias_kwh": -1.560928924084163e-05,
+              "mae_kwh": 1.589846614317007e-05,
+              "corr": 0.9999999999999755,
+              "mean_truth_kwh": 79.06378374311727,
+              "mean_estimate_kwh": 79.06376813382803
+            }
+          },
+          "un_netted_B": {
+            "all_dt_days": {
+              "n": 2392,
+              "bias_kwh": 21.95333102748389,
+              "mae_kwh": 21.95333893755063,
+              "corr": 0.6968501035711742,
+              "mean_truth_kwh": 90.0450970894677,
+              "mean_estimate_kwh": 111.99842811695162
+            },
+            "fully_online_dt_days": {
+              "n": 461,
+              "bias_kwh": -1.560928924084163e-05,
+              "mae_kwh": 1.589846614317007e-05,
+              "corr": 0.9999999999999755,
+              "mean_truth_kwh": 79.06378374311727,
+              "mean_estimate_kwh": 79.06376813382803
+            }
+          }
+        },
+        "jan_jun_reference": {
+          "netted_lambda_0": {
+            "all_dt_days": {
+              "n": 2366,
+              "bias_kwh": 0.2975981868221662,
+              "mae_kwh": 2.7938194766877937,
+              "corr": 0.9839644405797234,
+              "mean_truth_kwh": 31.386160242795444,
+              "mean_estimate_kwh": 31.683758429617612
+            },
+            "fully_online_dt_days": {
+              "n": 429,
+              "bias_kwh": -1.6300514802517286e-05,
+              "mae_kwh": 1.6592726785616867e-05,
+              "corr": 0.9999999999999458,
+              "mean_truth_kwh": 36.631090719406735,
+              "mean_estimate_kwh": 36.631074418891934
+            }
+          },
+          "un_netted_B": {
+            "all_dt_days": {
+              "n": 2366,
+              "bias_kwh": 19.454755206124826,
+              "mae_kwh": 19.45476254866378,
+              "corr": 0.753549361641145,
+              "mean_truth_kwh": 31.386160242795444,
+              "mean_estimate_kwh": 50.84091544892026
+            },
+            "fully_online_dt_days": {
+              "n": 429,
+              "bias_kwh": -1.6300514802517286e-05,
+              "mae_kwh": 1.6592726785616867e-05,
+              "corr": 0.9999999999999458,
+              "mean_truth_kwh": 36.631090719406735,
+              "mean_estimate_kwh": 36.631074418891934
+            }
+          }
+        }
+      },
+      "feeder_head_gain_effect": {
+        "year": {
+          "head_mwh_metered": 15789.959017129593,
+          "head_mwh_ideal": 15844.909225039048,
+          "difference_mwh": -54.95020790945632
+        },
+        "jul_dec_test": {
+          "head_mwh_metered": 7908.370743276823,
+          "head_mwh_ideal": 7935.892449704098,
+          "difference_mwh": -27.521706427273667
+        },
+        "jan_jun_reference": {
+          "head_mwh_metered": 7881.588273852768,
+          "head_mwh_ideal": 7909.0167753349515,
+          "difference_mwh": -27.428501482182646
+        }
+      }
+    },
+    "elapsed_s": 15.2
+  }
+}

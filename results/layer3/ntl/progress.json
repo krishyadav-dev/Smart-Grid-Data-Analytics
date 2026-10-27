@@ -22,13 +22,16 @@
       ]
     },
     "D": {
-      "status": "committed (hash in the commit after this one; see git log 'layer3-ntl-D')",
+      "status": "committed",
       "suite": "427 passed, 0 failed, 0 skipped (496 s)",
       "elapsed": "first grid 934 s + extended grid 2249 s + tune 456 s",
-      "note": "h2 pick still on the extended grid's edge (C 2^8, gamma 2^-13); not extended again"
+      "note": "h2 pick still on the extended grid's edge (C 2^8, gamma 2^-13); not extended again",
+      "commit": "ecbddc8"
     },
     "C": {
-      "status": "pending: balance results (after commit D, per user instruction)"
+      "status": "committed (see git log layer3-ntl-C)",
+      "elapsed_s": 15.2,
+      "suite": "427 passed, 0 failed, 0 skipped"
     },
     "E": {
       "status": "pending"
@@ -45,5 +48,5 @@
     "grid amendment before D froze (user decision; tuning data only)",
     "interruptions: session usage limit after the L_tech runs; (second interruption if any recorded here)"
   ],
-  "next": "step C: balance command (scored once), suite, commit C"
+  "next": "step E: jokar-test once, suite, commit E"
 }
