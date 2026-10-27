@@ -444,3 +444,200 @@ def tune(docs_tune: list[dict], labels: pd.DataFrame, split: dict) -> dict:
 def _copy(e):
     import copy
     return copy.copy(e)
+
+
+
+# ==========================================================================
+# Theft engine (plan §2; Stage 2 run sheet §3-4)
+# ==========================================================================
+# Truth read here only: households.parquet (thief, attack, onset), the P3 label
+# file (theft_kwh, offline_kwh), household_daily's true / reported kWh,
+# meter_frame_true and state.parquet (true losses).
+
+NTL_TUNE = (pd.Timestamp("2024-01-01"), pd.Timestamp("2024-06-30"))      # run sheet §0
+NTL_TEST = (pd.Timestamp("2024-07-01"), pd.Timestamp("2024-12-31"))
+NTL_YEAR = (pd.Timestamp("2024-01-01"), pd.Timestamp("2024-12-31"))
+NTL_WINDOWS = {"jul_dec_test": NTL_TEST, "jan_jun_reference": NTL_TUNE}
+ENERGY_THEFT = ("h1", "h2", "h3", "h4")                                   # N4
+TARIFF_SHIFT = ("h5", "h6")
+
+
+def load_household_labels(cache: Path = YEAR_CACHE_DIR) -> pd.DataFrame:
+    """household -> dt, thief, attack, onset (Timestamp or NaT)."""
+    h = pd.read_parquet(Path(cache) / "households.parquet",
+                        columns=["household", "dt", "thief", "attack", "onset"])
+    h["onset"] = pd.to_datetime(h.onset.replace("", None))
+    return h.set_index("household")
+
+
+def theft_truth(cache: Path = YEAR_CACHE_DIR) -> dict:
+    """Daily energy-theft truth (h1-h4; P3: true - would-have-reported on
+    attack-active days, offline days included) per feeder-day and DT-day, the
+    offline meters per DT-day and the would-have-reported offline energy."""
+    hh = load_household_labels(cache)
+    lab = pd.read_parquet(Path(cache) / "household_daily_labels.parquet",
+                          columns=["household", "date", "offline", "theft_kwh", "offline_kwh"])
+    lab["dt"] = lab.household.map(hh.dt)
+    lab["energy_theft_kwh"] = np.where(lab.household.map(hh.attack).isin(ENERGY_THEFT), lab.theft_kwh, 0.0)
+    lab["date"] = pd.to_datetime(lab.date)
+    g = lab.groupby("date")
+    gd = lab.groupby(["date", "dt"])
+    return {
+        "feeder_theft": g.energy_theft_kwh.sum(),
+        "feeder_theft_all_attacks": g.theft_kwh.sum(),
+        "feeder_offline": g.offline_kwh.sum(),
+        "dt_theft": gd.energy_theft_kwh.sum().unstack(),
+        "dt_offline_meters": gd.offline.sum().unstack(),
+    }
+
+
+def bias_mae(est: pd.Series, truth: pd.Series) -> dict:
+    """Bias and MAE (kWh) of an estimate against the truth, aligned on the index."""
+    e, t = est.align(truth, join="inner")
+    err = e - t
+    return {"n": int(len(err)), "bias_kwh": float(err.mean()), "mae_kwh": float(err.abs().mean()),
+            "corr": float(np.corrcoef(e, t)[0, 1]) if len(e) > 1 and t.std() > 0 else None,
+            "mean_truth_kwh": float(t.mean()), "mean_estimate_kwh": float(e.mean())}
+
+
+def _in(idx, w) -> np.ndarray:
+    d = pd.DatetimeIndex(idx)
+    return np.asarray((d >= w[0]) & (d <= w[1]))
+
+
+def _dt_long(df: pd.DataFrame, name: str) -> pd.Series:
+    s = df.stack()
+    s.index.names = ["date", "dt"]
+    return s.rename(name)
+
+
+def score_feeder(estimates: dict[str, pd.Series], truth: dict) -> dict:
+    """Feeder-day bias / MAE per estimate (netted, un-netted C), per window."""
+    t = truth["feeder_theft"]
+    return {w: {name: bias_mae(s[_in(s.index, r)], t) for name, s in estimates.items()}
+            for w, r in NTL_WINDOWS.items()}
+
+
+def score_dt(estimates: dict[str, pd.DataFrame], truth: dict, windows=None) -> dict:
+    """DT-day bias / MAE per estimate, per window, on all DT-days and on the
+    fully online DT-days (every household meter on the DT online)."""
+    t = _dt_long(truth["dt_theft"], "theft")
+    online = _dt_long(truth["dt_offline_meters"], "off") == 0
+    out = {}
+    for w, r in (windows or NTL_WINDOWS).items():
+        out[w] = {}
+        for name, df in estimates.items():
+            e = _dt_long(df, name)
+            e = e[_in(e.index.get_level_values("date"), r)]
+            fo = online.reindex(e.index).fillna(False).to_numpy(bool)
+            out[w][name] = {"all_dt_days": bias_mae(e, t), "fully_online_dt_days": bias_mae(e[fo], t)}
+    return out
+
+
+def ntl_energy_identity(window=NTL_TEST, cache: Path = YEAR_CACHE_DIR) -> dict:
+    """Feeder energy identity on a window (as tests/test_energy_identity.py on
+    the year): head metered - billed = MV and DT losses + theft + offline +
+    meter error.  Raises if it does not close within the cache's own
+    tolerance (power-flow balance error x steps + float32 rounding)."""
+    cache = Path(cache)
+    end = window[1] + pd.Timedelta(days=1)
+    f = [("load_id", "==", "feeder_head_650"), ("timestamp", ">=", window[0]), ("timestamp", "<", end)]
+    cols = ["timestamp", "load_id", "active_power_kw"]
+    head_true = pd.read_parquet(cache / "meter_frame_true.parquet", columns=cols,
+                                filters=f).active_power_kw.sum() * 0.25
+    head_met = pd.read_parquet(cache / "meter_frame_metered.parquet", columns=cols,
+                               filters=f).active_power_kw.sum() * 0.25
+    st = pd.read_parquet(cache / "state.parquet", columns=["timestamp", "line_losses_mw", "dt_losses_mw"],
+                         filters=f[1:])
+    df = [("date", ">=", window[0]), ("date", "<=", window[1])]
+    hd = pd.read_parquet(cache / "household_daily.parquet",
+                         columns=["date", "true_kwh", "reported_kwh", "metered_kwh"], filters=df)
+    lab = pd.read_parquet(cache / "household_daily_labels.parquet", columns=["date", "theft_kwh", "offline_kwh"],
+                          filters=df)
+    acc = json.loads((cache / "acceptance.json").read_text(encoding="utf-8"))
+    true = hd.true_kwh.to_numpy(float)
+    billed = float(np.nansum(hd.metered_kwh.to_numpy(float)))
+    reported = float(np.nansum(hd.reported_kwh.to_numpy(float)))
+    losses = float((st.line_losses_mw + st.dt_losses_mw).sum() * 1e3 * 0.25)
+    theft, offline = float(lab.theft_kwh.sum()), float(lab.offline_kwh.sum())
+    meter_error = float((head_met - head_true) - (billed - reported))
+    resid = float((head_met - billed) - (losses + theft + offline + meter_error))
+    tol = float(acc["feeder_balance_max_abs_mw"] * 1e3 * 0.25 * len(st) + 2.0 ** -23 * np.abs(true).sum())
+    rec = {"window": [str(window[0].date()), str(window[1].date())], "steps": int(len(st)),
+           "household_days": int(len(hd)), "head_metered_kwh": float(head_met), "billed_kwh": billed,
+           "losses_kwh": losses, "theft_kwh": theft, "offline_kwh": offline, "meter_error_kwh": meter_error,
+           "residual_kwh": resid, "tolerance_kwh": tol, "closes": bool(abs(resid) <= tol)}
+    if not rec["closes"]:
+        raise AssertionError(f"feeder energy identity does not close: {rec}")
+    return rec
+
+
+def true_losses_daily(cache: Path = YEAR_CACHE_DIR) -> pd.DataFrame:
+    """True MV line and DT losses per day (kWh), from the power-flow state."""
+    st = pd.read_parquet(Path(cache) / "state.parquet",
+                         columns=["timestamp", "line_losses_mw", "dt_losses_mw"]).set_index("timestamp")
+    d = st[["line_losses_mw", "dt_losses_mw"]] * 1e3 * 0.25
+    d = d.groupby(pd.DatetimeIndex(d.index).normalize()).sum()
+    d.columns = ["line_losses_kwh", "dt_losses_kwh"]
+    return d
+
+
+def ltech_vs_true(ltech_day: pd.DataFrame, cache: Path = YEAR_CACHE_DIR) -> dict:
+    """L^_tech against the true losses (year and per window), MWh."""
+    t = true_losses_daily(cache)
+    out = {}
+    for w, r in {"year": NTL_YEAR, **NTL_WINDOWS}.items():
+        e, tt = ltech_day[_in(ltech_day.index, r)], t[_in(t.index, r)]
+        out[w] = {"ltech_mwh": float(e.ltech_kw.sum() / 1e3),
+                  "ltech_lines_mwh": float(e.line_losses_kw.sum() / 1e3),
+                  "ltech_dts_mwh": float(e.dt_losses_kw.sum() / 1e3),
+                  "true_mwh": float((tt.line_losses_kwh + tt.dt_losses_kwh).sum() / 1e3),
+                  "true_lines_mwh": float(tt.line_losses_kwh.sum() / 1e3),
+                  "true_dts_mwh": float(tt.dt_losses_kwh.sum() / 1e3)}
+    return out
+
+
+def offline_vs_true(eoff_day: pd.Series, truth: dict) -> dict:
+    """E^_offline against the would-have-reported offline energy, MWh, and per day."""
+    out = {}
+    for w, r in {"year": NTL_YEAR, **NTL_WINDOWS}.items():
+        e = eoff_day[_in(eoff_day.index, r)]
+        out[w] = {"estimate_mwh": float(e.sum() / 1e3),
+                  "true_mwh": float(truth["feeder_offline"][_in(truth["feeder_offline"].index, r)].sum() / 1e3),
+                  "per_day": bias_mae(e, truth["feeder_offline"])}
+    return out
+
+
+def worked_example(est: dict, truth: dict, cache: Path = YEAR_CACHE_DIR) -> dict:
+    """The plan's 2024 feeder-balance table (§2), engine-estimated and true-loss
+    versions, MWh and share of the head energy."""
+    cache = Path(cache)
+    head_true = pd.read_parquet(cache / "meter_frame_true.parquet", columns=["load_id", "active_power_kw"],
+                                filters=[("load_id", "==", "feeder_head_650")]).active_power_kw.sum() * 0.25
+    t = true_losses_daily(cache)
+    billed = float(est["billed"].sum())
+    theft_e = float(truth["feeder_theft"].sum())
+
+    def table(head, lines, dts, offline):
+        c = head - billed
+        net = c - lines - dts - offline
+        mwh = {"head_energy": head, "household_metered": billed, "C_un_netted": c,
+               "technical_losses_lines": lines, "technical_losses_dts": dts, "offline": offline,
+               "netted_estimate": net, "true_energy_theft_h1_h4": theft_e,
+               "netted_minus_true_theft": net - theft_e}
+        return {**{k: v / 1e3 for k, v in mwh.items()},
+                "share_of_head": {k: mwh[k] / head for k in ("C_un_netted", "technical_losses_lines",
+                                                            "technical_losses_dts", "offline",
+                                                            "netted_estimate", "true_energy_theft_h1_h4")},
+                "un_netted_over_true_theft": c / theft_e}
+
+    ld = est["ltech_day"]
+    return {
+        "units": "MWh (except share_of_head and the ratio)",
+        "engine_estimated": table(float(est["head_day"].sum()), float(ld.line_losses_kw.sum()),
+                                  float(ld.dt_losses_kw.sum()), float(est["eoff_day"].sum())),
+        "true_losses_and_offline": table(float(head_true), float(t.line_losses_kwh.sum()),
+                                         float(t.dt_losses_kwh.sum()), float(truth["feeder_offline"].sum())),
+        "true_theft_all_attacks_mwh": float(truth["feeder_theft_all_attacks"].sum() / 1e3),
+        "note": "engine_estimated: metered head energy, L^_tech and E^_offline; true_losses_and_offline: "
+                "the plan's table (true head, true losses, would-have-reported offline energy)"}
