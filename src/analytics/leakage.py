@@ -1,4 +1,5 @@
-"""Layer 3 leakage-guard list (plan §0 rule 1 and §4; Stage 1 run sheet rules 1-2).
+"""Layer 3 leakage-guard list (plan §0 rule 1 and §4; Stage 1 run sheet rules 1-2;
+Stage 2 run sheet §0 leakage guard).
 
 Ground truth that only ``src/analytics/evaluate.py`` may read.  The guard
 tests (``tests/analytics/test_leakage.py``) fail if any engine module
@@ -36,7 +37,17 @@ LABEL_COLUMNS = (
     "rf_model",                         # fault_events: fixed / arc
     "vu_true_pct",                      # P2 labels: true V_N / V_P
     "exceeds_limit",                    # P2 labels: weekly IS 17036 flag
+    "meter_gain",                       # dts / households: each meter's own error (N6), unknown to the utility
 )
+
+# Layer 1 modules that read the true frame or rebuild the labelled population
+# (Stage 2 run sheet §0: scenario generators live in Layer 1 and write
+# metered-format inputs).  Engines read their outputs, never import them.
+LABEL_MODULES = ("simulation", "metering", "ntl_inputs", "households")
+
+# The consumer index the theft engine reads (step A; user decision 27 Oct:
+# consumer-to-DT indexing only, no LV phase)
+CONSUMER_INDEX_COLUMNS = ("household", "dt", "bus")
 
 # The event record's event_id is a label (run sheet rule 1): engines must not
 # use it to group, merge or match bursts; only evaluate.py matches on it.

@@ -1,0 +1,48 @@
+{
+  "lambda_true": {
+    "0.00": {
+      "dt_energy_mwh": 15502.027018895289,
+      "lv_loss_share_of_true_dt_energy": 0.0
+    },
+    "zero_matches_metered_frame_max_abs_kwh": 1.4210854715202004e-14,
+    "0.02": {
+      "dt_energy_mwh": 15812.067559273195,
+      "lv_loss_share_of_true_dt_energy": 0.020000000000000018
+    },
+    "0.04": {
+      "dt_energy_mwh": 16122.108099651101,
+      "lv_loss_share_of_true_dt_energy": 0.040000000000000036
+    }
+  },
+  "ideal_meter": {
+    "real_gains_reproduce_meter_frame_metered_exactly": true,
+    "real_gains_reproduce_household_daily_exactly": true,
+    "head_energy_mwh": 15844.909225039048,
+    "head_energy_mwh_real_gain": 15789.959017129593,
+    "feeder_head_gain": 0.9965319960418189
+  },
+  "consumer_index": {
+    "households": 8020,
+    "columns": [
+      "household",
+      "dt",
+      "bus"
+    ],
+    "per_dt": {
+      "dt_611_1": 393,
+      "dt_634_1": 926,
+      "dt_645_1": 393,
+      "dt_646_1": 532,
+      "dt_652_1": 296,
+      "dt_670_1": 463,
+      "dt_671_1": 891,
+      "dt_671_2": 891,
+      "dt_671_3": 891,
+      "dt_675_1": 651,
+      "dt_675_2": 650,
+      "dt_675_3": 650,
+      "dt_692_1": 393
+    }
+  },
+  "elapsed_s": 47.3
+}

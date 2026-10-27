@@ -52,3 +52,7 @@ Thumbs.db
 
 # docs/ is local only and never tracked (includes the copyrighted References)
 /docs/
+
+# Theft engine regenerable data (scripts/build_ntl_inputs.py, run_layer3_ntl.py); JSON summaries are versioned
+results/layer3/ntl/**/*.parquet
+results/layer3/ntl/**/*.npz
