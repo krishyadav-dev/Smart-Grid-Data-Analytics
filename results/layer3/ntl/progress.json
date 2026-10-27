@@ -29,12 +29,15 @@
       "commit": "ecbddc8"
     },
     "C": {
-      "status": "committed (see git log layer3-ntl-C)",
+      "status": "committed",
       "elapsed_s": 15.2,
-      "suite": "427 passed, 0 failed, 0 skipped"
+      "suite": "427 passed, 0 failed, 0 skipped",
+      "commit": "c2d7581"
     },
     "E": {
-      "status": "pending"
+      "status": "committed (see git log layer3-ntl-E)",
+      "elapsed_s": 1139.4,
+      "suite": "427 passed, 0 failed, 0 skipped"
     },
     "F": {
       "status": "run done 15:05-15:18 (SGCC test pool opened 2026-10-27T15:18:23), uncommitted; not to be re-run"
@@ -48,5 +51,5 @@
     "grid amendment before D froze (user decision; tuning data only)",
     "interruptions: session usage limit after the L_tech runs; (second interruption if any recorded here)"
   ],
-  "next": "step E: jokar-test once, suite, commit E"
+  "next": "restore F files, suite, commit F, then Checkpoint 2 report"
 }
