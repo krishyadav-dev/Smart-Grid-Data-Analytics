@@ -1,0 +1,62 @@
+{
+  "weeks": [
+    {
+      "start": "2024-02-05",
+      "end": "2024-02-11",
+      "chosen_by": "top test-fault count",
+      "test_faults": 6,
+      "tuning_faults": 3,
+      "quiet_windows": 4
+    },
+    {
+      "start": "2024-03-11",
+      "end": "2024-03-17",
+      "chosen_by": "top test-fault count",
+      "test_faults": 6,
+      "tuning_faults": 5,
+      "quiet_windows": 1
+    },
+    {
+      "start": "2024-01-15",
+      "end": "2024-01-21",
+      "chosen_by": "top test-fault count",
+      "test_faults": 5,
+      "tuning_faults": 1,
+      "quiet_windows": 2
+    },
+    {
+      "start": "2024-04-08",
+      "end": "2024-04-14",
+      "chosen_by": "top test-fault count",
+      "test_faults": 4,
+      "tuning_faults": 4,
+      "quiet_windows": 3
+    },
+    {
+      "start": "2024-03-18",
+      "end": "2024-03-24",
+      "chosen_by": "rng(20261025) draw",
+      "test_faults": 0,
+      "tuning_faults": 2,
+      "quiet_windows": 1
+    },
+    {
+      "start": "2024-03-04",
+      "end": "2024-03-10",
+      "chosen_by": "rng(20261025) draw",
+      "test_faults": 1,
+      "tuning_faults": 0,
+      "quiet_windows": 2
+    }
+  ],
+  "weeks_without_any_fault": 0,
+  "one_x": {
+    "event_id": 51,
+    "fault_time": "2024-02-05 17:57:43.090000",
+    "start": "2024-02-05 16:45:00",
+    "end": "2024-02-05 18:30:00",
+    "steps": 8
+  },
+  "seed": 20261025,
+  "rule": "4 ISO weeks with the most test-half faults (ties earliest) + 2 drawn from the remaining weeks with default_rng(seed).choice(len, 2, replace=False)"
+}

@@ -282,7 +282,7 @@ def _evaluate_half(args, f_key: str, q_key: str, out_path: Path, commit_d) -> in
         "zone": V.zone_metrics(first, labels),
         "timing": V.timing_metrics(first, labels),
         "splits": {"open_event_rule_faults_split": det["faults_with_more_than_one_alert"],
-                   "strict_onset_faults_split_test": int((per_strict > 1).sum()),
+                   "strict_onset_faults_split": int((per_strict > 1).sum()),
                    "strict_onset_events": int(len(ev_strict))},
         "flat_baseline": {"bursts": flat,
                           "stream_alerts": int(len(flat_stream)),
