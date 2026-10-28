@@ -24,6 +24,13 @@ data/*
 results/year_2024*/
 # Fault event set (regenerable: scripts/run_faults.py)
 results/faults_2024*/
+# Layer 3 regenerable data: P2 scenario frames and labels (scripts/run_unbalance_scenarios.py;
+# only the summaries are versioned), batch documents and live-replay records (run_layer3_*.py)
+results/unbalance_scenarios/*
+!results/unbalance_scenarios/summary.json
+!results/unbalance_scenarios/scenarios.json
+results/layer3/fault/batch/
+results/layer3/fault/live/*.npz
 
 # Environment variables & secrets
 .env
@@ -45,3 +52,12 @@ Thumbs.db
 
 # docs/ is local only and never tracked (includes the copyrighted References)
 /docs/
+
+# Theft engine regenerable data (scripts/build_ntl_inputs.py, run_layer3_ntl.py); JSON summaries are versioned
+results/layer3/ntl/**/*.parquet
+results/layer3/ntl/**/*.npz
+
+# Thermal engine regenerable data (scripts/run_layer3_thermal.py); JSON summaries are versioned
+results/layer3/thermal/**/*.parquet
+results/layer3/thermal/**/*.npz
+results/layer3/thermal/**/*.pt

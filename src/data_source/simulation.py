@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 STEP_H = 0.25
 LAMBDAS = (0.0, 0.01, 0.02, 0.03, 0.05)          # brief v2 X.2
+LABELS_FILE = "household_daily_labels.parquet"   # Layer 3 P3 (N5): evaluation-only labels
 SWEEP_LABEL = "un-netted DT-level baseline (Evaluation Plan), not the Layer 3 engine"
 
 
@@ -153,7 +154,10 @@ def build_population(start="2024-01-01", end="2024-12-31 23:45",
     design = design_peak(m, el, lib, emarc_all, year, h_bar)
     s_design = design["s_design"]
     bus_p = {b: float(v[0].sum()) for b, v in H.lv_phase_loads().items()}
-    counts = H.household_counts(bus_p, h_bar, s_design)
+    counts_rule = H.household_counts(bus_p, h_bar, s_design)
+    # Layer 3 P3: N pinned in config/household_counts.yaml (within 1 of the rule per bus)
+    counts = H.pinned_household_counts()
+    counts_diff = H.check_pinned_counts(counts, counts_rule)
     # Effect of the top-5 % exclusion on h_bar and N (reported; same s_design)
     no_top = (m.flag == 0) & (el.completeness >= sgcc.COMPLETENESS_MIN)
     h_bar_all = sgcc.mean_household_kw(m, el, no_top)
@@ -179,6 +183,8 @@ def build_population(start="2024-01-01", end="2024-12-31 23:45",
         "eligibility": el.report, "h_bar_kw": h_bar,
         "design_peak": design, "s_design": s_design,
         "counts": counts, "households": int(sum(counts.values())),
+        "counts_source": "pinned, config/household_counts.yaml (Layer 3 P3)",
+        "counts_rule": counts_rule, "counts_pinned_minus_rule": counts_diff,
         "feeder_mostly_zero": int(hh.mostly_zero.sum()),
         "mostly_zero_per_dt": {str(n): int(hh.mostly_zero[hh.dt_index == k].sum())
                                for k, n in enumerate(dts.name)},
@@ -297,6 +303,8 @@ def run_year(out_dir: Path | str = config.YEAR_CACHE_DIR, start="2024-01-01",
     gt.to_parquet(out / "households.parquet", index=False)
     M.daily_table(pop.hh, pop.theft, pop.gain_household).to_parquet(
         out / "household_daily.parquet", index=False)
+    # Layer 3 P3 (N5): evaluation-only labels, kept out of household_daily and the AMI export
+    M.daily_labels(pop.hh, pop.theft).to_parquet(out / LABELS_FILE, index=False)
     write_detector_pools(pop, out)
     if write_ami:
         write_ami_export(pop, out / "ami")
@@ -650,7 +658,9 @@ def lambda_sweep(cache: Path | str = config.YEAR_CACHE_DIR, lambdas=LAMBDAS,
     """DT-day energy balance dE = E_DT - sum(E_consumer) for each lambda.
 
     Primary result: dE against the true theft energy per DT-day (bias, MAE,
-    correlation).  The share of DT-days with active theft is reported first;
+    correlation).  Theft truth (Layer 3 P3, N5): true - would-have-reported on
+    attack-active days, offline days included; offline energy = the
+    would-have-reported value on offline days (``household_daily_labels``).  The share of DT-days with active theft is reported first;
     PR / AUC-PR only where it is below 90 %.  Labelled as the un-netted
     DT-level baseline of the Evaluation Plan, not the Layer 3 engine.
     Reported, not asserted (brief v2 X.3.1 item 6).  Every metric is given
@@ -671,18 +681,22 @@ def lambda_sweep(cache: Path | str = config.YEAR_CACHE_DIR, lambdas=LAMBDAS,
     ts = p.index
     day = pd.DatetimeIndex(ts).normalize()
     daily = daily.merge(hhs, on="household")
-    daily["offline"] = daily.reported_kwh.isna()
-    daily["offline_true_kwh"] = np.where(daily.offline, daily.true_kwh, 0.0)
+    # Layer 3 P3 (N5): theft truth = true - would-have-reported on attack-active days
+    # (offline days included); the offline category is the would-have-reported value.
+    lab = pd.read_parquet(cache / LABELS_FILE, columns=["household", "date", "offline",
+                                                        "theft_kwh", "offline_kwh"])
+    daily = daily.merge(lab, on=["household", "date"], how="left", validate="one_to_one")
+    if daily.theft_kwh.isna().any():
+        raise ValueError(f"{LABELS_FILE} does not cover household_daily")
     label_sets = {"all_attacks": (), "without_h6": ("h6",), "without_h5_h6": ("h5", "h6")}
     for name, excl in label_sets.items():
         act = daily.attack_active & ~daily.attack.isin(excl)
         daily[f"active_{name}"] = act
-        daily[f"theft_kwh_{name}"] = np.where(act & daily.reported_kwh.notna(),
-                                              daily.true_kwh - daily.reported_kwh, 0.0)
+        daily[f"theft_kwh_{name}"] = np.where(act, daily.theft_kwh, 0.0)
     grp = daily.groupby(["dt", "date"])
     cons = grp.metered_kwh.sum(min_count=1).fillna(0.0)       # head-end: offline = no data
     truth = pd.DataFrame({"consumer_metered_kwh": cons,
-                          "offline_true_kwh": grp.offline_true_kwh.sum(),
+                          "offline_kwh": grp.offline_kwh.sum(),
                           "offline_meters": grp.offline.sum(),
                           **{f"theft_kwh_{n}": grp[f"theft_kwh_{n}"].sum() for n in label_sets},
                           **{f"thieves_active_{n}": grp[f"active_{n}"].sum() for n in label_sets}})
@@ -717,7 +731,7 @@ def lambda_sweep(cache: Path | str = config.YEAR_CACHE_DIR, lambdas=LAMBDAS,
                      "corr": float(np.corrcoef(s.delta_e_kwh, theft)[0, 1])
                      if theft.std() > 0 else float("nan"),
                      "mean_theft_kwh": float(theft.mean()),
-                     "mean_offline_true_kwh": float(s.offline_true_kwh.mean())}
+                     "mean_offline_kwh": float(s.offline_kwh.mean())}
                 if share < 0.9 and active.any():
                     r["auc_pr"] = _pr_auc(s.delta_e_kwh.to_numpy(), active.to_numpy())
                     r["auc_pr_baseline"] = share

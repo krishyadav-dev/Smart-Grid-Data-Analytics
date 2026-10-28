@@ -35,6 +35,9 @@ Three quantities per household and day:
 - ``reported``  what the (tampered) meter registers: true before onset,
                 the Jokar attack after it; NaN while the meter is offline;
 - ``metered``   reported x the meter's gain error (what the head-end sees).
+- ``would-have-reported`` (evaluation-only label, Layer 3 P3 / N5): reported
+                before the offline days are blanked; theft truth on an offline
+                attack-active day is true - would-have-reported (:func:`daily_labels`).
 Severity and "reported <= true" are about ``reported`` (theft only); the
 class error is separate, so an honest meter with a positive gain error can
 read above the true value.
@@ -71,6 +74,9 @@ class Theft:
     thief_rows: np.ndarray       # household rows of the thieves
     reported_kw: np.ndarray      # float32 (n_thief, n_days, steps): thieves' reported kW
     p: float
+    # Layer 3 P3 (N5), evaluation-only label: the thieves' daily kWh with the attack
+    # applied, BEFORE offline days are blanked (what the meter would have reported)
+    would_have_reported_kwh: np.ndarray = None   # float64 (n_thief, n_days)
 
 
 def assign_theft(hh: HouseholdSet, p: float, rng_pick: np.random.Generator,
@@ -91,15 +97,19 @@ def assign_theft(hh: HouseholdSet, p: float, rng_pick: np.random.Generator,
     onset_all = np.full(n, -1)
     onset_all[rows] = onset
     rep = np.empty((n_thief, n_days, hh.steps_per_day), np.float32)
+    whr = np.empty((n_thief, n_days))
+    step_h = 24.0 / hh.steps_per_day
     for j, (i, kind, a) in enumerate(zip(rows, kinds, onset)):
         x = (hh.true_kwh[i].astype(float) / 24.0)[:, None] * hh.profiles[hh.profile_id[i]]
         r = x.copy()
         r[a:] = apply_attack(kind, x[a:], rng_attack)[0]
+        # same float32 rounding as the stored reported series, before blanking (N5)
+        whr[j] = r.astype(np.float32).astype(float).sum(axis=1) * step_h
         r[hh.offline[i]] = np.nan
         rep[j] = r
     logger.info("Theft: p = %.4f, %d thieves of %d households; attacks %s",
                 p, n_thief, n, dict(zip(*np.unique(kinds, return_counts=True))))
-    return Theft(thief, attack.astype(str), onset_all, rows, rep, p)
+    return Theft(thief, attack.astype(str), onset_all, rows, rep, p, whr)
 
 
 def reported_daily_kwh(hh: HouseholdSet, theft: Theft) -> np.ndarray:
@@ -109,6 +119,41 @@ def reported_daily_kwh(hh: HouseholdSet, theft: Theft) -> np.ndarray:
     # offline days are NaN in reported_kw, so their sums stay NaN
     rep[theft.thief_rows] = theft.reported_kw.astype(float).sum(axis=2) * step_h
     return rep
+
+
+def would_have_reported_daily_kwh(hh: HouseholdSet, theft: Theft) -> np.ndarray:
+    """Evaluation-only label (Layer 3 P3, N5): daily kWh the meter would have
+    reported, offline days included (n_hh, n_days).  Honest households: true;
+    thieves: the attacked value before the offline days are blanked.  On online
+    days it equals :func:`reported_daily_kwh`."""
+    out = hh.true_kwh.astype(float).copy()
+    out[theft.thief_rows] = theft.would_have_reported_kwh
+    return out
+
+
+def daily_labels(hh: HouseholdSet, theft: Theft) -> pd.DataFrame:
+    """Evaluation-only labels per household and day (Layer 3 P3, N5).
+
+    - ``would_have_reported_kwh``: :func:`would_have_reported_daily_kwh`;
+    - ``theft_kwh``: true - would-have-reported on attack-active days, else 0
+      (online days: true - reported; offline days: true - would-have-reported);
+    - ``offline_kwh``: would-have-reported on offline days, else 0 (the offline
+      category, so nothing is counted twice: on an offline day
+      true = offline_kwh + theft_kwh).
+    Not an engine input; never written into household_daily or the AMI export.
+    """
+    whr = would_have_reported_daily_kwh(hh, theft)
+    true = hh.true_kwh.astype(float)
+    n, d = whr.shape
+    active = theft.thief[:, None] & (np.arange(d)[None, :] >= theft.onset_day[:, None])
+    return pd.DataFrame({
+        "household": np.repeat(hh.hh_id, d),
+        "date": np.tile(hh.days.values, n),
+        "offline": hh.offline.ravel(),
+        "would_have_reported_kwh": whr.ravel(),
+        "theft_kwh": np.where(active, true - whr, 0.0).ravel(),
+        "offline_kwh": np.where(hh.offline, whr, 0.0).ravel(),
+    })
 
 
 def reported_kw_day(hh: HouseholdSet, theft: Theft, day: int) -> np.ndarray:

@@ -1,0 +1,41 @@
+{
+  "name": "check",
+  "start": "2024-02-05 00:00",
+  "end": "2024-02-05 23:45",
+  "speed": 900.0,
+  "wall_s": 104.1,
+  "timed_out": false,
+  "events_replayed": 1,
+  "faults": 1,
+  "quiet_windows": 0,
+  "bursts_expected": 14,
+  "bursts_received": 14,
+  "telemetry_expected": 1344,
+  "telemetry_received_unique": 1344,
+  "gap_flagged_messages": 0,
+  "gap_steps_total": 0,
+  "gateway_events_missed_log_lines": 0,
+  "subscriber_errors": [],
+  "alarms": 1,
+  "latency_ms": {
+    "n": 1,
+    "p50": 33.425000000000004,
+    "p95": 33.425000000000004,
+    "p99": 33.425000000000004,
+    "max": 33.425000000000004
+  },
+  "live_batch": {
+    "events_live": 1,
+    "events_batch": 1,
+    "differences": [],
+    "identical": true
+  },
+  "live_false_alarms": {
+    "engine_events_matching_no_fault": 0,
+    "engine_events_in_quiet_windows": 0,
+    "flat_burst_alerts_matching_no_fault": 0,
+    "flat_stream_alerts": 0,
+    "unbalance_weekly_alarms": 0
+  },
+  "detected_faults_live": 1
+}

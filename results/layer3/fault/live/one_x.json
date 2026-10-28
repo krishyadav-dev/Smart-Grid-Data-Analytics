@@ -1,0 +1,67 @@
+{
+  "name": "one_x",
+  "start": "2024-02-05 17:30",
+  "end": "2024-02-05 18:00",
+  "speed": 1.0,
+  "wall_s": 1806.2,
+  "timed_out": false,
+  "events_replayed": 1,
+  "faults": 1,
+  "quiet_windows": 0,
+  "bursts_expected": 14,
+  "bursts_received": 14,
+  "telemetry_expected": 42,
+  "telemetry_received_unique": 42,
+  "gap_flagged_messages": 0,
+  "gap_steps_total": 0,
+  "gateway_events_missed_log_lines": 0,
+  "subscriber_errors": [],
+  "alarms": 1,
+  "latency_ms": {
+    "n": 1,
+    "p50": 85.87899999999999,
+    "p95": 85.87899999999999,
+    "p99": 85.87899999999999,
+    "max": 85.87899999999999
+  },
+  "alarm_latencies_ms": [
+    85.87899999999999
+  ],
+  "burst_processing_latency_ms": {
+    "n": 14,
+    "p50": 84.1495,
+    "p95": 86.88850000000001,
+    "p99": 87.1225,
+    "max": 87.181
+  },
+  "burst_latencies_ms": [
+    86.029,
+    86.73100000000001,
+    86.66799999999999,
+    86.555,
+    84.149,
+    84.075,
+    84.15,
+    82.083,
+    82.506,
+    83.084,
+    83.935,
+    87.181,
+    86.26599999999999,
+    82.229
+  ],
+  "live_batch": {
+    "events_live": 1,
+    "events_batch": 1,
+    "differences": [],
+    "identical": true
+  },
+  "live_false_alarms": {
+    "engine_events_matching_no_fault": 0,
+    "engine_events_in_quiet_windows": 0,
+    "flat_burst_alerts_matching_no_fault": 0,
+    "flat_stream_alerts": 0,
+    "unbalance_weekly_alarms": 0
+  },
+  "detected_faults_live": 1
+}

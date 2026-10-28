@@ -1,0 +1,8 @@
+{
+  "inputs": "ideal",
+  "steps": 35136,
+  "elapsed_s": 3875.6,
+  "ltech_mwh": 345.8435792812626,
+  "line_losses_mwh": 210.79458053909988,
+  "dt_losses_mwh": 135.04899874216272
+}

@@ -1,0 +1,428 @@
+{
+  "criterion": "lowest mean over the 13 DTs of the hot-spot RMSE over all April origins x 96 steps (seed-mean forecast, main parameter set); tie-break fewer parameters",
+  "train_target_days": [
+    "2024-01-02",
+    "2024-03-17"
+  ],
+  "first_target_day": "2024-01-09",
+  "early_stopping_days": [
+    "2024-03-18",
+    "2024-03-31"
+  ],
+  "origins": [
+    "2024-04-01",
+    "2024-04-30"
+  ],
+  "device": "cuda",
+  "sizes": {
+    "1x32": {
+      "layers": 1,
+      "units": 32,
+      "n_parameters": 10848,
+      "mean_hot_spot_rmse_k": 2.570906995218346,
+      "per_dt_hot_spot_rmse_k": {
+        "dt_634_1": 3.6209,
+        "dt_645_1": 2.5359,
+        "dt_646_1": 2.2898,
+        "dt_652_1": 3.1087,
+        "dt_671_1": 3.0472,
+        "dt_671_2": 2.9312,
+        "dt_671_3": 3.3149,
+        "dt_675_1": 1.6223,
+        "dt_675_2": 1.3961,
+        "dt_675_3": 1.2807,
+        "dt_692_1": 3.4478,
+        "dt_611_1": 2.6605,
+        "dt_670_1": 2.166
+      },
+      "k_mse_seed_mean": 0.004041894906433089,
+      "seeds": {
+        "20261028": {
+          "mean_hot_spot_rmse_k": 2.59970776630071,
+          "k_mse": 0.00449213144872187,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0018420354711355315,
+          "best_epoch": 31,
+          "epochs": 36,
+          "seconds": 5.6,
+          "clipped": 498,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261029": {
+          "mean_hot_spot_rmse_k": 2.9201555317074606,
+          "k_mse": 0.004803273535987851,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0019540228925713503,
+          "best_epoch": 42,
+          "epochs": 47,
+          "seconds": 6.6,
+          "clipped": 129,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261030": {
+          "mean_hot_spot_rmse_k": 2.3794069438837804,
+          "k_mse": 0.0038503724079230776,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.001601689354679314,
+          "best_epoch": 44,
+          "epochs": 49,
+          "seconds": 6.9,
+          "clipped": 117,
+          "n_train": 2691,
+          "n_val": 546
+        }
+      }
+    },
+    "1x64": {
+      "layers": 1,
+      "units": 64,
+      "n_parameters": 29792,
+      "mean_hot_spot_rmse_k": 2.582087188319132,
+      "per_dt_hot_spot_rmse_k": {
+        "dt_634_1": 3.4487,
+        "dt_645_1": 2.7678,
+        "dt_646_1": 2.4882,
+        "dt_652_1": 2.9995,
+        "dt_671_1": 3.2749,
+        "dt_671_2": 2.8816,
+        "dt_671_3": 3.269,
+        "dt_675_1": 1.5965,
+        "dt_675_2": 1.4372,
+        "dt_675_3": 1.438,
+        "dt_692_1": 3.1979,
+        "dt_611_1": 2.724,
+        "dt_670_1": 2.0438
+      },
+      "k_mse_seed_mean": 0.00403022267719773,
+      "seeds": {
+        "20261028": {
+          "mean_hot_spot_rmse_k": 2.3034825834779284,
+          "k_mse": 0.003622811118030538,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.001412489919121707,
+          "best_epoch": 33,
+          "epochs": 38,
+          "seconds": 9.4,
+          "clipped": 27,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261029": {
+          "mean_hot_spot_rmse_k": 2.6121671132825783,
+          "k_mse": 0.004293309777137679,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.001753954215120027,
+          "best_epoch": 27,
+          "epochs": 32,
+          "seconds": 7.4,
+          "clipped": 167,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261030": {
+          "mean_hot_spot_rmse_k": 3.0440165602401703,
+          "k_mse": 0.005113141210727005,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0021010220532229665,
+          "best_epoch": 19,
+          "epochs": 24,
+          "seconds": 6.3,
+          "clipped": 544,
+          "n_train": 2691,
+          "n_val": 546
+        }
+      }
+    },
+    "1x128": {
+      "layers": 1,
+      "units": 128,
+      "n_parameters": 92256,
+      "mean_hot_spot_rmse_k": 2.3067439085613297,
+      "per_dt_hot_spot_rmse_k": {
+        "dt_634_1": 2.9031,
+        "dt_645_1": 2.2898,
+        "dt_646_1": 2.3368,
+        "dt_652_1": 2.7653,
+        "dt_671_1": 3.1824,
+        "dt_671_2": 2.6289,
+        "dt_671_3": 2.7081,
+        "dt_675_1": 1.5833,
+        "dt_675_2": 1.3948,
+        "dt_675_3": 1.2072,
+        "dt_692_1": 2.9086,
+        "dt_611_1": 2.3173,
+        "dt_670_1": 1.7621
+      },
+      "k_mse_seed_mean": 0.0036633001658041746,
+      "seeds": {
+        "20261028": {
+          "mean_hot_spot_rmse_k": 2.380672552778535,
+          "k_mse": 0.003863931575454912,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0015725379597203856,
+          "best_epoch": 18,
+          "epochs": 23,
+          "seconds": 24.7,
+          "clipped": 200,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261029": {
+          "mean_hot_spot_rmse_k": 2.181064109951228,
+          "k_mse": 0.0036568746463646724,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0015546618294926657,
+          "best_epoch": 16,
+          "epochs": 21,
+          "seconds": 14.0,
+          "clipped": 324,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261030": {
+          "mean_hot_spot_rmse_k": 2.5334469099327857,
+          "k_mse": 0.004132942467285686,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.001627019232367344,
+          "best_epoch": 19,
+          "epochs": 24,
+          "seconds": 17.1,
+          "clipped": 128,
+          "n_train": 2691,
+          "n_val": 546
+        }
+      }
+    },
+    "2x32": {
+      "layers": 2,
+      "units": 32,
+      "n_parameters": 19296,
+      "mean_hot_spot_rmse_k": 2.5711827165575136,
+      "per_dt_hot_spot_rmse_k": {
+        "dt_634_1": 3.7775,
+        "dt_645_1": 2.3386,
+        "dt_646_1": 2.5625,
+        "dt_652_1": 3.2586,
+        "dt_671_1": 3.1766,
+        "dt_671_2": 2.6948,
+        "dt_671_3": 3.1654,
+        "dt_675_1": 1.7432,
+        "dt_675_2": 1.4954,
+        "dt_675_3": 1.5236,
+        "dt_692_1": 3.2375,
+        "dt_611_1": 2.4225,
+        "dt_670_1": 2.0294
+      },
+      "k_mse_seed_mean": 0.003931504432812484,
+      "seeds": {
+        "20261028": {
+          "mean_hot_spot_rmse_k": 2.6626033536551046,
+          "k_mse": 0.004285144809040461,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0018026321237066632,
+          "best_epoch": 33,
+          "epochs": 38,
+          "seconds": 12.0,
+          "clipped": 606,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261029": {
+          "mean_hot_spot_rmse_k": 3.0913683429234426,
+          "k_mse": 0.004878886549167827,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0020155148146220984,
+          "best_epoch": 24,
+          "epochs": 29,
+          "seconds": 9.4,
+          "clipped": 81,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261030": {
+          "mean_hot_spot_rmse_k": 2.201480088576213,
+          "k_mse": 0.0035598265590539367,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0016180530591750892,
+          "best_epoch": 33,
+          "epochs": 38,
+          "seconds": 11.7,
+          "clipped": 212,
+          "n_train": 2691,
+          "n_val": 546
+        }
+      }
+    },
+    "2x64": {
+      "layers": 2,
+      "units": 64,
+      "n_parameters": 63072,
+      "mean_hot_spot_rmse_k": 2.312178626294929,
+      "per_dt_hot_spot_rmse_k": {
+        "dt_634_1": 3.2392,
+        "dt_645_1": 2.1611,
+        "dt_646_1": 2.3832,
+        "dt_652_1": 2.8744,
+        "dt_671_1": 2.9667,
+        "dt_671_2": 2.3418,
+        "dt_671_3": 2.673,
+        "dt_675_1": 1.5919,
+        "dt_675_2": 1.4158,
+        "dt_675_3": 1.4286,
+        "dt_692_1": 3.0311,
+        "dt_611_1": 2.069,
+        "dt_670_1": 1.8825
+      },
+      "k_mse_seed_mean": 0.0035189533371475326,
+      "seeds": {
+        "20261028": {
+          "mean_hot_spot_rmse_k": 2.2573204530604825,
+          "k_mse": 0.003651282553422313,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.001519293411474208,
+          "best_epoch": 19,
+          "epochs": 24,
+          "seconds": 18.5,
+          "clipped": 692,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261029": {
+          "mean_hot_spot_rmse_k": 2.3002113704864993,
+          "k_mse": 0.0035490911580947173,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0015455350310269477,
+          "best_epoch": 23,
+          "epochs": 28,
+          "seconds": 21.5,
+          "clipped": 69,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261030": {
+          "mean_hot_spot_rmse_k": 2.4781662004023013,
+          "k_mse": 0.0038479207782500208,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0016425747913927375,
+          "best_epoch": 19,
+          "epochs": 24,
+          "seconds": 18.4,
+          "clipped": 639,
+          "n_train": 2691,
+          "n_val": 546
+        }
+      }
+    },
+    "2x128": {
+      "layers": 2,
+      "units": 128,
+      "n_parameters": 224352,
+      "mean_hot_spot_rmse_k": 2.1742746612219888,
+      "per_dt_hot_spot_rmse_k": {
+        "dt_634_1": 2.8758,
+        "dt_645_1": 2.044,
+        "dt_646_1": 2.3015,
+        "dt_652_1": 2.428,
+        "dt_671_1": 2.9657,
+        "dt_671_2": 2.3822,
+        "dt_671_3": 2.5916,
+        "dt_675_1": 1.5957,
+        "dt_675_2": 1.4144,
+        "dt_675_3": 1.3312,
+        "dt_692_1": 2.7742,
+        "dt_611_1": 2.0502,
+        "dt_670_1": 1.5109
+      },
+      "k_mse_seed_mean": 0.0033365788067496664,
+      "seeds": {
+        "20261028": {
+          "mean_hot_spot_rmse_k": 2.033401052016109,
+          "k_mse": 0.00323556835889597,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0013406189228778742,
+          "best_epoch": 18,
+          "epochs": 23,
+          "seconds": 41.4,
+          "clipped": 160,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261029": {
+          "mean_hot_spot_rmse_k": 2.1709581642484475,
+          "k_mse": 0.0034434645754531064,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0013804382388633246,
+          "best_epoch": 14,
+          "epochs": 19,
+          "seconds": 34.2,
+          "clipped": 402,
+          "n_train": 2691,
+          "n_val": 546
+        },
+        "20261030": {
+          "mean_hot_spot_rmse_k": 2.445482082820459,
+          "k_mse": 0.003697593364886512,
+          "origins_worse_than_persistence": 30,
+          "diverged": true,
+          "best_val_mse": 0.0015332859368799446,
+          "best_epoch": 20,
+          "epochs": 25,
+          "seconds": 43.3,
+          "clipped": 0,
+          "n_train": 2691,
+          "n_val": 546
+        }
+      }
+    }
+  },
+  "baselines_april": {
+    "persistence": {
+      "mean_hot_spot_rmse_k": 0.8519746894831852,
+      "k_mse": 0.000392182928427924
+    },
+    "seasonal_naive": {
+      "mean_hot_spot_rmse_k": 1.142851149845597,
+      "k_mse": 0.0007762319797393016
+    }
+  },
+  "diverged": [
+    "1x32 seed 20261028",
+    "1x32 seed 20261029",
+    "1x32 seed 20261030",
+    "1x64 seed 20261028",
+    "1x64 seed 20261029",
+    "1x64 seed 20261030",
+    "1x128 seed 20261028",
+    "1x128 seed 20261029",
+    "1x128 seed 20261030",
+    "2x32 seed 20261028",
+    "2x32 seed 20261029",
+    "2x32 seed 20261030",
+    "2x64 seed 20261028",
+    "2x64 seed 20261029",
+    "2x64 seed 20261030",
+    "2x128 seed 20261028",
+    "2x128 seed 20261029",
+    "2x128 seed 20261030"
+  ],
+  "elapsed_s": 337.0
+}

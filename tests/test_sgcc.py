@@ -62,6 +62,43 @@ def test_feeder_rule_keeps_long_gaps_and_zeros():
     assert out[0, 0] == 0.0 and out[0, 7] == 0.0    # genuine zeros kept
 
 
+def test_feeder_rule_clips_before_filling_gaps():
+    """Layer 3 P3: a meter glitch next to an isolated gap.  The old order filled
+    the gap from the glitch (2,505 kWh here) and the two masked each other in
+    the clip; now the glitch is clipped first and the gap takes the mean of its
+    clipped neighbours, both close to the normal days."""
+    x = np.array([[10.0, 11.0, 9.0, 10.0, nan, 5000.0, 10.0, 11.0, 9.0, 10.0]])
+    out = sgcc.feeder_preprocess(x)
+    others = np.delete(x[0], [4, 5])
+    thr = others.mean() + 2 * others.std()                 # leave-one-out threshold of day 5
+    assert out[0, 5] == pytest.approx(thr)                 # glitch clipped near its neighbours
+    assert out[0, 4] == pytest.approx(0.5 * (x[0, 3] + thr))   # gap from the clipped neighbours
+    assert out[0, 4] < 12.0 and out[0, 5] < 12.0
+    assert np.allclose(out[0, [0, 1, 2, 3, 6, 7, 8, 9]], x[0, [0, 1, 2, 3, 6, 7, 8, 9]])
+    # the old order (fill, then clip) left the pair far above the normal days
+    left, right = sgcc._neighbours(x)
+    iso = np.isnan(x) & ~np.isnan(left) & ~np.isnan(right)
+    old = x.copy()
+    old[iso] = 0.5 * (left[iso] + right[iso])
+    old = sgcc.zheng_eq2_loo(old)
+    assert old[0, 4] > 100 and old[0, 5] > 100
+
+
+def test_feeder_rule_real_glitches_clipped(request):
+    """Layer 3 P3 on the real SGCC rows: SGCC 2015-01-05 (= 2024-01-01) of the two
+    consumers whose 10,016.7 and 13,442.3 kWh survived as 332 and 442 kWh."""
+    if not config.SGCC_FALLBACK_PATH.exists():
+        pytest.skip("SGCC file absent")
+    m = request.getfixturevalue("full")
+    col = m.dates.get_loc(pd.Timestamp("2015-01-05"))
+    for cons in ("90EB02F771139E18095A46E18904BC8E", "78D9EC5D5A540DEA0BAAAA249B68D108"):
+        r = int(np.flatnonzero(m.consumer_id == cons)[0])
+        assert m.kwh[r, col] > 10_000
+        value = float(sgcc.feeder_preprocess(m.kwh[r:r + 1])[0, col])
+        print(f"\n{cons}: raw {m.kwh[r, col]:.1f} kWh -> {value:.2f} kWh")
+        assert value < 50.0
+
+
 def test_calendar_constant_offset_keeps_weekdays():
     days = pd.date_range("2024-01-01", "2024-12-31", freq="D")
     mapped = sgcc.map_to_sgcc(days)

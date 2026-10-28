@@ -1,0 +1,51 @@
+# Layer 3 fault engine: frozen parameters (run sheet Step D).  Tuned once on the
+# tuning half only; written before any test-half run and committed (commit D).
+# Never re-tuned after the test half is opened.
+frozen:
+  rho_star: 1.7
+  coincidence_samples: 1
+  balance_tol: 0.1
+  delta_pp: 1.75
+tuned_on:
+  faults: faults_tune (100 events) of config/fault_split.yaml
+  quiet: quiet_tune (100 events) of config/fault_split.yaml
+  documents: 2800
+  source: results/layer3/fault/batch/bursts.jsonl.gz (validated burst documents, Layer 1/2 code paths
+    without the broker)
+order:
+- rho_star
+- coincidence_samples
+- balance_tol
+- delta_pp
+grids:
+  rho_star: 1.05 to 3.00, step 0.05
+  coincidence_samples: 1 to 10 samples (10 ms)
+  balance_tol: 0.05 to 0.50, step 0.05
+  delta_pp: 0.25 to 3.00 percentage points, step 0.25
+objectives:
+  rho_star: 'maximise recall of the tuning faults with no IS 17036 detection at the feeder head (user
+    decision 27 Oct 2026, replacing ''missed at every meter'', an empty set), subject to zero events on
+    the 100 tuning quiet windows; tie-break: largest rho*'
+  coincidence_samples: 'fewest tuning faults split into more than one event, then fewest events merging
+    two different tuning faults; tie-break: smallest window'
+  balance_tol: 'maximise 4-class type accuracy on detected tuning faults; tie-break: middle of the best
+    plateau (lower middle if even)'
+  delta_pp: 'maximise zone accuracy on detected tuning faults; tie-break: middle of the best plateau (lower
+    middle if even)'
+plateau_rule: 'best plateau = the longest run of consecutive grid values at the maximum (ties: the lowest
+  run)'
+decisions_27_oct_2026:
+  rho_objective: tuning faults with no IS 17036 detection at the feeder head
+  overcurrent_phase: rho_p > rho*
+  merging: 'open event absorbs: an event stays open while any member meter is disturbed, plus one coincidence
+    window; a detection starting while it is open joins it'
+results:
+  rho_target_faults: 11
+  rho_found: 11
+  faults_split: 0
+  tol_plateau:
+  - 0.1
+  delta_plateau:
+  - 1.75
+  strict_onset_faults_split_tuning: 11
+curves: results/layer3/fault/tuning.json

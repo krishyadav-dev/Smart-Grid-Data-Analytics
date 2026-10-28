@@ -1,0 +1,144 @@
+{
+  "updated": "2026-10-28 addendum I committed",
+  "branch": "feat/layer3",
+  "decisions_28_oct": {
+    "first_lstm_target_day": "2024-01-09 (all inputs and targets from 2024-01-02)",
+    "negative_k_forecast": "clip at 0 everywhere (thermal input and load-error diagnostic); count reported",
+    "size_selection": "three seeds per size, seed-mean forecast (18 trainings)",
+    "divergence_check": "redefined by the user after the first selection run: NaN validation loss or April explained variance of K_p <= 0; worse than persistence is a finding",
+    "time_step": "Dt = 0.1 min, 150 sub-steps per 15-min step (Annex E failed at the run sheet's 1 min)",
+    "residual_variant": "added after the direct LSTM underperformed persistence on April validation: forecast = K_p(D-1) + LSTM output (trained on the residual), clipped at 0"
+  },
+  "steps": {
+    "A": {
+      "status": "committed",
+      "suite": "456 passed, 0 failed, 0 skipped (584 s)",
+      "annex_e_dt_0.1": {
+        "theta_h_30": 114.24,
+        "theta_h_1440": 75.18,
+        "passes": true
+      },
+      "annex_e_by_dt": {
+        "1.0": 114.391,
+        "0.5": 114.308,
+        "0.25": 114.265,
+        "0.1": 114.24,
+        "0.01": 114.224,
+        "exact_ode": 114.222
+      },
+      "packages_pinned": [
+        "cdsapi 0.7.7",
+        "xarray 2026.9.0",
+        "netCDF4 1.7.5.1.post1",
+        "cftime 1.6.6.1",
+        "ecmwf-datastores-client 0.5.3",
+        "multiurl 0.3.9",
+        "tqdm 4.70.0"
+      ],
+      "commit": "bb89248"
+    },
+    "B": {
+      "status": "committed",
+      "suite": "457 passed, 0 failed, 0 skipped (561 s)",
+      "elapsed_s": 14.5,
+      "events_main": {
+        "2024": {
+          "98": 0,
+          "120": 0,
+          "140": 0
+        },
+        "test_window": {
+          "98": 0,
+          "120": 0,
+          "140": 0
+        }
+      },
+      "events_table_e1": {
+        "2024": {
+          "98": 47,
+          "120": 0,
+          "140": 0
+        },
+        "test_window": {
+          "98": 47,
+          "120": 0,
+          "140": 0
+        }
+      },
+      "files": [
+        "reference_main.npz",
+        "reference_table_e1.npz"
+      ],
+      "commit": "2e85b6a"
+    },
+    "C": {
+      "status": "committed",
+      "suite": "472 passed, 0 failed, 0 skipped (807 s)",
+      "first_run": "direct only, 6 sizes x 3 seeds, ~6 min; stopped on the run sheet's divergence check",
+      "second_run_s": 243.3,
+      "chosen": "residual 1x64 (29,792 parameters), April mean hot-spot RMSE 0.7732 K",
+      "files": [
+        "config/layer3_thermal_params.yaml",
+        "lstm_selection_first_run.json"
+      ],
+      "commit": "ea837f5"
+    },
+    "D": {
+      "status": "committed",
+      "elapsed_s": 504.9,
+      "origins": 244,
+      "clipped": {
+        "20261028": 0,
+        "20261029": 0,
+        "20261030": 0
+      },
+      "files": [
+        "forecasts_test.npz",
+        "trajectories_test_main.npz",
+        "trajectories_test_table_e1.npz"
+      ],
+      "suite": "472 passed, 0 failed, 0 skipped (814 s)",
+      "commit": "9593365"
+    },
+    "E": {
+      "status": "committed",
+      "suite": "476 passed, 0 failed, 0 skipped (714 s)",
+      "elapsed_s": 2.6,
+      "bootstrap_main": {
+        "rmse_persistence_minus_lstm_k": {
+          "point": -0.02264306325544041,
+          "ci95": [
+            -0.11208756636547217,
+            0.06458354475594236
+          ],
+          "lstm_better": false
+        },
+        "rmse_seasonal_naive_minus_lstm_k": {
+          "point": 2.9658641701431234,
+          "ci95": [
+            2.4715415982441846,
+            3.4404559941679245
+          ],
+          "lstm_better": true
+        },
+        "lol_error_persistence_minus_lstm_h": {
+          "point": -0.003713737966770346,
+          "ci95": [
+            -0.010197673379282303,
+            0.002373283009587677
+          ],
+          "lstm_better": false
+        }
+      },
+      "commit": "341edf8"
+    },
+    "I": {
+      "status": "committed (see git log layer3-thermal-I)",
+      "label": "post-hoc, after Checkpoint 3",
+      "suite": "476 passed, 0 failed, 0 skipped (576 s)",
+      "script": "scripts/layer3_thermal_addendum.py",
+      "summary_key": "addendum_i"
+    }
+  },
+  "next": "stop; await the user"
+}

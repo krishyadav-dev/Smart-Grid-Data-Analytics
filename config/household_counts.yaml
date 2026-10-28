@@ -1,0 +1,20 @@
+# Households per IEEE bus (N_bus), read by src/data_source/households.py.
+# The rule is N_bus = round(P_bus,nominal / (h_bar x s_design)) = round(P_bus / pool-average
+# peak) (brief v2 X.3 item 1); simulation.build_population computes it and checks that every
+# pinned count is within 1 of it (and records both in run_info.json).
+#
+# Pinned from the pre-fix run (13 Oct cache); the P3 cleaning fix raises the pool-average
+# peak by 0.008 %, which would change buses 634, 671 and 675 by one household each.
+# (Layer 3 P3, user decision 2026-10-27: keep N = 8,020 so the feeder pool, the detector
+# pools, household placement and the thieves stay identical; only daily kWh change.)
+total: 8020
+counts:
+  "634": 926
+  "645": 393
+  "646": 532
+  "652": 296
+  "671": 2673
+  "675": 1951
+  "692": 393
+  "611": 393
+  "670": 463

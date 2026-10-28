@@ -21,3 +21,31 @@ pydantic-settings==2.15.0
 PyYAML==6.0.3
 httpx==0.28.1
 jsonschema==4.26.0
+
+# --- Layer 3 theft engine: Jokar consumer detector (src/analytics/ntl_engine.py) ---
+scikit-learn==1.9.1
+joblib==1.6.0
+threadpoolctl==3.7.0
+
+# --- Layer 3 SGCC check: Zheng Wide & Deep CNN (src/analytics/zheng_cnn.py) ---
+# CUDA 13.0 build (RTX 3050 used for step F); the wheel is on the PyTorch index
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch==2.14.1+cu130
+# installed with torch (pinned at addendum H)
+MarkupSafe==3.0.3
+filelock==3.32.3
+fsspec==2026.7.0
+Jinja2==3.1.6
+mpmath==1.3.0
+setuptools==78.1.0
+sympy==1.14.0
+
+# --- Layer 3 thermal: ERA5 download and reading (scripts/download_era5.py) ---
+cdsapi==0.7.7
+xarray==2026.9.0
+netCDF4==1.7.5.1.post1
+# installed with cdsapi / netCDF4
+cftime==1.6.6.1
+ecmwf-datastores-client==0.5.3
+multiurl==0.3.9
+tqdm==4.70.0

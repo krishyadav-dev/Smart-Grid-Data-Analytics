@@ -1,0 +1,662 @@
+{
+  "week": [
+    "2024-09-02 00:00:00",
+    "2024-09-08 23:45:00"
+  ],
+  "week_choice": {
+    "rule": "complete Monday-Sunday week of 2024 with the median feeder-head energy (lower middle of the sorted weekly energies)",
+    "complete_weeks": 52,
+    "week_energy_mwh": 293.2022882102182,
+    "min_week_mwh": 249.85433525033747,
+    "max_week_mwh": 412.54866687767407
+  },
+  "note": "s and the choice of DTs and phases are scenario parameters for testing the IS 17036 unbalance alarm, not claims about real feeders",
+  "n_scenarios": 31,
+  "baseline_check": {
+    "rows": 46368,
+    "rows_expected": 46368,
+    "max_abs_diff": {
+      "voltage_v": 1.062523642758606e-05,
+      "load_current_a": 3.6116953424425446e-05,
+      "current_a": 3.611947613535449e-05,
+      "active_power_kw": 2.1214535195213102e-05,
+      "reactive_power_kvar": 2.968179038020935e-05
+    },
+    "tolerance": {
+      "voltage_v": 0.005,
+      "load_current_a": 0.0005,
+      "current_a": 0.0005,
+      "active_power_kw": 0.0005,
+      "reactive_power_kvar": 0.0005
+    },
+    "taps_equal": true,
+    "passed": true
+  },
+  "all_power_flows_converged": true,
+  "report": {
+    "per_s_per_meter": {
+      "0.00": {
+        "dt_611_1": {
+          "vu_max_pct": 1.2931832163322463,
+          "vu_p95_max_pct": 1.0966613794059192,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_634_1": {
+          "vu_max_pct": 1.0343940703941474,
+          "vu_p95_max_pct": 0.9311606147162229,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_645_1": {
+          "vu_max_pct": 0.9395702528997765,
+          "vu_p95_max_pct": 0.8158612225064376,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_646_1": {
+          "vu_max_pct": 0.8479589182143263,
+          "vu_p95_max_pct": 0.7616086649308561,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_652_1": {
+          "vu_max_pct": 1.319883538637991,
+          "vu_p95_max_pct": 1.1255587096548914,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_670_1": {
+          "vu_max_pct": 1.0061728917569004,
+          "vu_p95_max_pct": 0.864911950558309,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_671_1": {
+          "vu_max_pct": 1.1511997011343813,
+          "vu_p95_max_pct": 0.9511151494727677,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_671_2": {
+          "vu_max_pct": 1.0894536148251597,
+          "vu_p95_max_pct": 0.9693905106837505,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_671_3": {
+          "vu_max_pct": 1.1895132994075421,
+          "vu_p95_max_pct": 1.0497931798742703,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_675_1": {
+          "vu_max_pct": 1.572704444186658,
+          "vu_p95_max_pct": 1.4675039016943947,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_675_2": {
+          "vu_max_pct": 1.5693135047853113,
+          "vu_p95_max_pct": 1.450532994427156,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_675_3": {
+          "vu_max_pct": 1.5327259303363048,
+          "vu_p95_max_pct": 1.431537256877675,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "dt_692_1": {
+          "vu_max_pct": 1.076062355270113,
+          "vu_p95_max_pct": 0.8846211801335754,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        },
+        "feeder_head_650": {
+          "vu_max_pct": 0.43878867146124384,
+          "vu_p95_max_pct": 0.4025076237598898,
+          "scenarios": 1,
+          "scenarios_exceeding": 0
+        }
+      },
+      "0.10": {
+        "dt_611_1": {
+          "vu_max_pct": 2.431735175915774,
+          "vu_p95_max_pct": 2.2991470083098378,
+          "scenarios": 6,
+          "scenarios_exceeding": 1
+        },
+        "dt_634_1": {
+          "vu_max_pct": 2.1258794883438807,
+          "vu_p95_max_pct": 1.9502279286993953,
+          "scenarios": 6,
+          "scenarios_exceeding": 0
+        },
+        "dt_645_1": {
+          "vu_max_pct": 1.937106641888133,
+          "vu_p95_max_pct": 1.7627936984833534,
+          "scenarios": 6,
+          "scenarios_exceeding": 0
+        },
+        "dt_646_1": {
+          "vu_max_pct": 1.7270838992268314,
+          "vu_p95_max_pct": 1.5848535679188411,
+          "scenarios": 6,
+          "scenarios_exceeding": 0
+        },
+        "dt_652_1": {
+          "vu_max_pct": 2.5115518942062227,
+          "vu_p95_max_pct": 2.3400403544985657,
+          "scenarios": 6,
+          "scenarios_exceeding": 1
+        },
+        "dt_670_1": {
+          "vu_max_pct": 1.954594249180182,
+          "vu_p95_max_pct": 1.7925754525974624,
+          "scenarios": 6,
+          "scenarios_exceeding": 0
+        },
+        "dt_671_1": {
+          "vu_max_pct": 2.1857851771137495,
+          "vu_p95_max_pct": 2.059842599603353,
+          "scenarios": 6,
+          "scenarios_exceeding": 1
+        },
+        "dt_671_2": {
+          "vu_max_pct": 2.278808407281317,
+          "vu_p95_max_pct": 2.0922165382300157,
+          "scenarios": 6,
+          "scenarios_exceeding": 1
+        },
+        "dt_671_3": {
+          "vu_max_pct": 2.378910061054434,
+          "vu_p95_max_pct": 2.1972572219108053,
+          "scenarios": 6,
+          "scenarios_exceeding": 1
+        },
+        "dt_675_1": {
+          "vu_max_pct": 2.6883775923879685,
+          "vu_p95_max_pct": 2.5065552619348703,
+          "scenarios": 6,
+          "scenarios_exceeding": 1
+        },
+        "dt_675_2": {
+          "vu_max_pct": 2.68475671903044,
+          "vu_p95_max_pct": 2.5021368030894173,
+          "scenarios": 6,
+          "scenarios_exceeding": 1
+        },
+        "dt_675_3": {
+          "vu_max_pct": 2.5781418995559897,
+          "vu_p95_max_pct": 2.4335638208916524,
+          "scenarios": 6,
+          "scenarios_exceeding": 1
+        },
+        "dt_692_1": {
+          "vu_max_pct": 2.2114573775759006,
+          "vu_p95_max_pct": 2.0666579451181883,
+          "scenarios": 6,
+          "scenarios_exceeding": 1
+        },
+        "feeder_head_650": {
+          "vu_max_pct": 0.8796698282644968,
+          "vu_p95_max_pct": 0.8134812731406659,
+          "scenarios": 6,
+          "scenarios_exceeding": 0
+        }
+      },
+      "0.20": {
+        "dt_611_1": {
+          "vu_max_pct": 3.9304494264442775,
+          "vu_p95_max_pct": 3.616349841360307,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_634_1": {
+          "vu_max_pct": 3.3329409232843825,
+          "vu_p95_max_pct": 3.0786000542611562,
+          "scenarios": 6,
+          "scenarios_exceeding": 2
+        },
+        "dt_645_1": {
+          "vu_max_pct": 3.105750173806201,
+          "vu_p95_max_pct": 2.832413978513153,
+          "scenarios": 6,
+          "scenarios_exceeding": 2
+        },
+        "dt_646_1": {
+          "vu_max_pct": 2.837403422258478,
+          "vu_p95_max_pct": 2.674118870650646,
+          "scenarios": 6,
+          "scenarios_exceeding": 2
+        },
+        "dt_652_1": {
+          "vu_max_pct": 3.9916552408719053,
+          "vu_p95_max_pct": 3.719779051350336,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_670_1": {
+          "vu_max_pct": 3.064857096555167,
+          "vu_p95_max_pct": 2.8092551312602154,
+          "scenarios": 6,
+          "scenarios_exceeding": 2
+        },
+        "dt_671_1": {
+          "vu_max_pct": 3.6473404964827,
+          "vu_p95_max_pct": 3.4199295110454475,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_671_2": {
+          "vu_max_pct": 3.692380993950249,
+          "vu_p95_max_pct": 3.4063120091141714,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_671_3": {
+          "vu_max_pct": 3.8127117635917678,
+          "vu_p95_max_pct": 3.5046073617114715,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_675_1": {
+          "vu_max_pct": 3.95402394394624,
+          "vu_p95_max_pct": 3.654509867607943,
+          "scenarios": 6,
+          "scenarios_exceeding": 2
+        },
+        "dt_675_2": {
+          "vu_max_pct": 3.9507389704273046,
+          "vu_p95_max_pct": 3.6651803866613992,
+          "scenarios": 6,
+          "scenarios_exceeding": 2
+        },
+        "dt_675_3": {
+          "vu_max_pct": 3.823451250274627,
+          "vu_p95_max_pct": 3.5789706737388727,
+          "scenarios": 6,
+          "scenarios_exceeding": 2
+        },
+        "dt_692_1": {
+          "vu_max_pct": 3.655128228119306,
+          "vu_p95_max_pct": 3.426568209808463,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "feeder_head_650": {
+          "vu_max_pct": 1.401877094175116,
+          "vu_p95_max_pct": 1.2979069277852018,
+          "scenarios": 6,
+          "scenarios_exceeding": 0
+        }
+      },
+      "0.30": {
+        "dt_611_1": {
+          "vu_max_pct": 5.496402626976026,
+          "vu_p95_max_pct": 5.025502157962303,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_634_1": {
+          "vu_max_pct": 4.586248277365726,
+          "vu_p95_max_pct": 4.228319549349786,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_645_1": {
+          "vu_max_pct": 4.334457947462208,
+          "vu_p95_max_pct": 3.9632718281087387,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_646_1": {
+          "vu_max_pct": 4.067514480892216,
+          "vu_p95_max_pct": 3.781157333850068,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_652_1": {
+          "vu_max_pct": 5.596538644039249,
+          "vu_p95_max_pct": 5.155086765798775,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_670_1": {
+          "vu_max_pct": 4.218261144342341,
+          "vu_p95_max_pct": 3.867250712924172,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_671_1": {
+          "vu_max_pct": 5.189235683763513,
+          "vu_p95_max_pct": 4.81460307446403,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_671_2": {
+          "vu_max_pct": 5.18417318415575,
+          "vu_p95_max_pct": 4.761721774853008,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_671_3": {
+          "vu_max_pct": 5.3177627716079545,
+          "vu_p95_max_pct": 4.874648279313568,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_675_1": {
+          "vu_max_pct": 5.2899177711291125,
+          "vu_p95_max_pct": 4.861629667948901,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_675_2": {
+          "vu_max_pct": 5.287074714359413,
+          "vu_p95_max_pct": 4.86564502655662,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_675_3": {
+          "vu_max_pct": 5.149396742555353,
+          "vu_p95_max_pct": 4.756582787376399,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_692_1": {
+          "vu_max_pct": 5.199727250311447,
+          "vu_p95_max_pct": 4.829491581760944,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "feeder_head_650": {
+          "vu_max_pct": 1.9512873456075503,
+          "vu_p95_max_pct": 1.8026523197918403,
+          "scenarios": 6,
+          "scenarios_exceeding": 0
+        }
+      },
+      "0.40": {
+        "dt_611_1": {
+          "vu_max_pct": 7.1343750035281435,
+          "vu_p95_max_pct": 6.490247702235717,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_634_1": {
+          "vu_max_pct": 5.89248310474951,
+          "vu_p95_max_pct": 5.418320588748809,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_645_1": {
+          "vu_max_pct": 5.612415688893585,
+          "vu_p95_max_pct": 5.1169617544149215,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_646_1": {
+          "vu_max_pct": 5.361440629909347,
+          "vu_p95_max_pct": 4.958850070636747,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_652_1": {
+          "vu_max_pct": 7.270751675367054,
+          "vu_p95_max_pct": 6.658327946636051,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_670_1": {
+          "vu_max_pct": 5.41800798103802,
+          "vu_p95_max_pct": 4.954462243403184,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_671_1": {
+          "vu_max_pct": 6.814455459594202,
+          "vu_p95_max_pct": 6.284564086312245,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_671_2": {
+          "vu_max_pct": 6.761838652220509,
+          "vu_p95_max_pct": 6.172558255974586,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_671_3": {
+          "vu_max_pct": 6.885372455336427,
+          "vu_p95_max_pct": 6.2941507517230795,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_675_1": {
+          "vu_max_pct": 6.684597145968071,
+          "vu_p95_max_pct": 6.136763536326187,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_675_2": {
+          "vu_max_pct": 6.681569410568917,
+          "vu_p95_max_pct": 6.143934329550787,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_675_3": {
+          "vu_max_pct": 6.553890450669722,
+          "vu_p95_max_pct": 6.025156119982202,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "dt_692_1": {
+          "vu_max_pct": 6.819766652108255,
+          "vu_p95_max_pct": 6.288919241509829,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        },
+        "feeder_head_650": {
+          "vu_max_pct": 2.5218361055134655,
+          "vu_p95_max_pct": 2.327443979244569,
+          "scenarios": 6,
+          "scenarios_exceeding": 2
+        }
+      },
+      "0.60": {
+        "dt_611_1": {
+          "vu_max_pct": 10.66047619945362,
+          "vu_p95_max_pct": 9.587789595227111,
+          "scenarios": 6,
+          "scenarios_exceeding": 5
+        },
+        "dt_634_1": {
+          "vu_max_pct": 8.690917929893567,
+          "vu_p95_max_pct": 7.934136874319435,
+          "scenarios": 6,
+          "scenarios_exceeding": 5
+        },
+        "dt_645_1": {
+          "vu_max_pct": 8.338462509184069,
+          "vu_p95_max_pct": 7.575338405830676,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_646_1": {
+          "vu_max_pct": 8.1209290556087,
+          "vu_p95_max_pct": 7.450279157636271,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_652_1": {
+          "vu_max_pct": 10.872502283336281,
+          "vu_p95_max_pct": 9.874081221548883,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_670_1": {
+          "vu_max_pct": 7.99390853111629,
+          "vu_p95_max_pct": 7.290847646350061,
+          "scenarios": 6,
+          "scenarios_exceeding": 4
+        },
+        "dt_671_1": {
+          "vu_max_pct": 10.325353576453894,
+          "vu_p95_max_pct": 9.436994150562562,
+          "scenarios": 6,
+          "scenarios_exceeding": 6
+        },
+        "dt_671_2": {
+          "vu_max_pct": 10.149358475061831,
+          "vu_p95_max_pct": 9.207161063218326,
+          "scenarios": 6,
+          "scenarios_exceeding": 5
+        },
+        "dt_671_3": {
+          "vu_max_pct": 10.249470877471312,
+          "vu_p95_max_pct": 9.337064694114819,
+          "scenarios": 6,
+          "scenarios_exceeding": 5
+        },
+        "dt_675_1": {
+          "vu_max_pct": 9.706315554350937,
+          "vu_p95_max_pct": 8.849244007965515,
+          "scenarios": 6,
+          "scenarios_exceeding": 5
+        },
+        "dt_675_2": {
+          "vu_max_pct": 9.690554989824786,
+          "vu_p95_max_pct": 8.845657056126203,
+          "scenarios": 6,
+          "scenarios_exceeding": 5
+        },
+        "dt_675_3": {
+          "vu_max_pct": 9.573585680469115,
+          "vu_p95_max_pct": 8.737773655762526,
+          "scenarios": 6,
+          "scenarios_exceeding": 5
+        },
+        "dt_692_1": {
+          "vu_max_pct": 10.307172268054856,
+          "vu_p95_max_pct": 9.401934521509205,
+          "scenarios": 6,
+          "scenarios_exceeding": 5
+        },
+        "feeder_head_650": {
+          "vu_max_pct": 3.7490461518662315,
+          "vu_p95_max_pct": 3.4392342220065335,
+          "scenarios": 6,
+          "scenarios_exceeding": 3
+        }
+      }
+    },
+    "per_meter_exceeding": [
+      {
+        "load_id": "dt_611_1",
+        "scenarios": 30,
+        "exceeding": 16,
+        "vu_max_pct": 10.66047619945362
+      },
+      {
+        "load_id": "dt_634_1",
+        "scenarios": 30,
+        "exceeding": 13,
+        "vu_max_pct": 8.690917929893567
+      },
+      {
+        "load_id": "dt_645_1",
+        "scenarios": 30,
+        "exceeding": 12,
+        "vu_max_pct": 8.338462509184069
+      },
+      {
+        "load_id": "dt_646_1",
+        "scenarios": 30,
+        "exceeding": 12,
+        "vu_max_pct": 8.1209290556087
+      },
+      {
+        "load_id": "dt_652_1",
+        "scenarios": 30,
+        "exceeding": 15,
+        "vu_max_pct": 10.872502283336281
+      },
+      {
+        "load_id": "dt_670_1",
+        "scenarios": 30,
+        "exceeding": 12,
+        "vu_max_pct": 7.99390853111629
+      },
+      {
+        "load_id": "dt_671_1",
+        "scenarios": 30,
+        "exceeding": 17,
+        "vu_max_pct": 10.325353576453894
+      },
+      {
+        "load_id": "dt_671_2",
+        "scenarios": 30,
+        "exceeding": 15,
+        "vu_max_pct": 10.149358475061831
+      },
+      {
+        "load_id": "dt_671_3",
+        "scenarios": 30,
+        "exceeding": 16,
+        "vu_max_pct": 10.249470877471312
+      },
+      {
+        "load_id": "dt_675_1",
+        "scenarios": 30,
+        "exceeding": 15,
+        "vu_max_pct": 9.706315554350937
+      },
+      {
+        "load_id": "dt_675_2",
+        "scenarios": 30,
+        "exceeding": 15,
+        "vu_max_pct": 9.690554989824786
+      },
+      {
+        "load_id": "dt_675_3",
+        "scenarios": 30,
+        "exceeding": 14,
+        "vu_max_pct": 9.573585680469115
+      },
+      {
+        "load_id": "dt_692_1",
+        "scenarios": 30,
+        "exceeding": 16,
+        "vu_max_pct": 10.307172268054856
+      },
+      {
+        "load_id": "feeder_head_650",
+        "scenarios": 30,
+        "exceeding": 5,
+        "vu_max_pct": 3.7490461518662315
+      }
+    ],
+    "feeder_head_any_exceeding": true,
+    "feeder_head_vu_max_pct": 3.7490461518662315,
+    "meters_with_positives": [
+      "dt_611_1",
+      "dt_634_1",
+      "dt_645_1",
+      "dt_646_1",
+      "dt_652_1",
+      "dt_670_1",
+      "dt_671_1",
+      "dt_671_2",
+      "dt_671_3",
+      "dt_675_1",
+      "dt_675_2",
+      "dt_675_3",
+      "dt_692_1",
+      "feeder_head_650"
+    ]
+  },
+  "run_time_s": 3105.4,
+  "passed": true
+}

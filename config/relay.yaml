@@ -1,0 +1,20 @@
+# Feeder-head relay settings (Layer 3 run sheet, Stage 1 rule 3).  Configuration:
+# the fault engine reads this file, never results/faults_2024/summary.json.
+#
+# Values copied from the post-P3 results/faults_2024/summary.json "relay" block,
+# written by scripts/run_faults.py at commit ecc5753 (Checkpoint 0, 27 Oct 2026):
+#   Is   = 1.2 x the year's highest feeder-head load current 218.2884 A (X.1)
+#   EF   = 0.30 x the same current (NPAG §9.16, PDF p. 145: typical 30-40 % of
+#          full-load current; lower end of the range)
+#   TMS  = 0.1 for both elements (NPAG worked example p. 158; verify)
+#   breaker breaking time 0.060 s (ABB VD4X manual, PDF p. 7, <= 60 ms)
+# Curve: IEC 60255 standard inverse as given in NPAG §9.4, Table 9.1, PDF p. 134:
+#   t = TMS x k / ((I / Is)^alpha - 1), k = 0.14, alpha = 0.02.
+# The phase element acts on the highest phase current at the relay, the earth-fault
+# element on the residual current 3 I0 (not carried in the event record, F1).
+is_a: 261.9461032536608
+ef_is_a: 65.4865258134152
+tms: 0.1
+ef_tms: 0.1
+breaker_s: 0.060
+curve: {name: "IEC standard inverse", k: 0.14, alpha: 0.02}

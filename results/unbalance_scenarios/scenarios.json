@@ -1,0 +1,584 @@
+{
+  "note": "s and the choice of DTs and phases are scenario parameters for testing the IS 17036 unbalance alarm, not claims about real feeders",
+  "week": [
+    "2024-09-02 00:00:00",
+    "2024-09-08 23:45:00"
+  ],
+  "week_choice": {
+    "rule": "complete Monday-Sunday week of 2024 with the median feeder-head energy (lower middle of the sorted weekly energies)",
+    "complete_weeks": 52,
+    "week_energy_mwh": 293.2022882102182,
+    "min_week_mwh": 249.85433525033747,
+    "max_week_mwh": 412.54866687767407
+  },
+  "initial_tap": 4.0,
+  "s_sweep": [
+    0.0,
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.6
+  ],
+  "seed_stream": "unbalance.scenarios",
+  "master_seed": 42,
+  "limit": {
+    "vu_pct": 2.0,
+    "exceed_share": 0.05,
+    "source": "IS 17036:2018 Cl. 4.2.4, Table 8, PDF p. 7 (95 % of each week)"
+  },
+  "scenarios": [
+    {
+      "scenario_id": "s00_base",
+      "s": 0.0,
+      "kind": "baseline",
+      "shift": {}
+    },
+    {
+      "scenario_id": "s10_all_a",
+      "s": 0.1,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "a",
+        "dt_645_1": "a",
+        "dt_646_1": "a",
+        "dt_652_1": "a",
+        "dt_671_1": "a",
+        "dt_671_2": "a",
+        "dt_671_3": "a",
+        "dt_675_1": "a",
+        "dt_675_2": "a",
+        "dt_675_3": "a",
+        "dt_692_1": "a",
+        "dt_611_1": "a",
+        "dt_670_1": "a"
+      }
+    },
+    {
+      "scenario_id": "s10_all_b",
+      "s": 0.1,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "b",
+        "dt_645_1": "b",
+        "dt_646_1": "b",
+        "dt_652_1": "b",
+        "dt_671_1": "b",
+        "dt_671_2": "b",
+        "dt_671_3": "b",
+        "dt_675_1": "b",
+        "dt_675_2": "b",
+        "dt_675_3": "b",
+        "dt_692_1": "b",
+        "dt_611_1": "b",
+        "dt_670_1": "b"
+      }
+    },
+    {
+      "scenario_id": "s10_all_c",
+      "s": 0.1,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "c",
+        "dt_645_1": "c",
+        "dt_646_1": "c",
+        "dt_652_1": "c",
+        "dt_671_1": "c",
+        "dt_671_2": "c",
+        "dt_671_3": "c",
+        "dt_675_1": "c",
+        "dt_675_2": "c",
+        "dt_675_3": "c",
+        "dt_692_1": "c",
+        "dt_611_1": "c",
+        "dt_670_1": "c"
+      }
+    },
+    {
+      "scenario_id": "s10_rand1",
+      "s": 0.1,
+      "kind": "random",
+      "shift": {
+        "dt_645_1": "c",
+        "dt_646_1": "a",
+        "dt_671_2": "c",
+        "dt_675_2": "c",
+        "dt_675_3": "c"
+      }
+    },
+    {
+      "scenario_id": "s10_rand2",
+      "s": 0.1,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "c",
+        "dt_646_1": "b",
+        "dt_652_1": "c",
+        "dt_671_1": "c",
+        "dt_671_2": "b",
+        "dt_671_3": "c",
+        "dt_675_1": "a",
+        "dt_675_2": "a",
+        "dt_675_3": "c",
+        "dt_692_1": "b",
+        "dt_611_1": "a",
+        "dt_670_1": "c"
+      }
+    },
+    {
+      "scenario_id": "s10_rand3",
+      "s": 0.1,
+      "kind": "random",
+      "shift": {
+        "dt_646_1": "a",
+        "dt_652_1": "b",
+        "dt_671_1": "b",
+        "dt_671_2": "a",
+        "dt_671_3": "c",
+        "dt_675_2": "b",
+        "dt_692_1": "a",
+        "dt_611_1": "c"
+      }
+    },
+    {
+      "scenario_id": "s20_all_a",
+      "s": 0.2,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "a",
+        "dt_645_1": "a",
+        "dt_646_1": "a",
+        "dt_652_1": "a",
+        "dt_671_1": "a",
+        "dt_671_2": "a",
+        "dt_671_3": "a",
+        "dt_675_1": "a",
+        "dt_675_2": "a",
+        "dt_675_3": "a",
+        "dt_692_1": "a",
+        "dt_611_1": "a",
+        "dt_670_1": "a"
+      }
+    },
+    {
+      "scenario_id": "s20_all_b",
+      "s": 0.2,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "b",
+        "dt_645_1": "b",
+        "dt_646_1": "b",
+        "dt_652_1": "b",
+        "dt_671_1": "b",
+        "dt_671_2": "b",
+        "dt_671_3": "b",
+        "dt_675_1": "b",
+        "dt_675_2": "b",
+        "dt_675_3": "b",
+        "dt_692_1": "b",
+        "dt_611_1": "b",
+        "dt_670_1": "b"
+      }
+    },
+    {
+      "scenario_id": "s20_all_c",
+      "s": 0.2,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "c",
+        "dt_645_1": "c",
+        "dt_646_1": "c",
+        "dt_652_1": "c",
+        "dt_671_1": "c",
+        "dt_671_2": "c",
+        "dt_671_3": "c",
+        "dt_675_1": "c",
+        "dt_675_2": "c",
+        "dt_675_3": "c",
+        "dt_692_1": "c",
+        "dt_611_1": "c",
+        "dt_670_1": "c"
+      }
+    },
+    {
+      "scenario_id": "s20_rand1",
+      "s": 0.2,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "a",
+        "dt_645_1": "c",
+        "dt_652_1": "a",
+        "dt_671_1": "b",
+        "dt_671_2": "a",
+        "dt_671_3": "b",
+        "dt_675_1": "c",
+        "dt_675_2": "a",
+        "dt_692_1": "b",
+        "dt_611_1": "b",
+        "dt_670_1": "a"
+      }
+    },
+    {
+      "scenario_id": "s20_rand2",
+      "s": 0.2,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "a",
+        "dt_675_1": "c",
+        "dt_670_1": "c"
+      }
+    },
+    {
+      "scenario_id": "s20_rand3",
+      "s": 0.2,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "b",
+        "dt_646_1": "c",
+        "dt_652_1": "c",
+        "dt_671_2": "c",
+        "dt_671_3": "b",
+        "dt_675_3": "c",
+        "dt_692_1": "b"
+      }
+    },
+    {
+      "scenario_id": "s30_all_a",
+      "s": 0.3,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "a",
+        "dt_645_1": "a",
+        "dt_646_1": "a",
+        "dt_652_1": "a",
+        "dt_671_1": "a",
+        "dt_671_2": "a",
+        "dt_671_3": "a",
+        "dt_675_1": "a",
+        "dt_675_2": "a",
+        "dt_675_3": "a",
+        "dt_692_1": "a",
+        "dt_611_1": "a",
+        "dt_670_1": "a"
+      }
+    },
+    {
+      "scenario_id": "s30_all_b",
+      "s": 0.3,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "b",
+        "dt_645_1": "b",
+        "dt_646_1": "b",
+        "dt_652_1": "b",
+        "dt_671_1": "b",
+        "dt_671_2": "b",
+        "dt_671_3": "b",
+        "dt_675_1": "b",
+        "dt_675_2": "b",
+        "dt_675_3": "b",
+        "dt_692_1": "b",
+        "dt_611_1": "b",
+        "dt_670_1": "b"
+      }
+    },
+    {
+      "scenario_id": "s30_all_c",
+      "s": 0.3,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "c",
+        "dt_645_1": "c",
+        "dt_646_1": "c",
+        "dt_652_1": "c",
+        "dt_671_1": "c",
+        "dt_671_2": "c",
+        "dt_671_3": "c",
+        "dt_675_1": "c",
+        "dt_675_2": "c",
+        "dt_675_3": "c",
+        "dt_692_1": "c",
+        "dt_611_1": "c",
+        "dt_670_1": "c"
+      }
+    },
+    {
+      "scenario_id": "s30_rand1",
+      "s": 0.3,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "a",
+        "dt_646_1": "c",
+        "dt_675_1": "b",
+        "dt_675_2": "b",
+        "dt_692_1": "a",
+        "dt_611_1": "b",
+        "dt_670_1": "a"
+      }
+    },
+    {
+      "scenario_id": "s30_rand2",
+      "s": 0.3,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "c",
+        "dt_646_1": "b",
+        "dt_652_1": "c",
+        "dt_671_1": "c",
+        "dt_675_1": "c",
+        "dt_675_2": "a",
+        "dt_692_1": "a",
+        "dt_670_1": "a"
+      }
+    },
+    {
+      "scenario_id": "s30_rand3",
+      "s": 0.3,
+      "kind": "random",
+      "shift": {
+        "dt_645_1": "a",
+        "dt_652_1": "b",
+        "dt_671_1": "c",
+        "dt_671_2": "a",
+        "dt_671_3": "b",
+        "dt_675_2": "b",
+        "dt_675_3": "c",
+        "dt_611_1": "c",
+        "dt_670_1": "a"
+      }
+    },
+    {
+      "scenario_id": "s40_all_a",
+      "s": 0.4,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "a",
+        "dt_645_1": "a",
+        "dt_646_1": "a",
+        "dt_652_1": "a",
+        "dt_671_1": "a",
+        "dt_671_2": "a",
+        "dt_671_3": "a",
+        "dt_675_1": "a",
+        "dt_675_2": "a",
+        "dt_675_3": "a",
+        "dt_692_1": "a",
+        "dt_611_1": "a",
+        "dt_670_1": "a"
+      }
+    },
+    {
+      "scenario_id": "s40_all_b",
+      "s": 0.4,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "b",
+        "dt_645_1": "b",
+        "dt_646_1": "b",
+        "dt_652_1": "b",
+        "dt_671_1": "b",
+        "dt_671_2": "b",
+        "dt_671_3": "b",
+        "dt_675_1": "b",
+        "dt_675_2": "b",
+        "dt_675_3": "b",
+        "dt_692_1": "b",
+        "dt_611_1": "b",
+        "dt_670_1": "b"
+      }
+    },
+    {
+      "scenario_id": "s40_all_c",
+      "s": 0.4,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "c",
+        "dt_645_1": "c",
+        "dt_646_1": "c",
+        "dt_652_1": "c",
+        "dt_671_1": "c",
+        "dt_671_2": "c",
+        "dt_671_3": "c",
+        "dt_675_1": "c",
+        "dt_675_2": "c",
+        "dt_675_3": "c",
+        "dt_692_1": "c",
+        "dt_611_1": "c",
+        "dt_670_1": "c"
+      }
+    },
+    {
+      "scenario_id": "s40_rand1",
+      "s": 0.4,
+      "kind": "random",
+      "shift": {
+        "dt_646_1": "b",
+        "dt_675_1": "b",
+        "dt_675_2": "a"
+      }
+    },
+    {
+      "scenario_id": "s40_rand2",
+      "s": 0.4,
+      "kind": "random",
+      "shift": {
+        "dt_645_1": "b",
+        "dt_652_1": "c",
+        "dt_671_2": "c",
+        "dt_671_3": "b",
+        "dt_675_1": "b",
+        "dt_675_2": "b",
+        "dt_675_3": "b",
+        "dt_611_1": "b"
+      }
+    },
+    {
+      "scenario_id": "s40_rand3",
+      "s": 0.4,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "c"
+      }
+    },
+    {
+      "scenario_id": "s60_all_a",
+      "s": 0.6,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "a",
+        "dt_645_1": "a",
+        "dt_646_1": "a",
+        "dt_652_1": "a",
+        "dt_671_1": "a",
+        "dt_671_2": "a",
+        "dt_671_3": "a",
+        "dt_675_1": "a",
+        "dt_675_2": "a",
+        "dt_675_3": "a",
+        "dt_692_1": "a",
+        "dt_611_1": "a",
+        "dt_670_1": "a"
+      }
+    },
+    {
+      "scenario_id": "s60_all_b",
+      "s": 0.6,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "b",
+        "dt_645_1": "b",
+        "dt_646_1": "b",
+        "dt_652_1": "b",
+        "dt_671_1": "b",
+        "dt_671_2": "b",
+        "dt_671_3": "b",
+        "dt_675_1": "b",
+        "dt_675_2": "b",
+        "dt_675_3": "b",
+        "dt_692_1": "b",
+        "dt_611_1": "b",
+        "dt_670_1": "b"
+      }
+    },
+    {
+      "scenario_id": "s60_all_c",
+      "s": 0.6,
+      "kind": "common_phase",
+      "shift": {
+        "dt_634_1": "c",
+        "dt_645_1": "c",
+        "dt_646_1": "c",
+        "dt_652_1": "c",
+        "dt_671_1": "c",
+        "dt_671_2": "c",
+        "dt_671_3": "c",
+        "dt_675_1": "c",
+        "dt_675_2": "c",
+        "dt_675_3": "c",
+        "dt_692_1": "c",
+        "dt_611_1": "c",
+        "dt_670_1": "c"
+      }
+    },
+    {
+      "scenario_id": "s60_rand1",
+      "s": 0.6,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "a",
+        "dt_645_1": "a",
+        "dt_646_1": "c",
+        "dt_671_1": "c",
+        "dt_671_3": "b"
+      }
+    },
+    {
+      "scenario_id": "s60_rand2",
+      "s": 0.6,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "c",
+        "dt_671_2": "a",
+        "dt_671_3": "c",
+        "dt_675_3": "c"
+      }
+    },
+    {
+      "scenario_id": "s60_rand3",
+      "s": 0.6,
+      "kind": "random",
+      "shift": {
+        "dt_634_1": "b",
+        "dt_652_1": "b",
+        "dt_671_1": "c",
+        "dt_671_2": "a",
+        "dt_671_3": "c",
+        "dt_675_1": "c",
+        "dt_675_2": "c",
+        "dt_675_3": "c",
+        "dt_611_1": "a",
+        "dt_670_1": "a"
+      }
+    }
+  ],
+  "time_s": {
+    "s00_base": 97.0,
+    "s10_all_a": 104.9,
+    "s10_all_b": 105.5,
+    "s10_all_c": 108.1,
+    "s10_rand1": 89.9,
+    "s10_rand2": 94.5,
+    "s10_rand3": 87.3,
+    "s20_all_a": 97.2,
+    "s20_all_b": 103.6,
+    "s20_all_c": 102.0,
+    "s20_rand1": 96.4,
+    "s20_rand2": 94.3,
+    "s20_rand3": 93.9,
+    "s30_all_a": 101.6,
+    "s30_all_b": 100.2,
+    "s30_all_c": 101.7,
+    "s30_rand1": 97.7,
+    "s30_rand2": 99.8,
+    "s30_rand3": 95.5,
+    "s40_all_a": 108.2,
+    "s40_all_b": 100.8,
+    "s40_all_c": 99.0,
+    "s40_rand1": 86.6,
+    "s40_rand2": 90.4,
+    "s40_rand3": 88.9,
+    "s60_all_a": 106.9,
+    "s60_all_b": 106.7,
+    "s60_all_c": 114.7,
+    "s60_rand1": 100.9,
+    "s60_rand2": 103.3,
+    "s60_rand3": 105.2
+  },
+  "inputs": "frames/<scenario_id>.parquet (meter_frame_metered format; engine inputs)",
+  "labels": [
+    "unbalance_labels.parquet",
+    "unbalance_weekly_labels.parquet",
+    "baseline_true_frame.parquet",
+    "states.parquet"
+  ]
+}
