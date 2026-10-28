@@ -7195,5 +7195,118 @@
       }
     },
     "elapsed_s": 2.6
+  },
+  "addendum_i": {
+    "label": "post-hoc, after Checkpoint 3",
+    "parameter_set": "table_e1",
+    "threshold_c": 98.0,
+    "definition": "start = reference theta_h at 00:00 of the origin (end of the previous day's last sub-step), the state every forecast trajectory starts from; groups: start < 98 degC and start >= 98 degC; P / R / lead time as in step E, within the group",
+    "event_dt_days": {
+      "all": 47,
+      "start_at_or_above_98": 4,
+      "start_below_98": 43
+    },
+    "dt_days_starting_at_or_above_98": 5,
+    "models": {
+      "persistence": {
+        "start_below_98": {
+          "dt_days": 3167,
+          "event_dt_days": 43,
+          "detected": 28,
+          "forecast_crossing_dt_days": 43,
+          "forecast_only_dt_days": 15,
+          "precision": {
+            "k": 28,
+            "n": 43,
+            "p": 0.6511627906976745,
+            "lo": 0.501715070970981,
+            "hi": 0.775816012510369
+          },
+          "recall": {
+            "k": 28,
+            "n": 43,
+            "p": 0.6511627906976745,
+            "lo": 0.501715070970981,
+            "hi": 0.775816012510369
+          },
+          "lead_time_h": {
+            "mean": 18.720238095238095,
+            "median": 20.329166666666666,
+            "min": 8.505,
+            "max": 21.94
+          }
+        },
+        "start_at_or_above_98": {
+          "forecast_only_dt_days": 1,
+          "detected": 4
+        }
+      },
+      "seasonal_naive": {
+        "start_below_98": {
+          "dt_days": 3167,
+          "event_dt_days": 43,
+          "detected": 2,
+          "forecast_crossing_dt_days": 40,
+          "forecast_only_dt_days": 38,
+          "precision": {
+            "k": 2,
+            "n": 40,
+            "p": 0.05,
+            "lo": 0.013820377146101098,
+            "hi": 0.165041708179252
+          },
+          "recall": {
+            "k": 2,
+            "n": 43,
+            "p": 0.046511627906976744,
+            "lo": 0.012848990317319689,
+            "hi": 0.15455775923863058
+          },
+          "lead_time_h": {
+            "mean": 14.5075,
+            "median": 14.5075,
+            "min": 8.678333333333335,
+            "max": 20.336666666666666
+          }
+        },
+        "start_at_or_above_98": {
+          "forecast_only_dt_days": 0,
+          "detected": 4
+        }
+      },
+      "lstm": {
+        "start_below_98": {
+          "dt_days": 3167,
+          "event_dt_days": 43,
+          "detected": 17,
+          "forecast_crossing_dt_days": 26,
+          "forecast_only_dt_days": 9,
+          "precision": {
+            "k": 17,
+            "n": 26,
+            "p": 0.6538461538461539,
+            "lo": 0.46220229009632996,
+            "hi": 0.8058798502714787
+          },
+          "recall": {
+            "k": 17,
+            "n": 43,
+            "p": 0.3953488372093023,
+            "lo": 0.263651061984564,
+            "hi": 0.5442120340668091
+          },
+          "lead_time_h": {
+            "mean": 17.643529411764707,
+            "median": 20.041666666666668,
+            "min": 8.505,
+            "max": 21.94
+          }
+        },
+        "start_at_or_above_98": {
+          "forecast_only_dt_days": 0,
+          "detected": 4
+        }
+      }
+    }
   }
 }

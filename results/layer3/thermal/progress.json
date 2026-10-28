@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-28 step E committed; Checkpoint 3",
+  "updated": "2026-10-28 addendum I committed",
   "branch": "feat/layer3",
   "decisions_28_oct": {
     "first_lstm_target_day": "2024-01-09 (all inputs and targets from 2024-01-02)",
@@ -101,7 +101,7 @@
       "commit": "9593365"
     },
     "E": {
-      "status": "committed (see git log layer3-thermal-E)",
+      "status": "committed",
       "suite": "476 passed, 0 failed, 0 skipped (714 s)",
       "elapsed_s": 2.6,
       "bootstrap_main": {
@@ -129,8 +129,16 @@
           ],
           "lstm_better": false
         }
-      }
+      },
+      "commit": "341edf8"
+    },
+    "I": {
+      "status": "committed (see git log layer3-thermal-I)",
+      "label": "post-hoc, after Checkpoint 3",
+      "suite": "476 passed, 0 failed, 0 skipped (576 s)",
+      "script": "scripts/layer3_thermal_addendum.py",
+      "summary_key": "addendum_i"
     }
   },
-  "next": "Checkpoint 3: stop and report; do not start further work until the user replies"
+  "next": "stop; await the user"
 }
