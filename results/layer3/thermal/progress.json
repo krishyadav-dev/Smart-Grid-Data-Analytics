@@ -1,12 +1,13 @@
 {
-  "updated": "2026-10-28 step B committed",
+  "updated": "2026-10-28 step C committed",
   "branch": "feat/layer3",
   "decisions_28_oct": {
     "first_lstm_target_day": "2024-01-09 (all inputs and targets from 2024-01-02)",
     "negative_k_forecast": "clip at 0 everywhere (thermal input and load-error diagnostic); count reported",
     "size_selection": "three seeds per size, seed-mean forecast (18 trainings)",
-    "divergence_check": "per April origin, the seed's K_p MSE vs persistence's",
-    "time_step": "Dt = 0.1 min, 150 sub-steps per 15-min step (Annex E failed at the run sheet's 1 min)"
+    "divergence_check": "redefined by the user after the first selection run: NaN validation loss or April explained variance of K_p <= 0; worse than persistence is a finding",
+    "time_step": "Dt = 0.1 min, 150 sub-steps per 15-min step (Annex E failed at the run sheet's 1 min)",
+    "residual_variant": "added after the direct LSTM underperformed persistence on April validation: forecast = K_p(D-1) + LSTM output (trained on the residual), clipped at 0"
   },
   "steps": {
     "A": {
@@ -37,7 +38,7 @@
       "commit": "bb89248"
     },
     "B": {
-      "status": "committed (see git log layer3-thermal-B)",
+      "status": "committed",
       "suite": "457 passed, 0 failed, 0 skipped (561 s)",
       "elapsed_s": 14.5,
       "events_main": {
@@ -67,8 +68,20 @@
       "files": [
         "reference_main.npz",
         "reference_table_e1.npz"
+      ],
+      "commit": "2e85b6a"
+    },
+    "C": {
+      "status": "committed (see git log layer3-thermal-C)",
+      "suite": "472 passed, 0 failed, 0 skipped (807 s)",
+      "first_run": "direct only, 6 sizes x 3 seeds, ~6 min; stopped on the run sheet's divergence check",
+      "second_run_s": 243.3,
+      "chosen": "residual 1x64 (29,792 parameters), April mean hot-spot RMSE 0.7732 K",
+      "files": [
+        "config/layer3_thermal_params.yaml",
+        "lstm_selection_first_run.json"
       ]
     }
   },
-  "next": "step C: LSTM size selection on April origins, freeze config/layer3_thermal_params.yaml, commit C"
+  "next": "step D: walk-forward test run once (May-December origins), then step E metrics"
 }

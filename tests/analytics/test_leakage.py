@@ -36,7 +36,7 @@ def engine_modules() -> list[Path]:
 
 def test_engine_modules_exist():
     names = {p.name for p in engine_modules()}
-    assert {"zones.py", "unbalance.py", "meters.py", "thermal.py"} <= names
+    assert {"zones.py", "unbalance.py", "meters.py", "thermal.py", "forecast.py"} <= names
 
 
 @pytest.mark.parametrize("path", engine_modules(), ids=lambda p: p.name)

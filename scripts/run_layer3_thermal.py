@@ -4,6 +4,7 @@ Commands (PowerShell)::
 
     python scripts/run_layer3_thermal.py annex-e        # step A: acceptance test + step-size table
     python scripts/run_layer3_thermal.py reference      # step B: reference trajectories, counts, correlation
+    python scripts/run_layer3_thermal.py select         # step C: LSTM size on April origins -> freeze
 
 Outputs under ``results/layer3/thermal/`` (``summary.json``).
 Labels are read through :mod:`src.analytics.evaluate` only.
@@ -23,12 +24,15 @@ if str(ROOT) not in sys.path:
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+import yaml  # noqa: E402
 
 from src.analytics import evaluate as V  # noqa: E402
+from src.analytics import forecast as F  # noqa: E402
 from src.analytics import thermal as T  # noqa: E402
 from src.data_source.config import YEAR_CACHE_DIR  # noqa: E402
 
 OUT = ROOT / "results" / "layer3" / "thermal"
+PARAMS = ROOT / "config" / "layer3_thermal_params.yaml"
 FRAME = YEAR_CACHE_DIR / "meter_frame_metered.parquet"
 DTS = YEAR_CACHE_DIR / "dts.parquet"
 SUMMARY = OUT / "summary.json"
@@ -186,11 +190,202 @@ def cmd_reference(args) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------
+# Step C: LSTM size on April origins, then freeze
+# --------------------------------------------------------------------------
+
+def _device():
+    import torch
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def forecast_inputs(inp: dict) -> dict:
+    kd = F.daily_series(inp["k"])
+    return {"kd": kd, "n_dt": len(inp["names"]), "n_series": kd.shape[2],
+            "feats": F.features(kd, inp["days"], len(inp["names"]))}
+
+
+def origin_days(inp: dict, window: tuple) -> np.ndarray:
+    return np.arange(F.day_index(inp["days"], window[0]), F.day_index(inp["days"], window[1]) + 1)
+
+
+def thermal_from_forecast(fc: np.ndarray, origins: np.ndarray, inp: dict, ref: dict, ps: str) -> dict:
+    """Run clipped forecasts [origin, 96, series] through parameter set ``ps``
+    from the reference state at 00:00 of each origin, with the actual ambient."""
+    s0 = T.state_at(ref, origins * T.STEPS_PER_DAY - 1)
+    ta = inp["ta"].reshape(-1, T.STEPS_PER_DAY)[origins]
+    return T.forecast_run(T.dt_params(inp["dts"], ps), F.to_dt_phase(fc, len(inp["names"])), ta, s0)
+
+
+def hot_spot_rmse_per_dt(th: np.ndarray, ref_th: np.ndarray) -> np.ndarray:
+    """RMSE over origins x 96 steps, per DT ([origin, 96, DT] inputs)."""
+    return np.sqrt(np.mean((th - ref_th) ** 2, axis=(0, 1)))
+
+
+def train_seeds(win, fi: dict, inp: dict, rnd: tuple, layers: int, units: int, origins: np.ndarray,
+                tag: str) -> tuple[dict, dict]:
+    """Train the three seeds for one round; clipped K_p forecasts per seed and logs."""
+    trp = F.samples(rnd[0], inp["days"], fi["n_series"])
+    vap = F.samples(rnd[1], inp["days"], fi["n_series"])
+    fcs, logs = {}, {}
+    for seed in F.SEEDS:
+        model, log = F.train(win, trp, vap, layers, units, seed)
+        raw = F.forecast_origins(model, win, origins, fi["n_series"])
+        fcs[seed], log["clipped"] = F.clip(F.compose(raw, fi["kd"], origins, win.variant))
+        logs[seed] = log
+        print(f"  {tag} seed {seed}: best val {log['best_val_mse']:.6f} at epoch {log['best_epoch']} "
+              f"({log['epochs']} epochs, {log['seconds']} s, {log['clipped']} clipped)", flush=True)
+    return fcs, logs
+
+
+SEED_KEYS = ("best_val_mse", "best_epoch", "epochs", "seconds", "clipped", "n_train", "n_val")
+
+
+def _explained_variance(k_mse: float, mse_train_mean: float) -> float:
+    """1 - MSE(forecast) / MSE(per-series training-mean forecast), April origins."""
+    return 1.0 - k_mse / mse_train_mean
+
+
+def _reused_direct(prev: dict, mse_train_mean: float) -> dict:
+    """The six direct candidates of the first selection run (28 Oct), not re-run."""
+    if "candidates" in prev:
+        return {t: v for t, v in prev["candidates"].items() if v["variant"] == "direct"}
+    out = {}
+    for tag, v in prev.get("sizes", {}).items():
+        row = {k: v[k] for k in ("layers", "units", "n_parameters", "mean_hot_spot_rmse_k",
+                                 "per_dt_hot_spot_rmse_k", "k_mse_seed_mean")}
+        row["variant"] = "direct"
+        row["source"] = "first selection run, 28 Oct (before the amendment); not re-run"
+        row["seeds"] = {}
+        for seed, s in v["seeds"].items():
+            ev = _explained_variance(s["k_mse"], mse_train_mean)
+            row["seeds"][seed] = {"mean_hot_spot_rmse_k": s["mean_hot_spot_rmse_k"], "k_mse": s["k_mse"],
+                                  "explained_variance": ev,
+                                  "origins_worse_than_persistence": s["origins_worse_than_persistence"],
+                                  "diverged": (not np.isfinite(s["best_val_mse"])) or ev <= 0,
+                                  **{k: s[k] for k in SEED_KEYS}}
+        row["explained_variance_seed_mean"] = _explained_variance(row["k_mse_seed_mean"], mse_train_mean)
+        out[f"direct {tag}"] = row
+    return out
+
+
+def cmd_select(args) -> int:
+    if PARAMS.exists():
+        print(f"STOP: {PARAMS.name} exists; the LSTM size is frozen (tune once)")
+        return 1
+    t0 = time.perf_counter()
+    inp = load_inputs()
+    fi = forecast_inputs(inp)
+    rnd = F.training_round(F.SELECTION_ORIGINS[0])
+    assert rnd == (F.SELECTION_TRAIN, F.SELECTION_VAL), rnd
+    origins = origin_days(inp, F.SELECTION_ORIGINS)
+    ref = load_reference("main")
+    ref_th = T.per_day(ref["theta_h_end"])[origins]                     # [origin, 96, DT]
+    actual = fi["kd"][origins]
+    train_days = np.unique(F.samples(rnd[0], inp["days"], 1)[:, 1])
+    train_mean = fi["kd"][train_days].mean(axis=(0, 1))                 # per series
+    mse_train_mean = float(((actual - train_mean) ** 2).mean())
+    base = {"persistence": F.persistence(fi["kd"], origins), "seasonal_naive": F.seasonal_naive(fi["kd"], origins)}
+    pers_mse = ((base["persistence"] - actual) ** 2).mean(axis=(1, 2))
+    baselines = {}
+    for name, fc in base.items():
+        th = thermal_from_forecast(fc, origins, inp, ref, "main")["theta_h_end"]
+        r = hot_spot_rmse_per_dt(th, ref_th)
+        k_mse = float(((fc - actual) ** 2).mean())
+        baselines[name] = {"mean_hot_spot_rmse_k": float(r.mean()), "k_mse": k_mse,
+                           "explained_variance": _explained_variance(k_mse, mse_train_mean),
+                           "per_dt_hot_spot_rmse_k": dict(zip(inp["names"], r.round(4).tolist()))}
+    prev = json.loads(SUMMARY.read_text(encoding="utf-8")).get("lstm_selection", {}) if SUMMARY.exists() else {}
+    cands = _reused_direct(prev, mse_train_mean)
+    if len(cands) != len(F.GRID_LAYERS) * len(F.GRID_UNITS):
+        raise SystemExit(f"expected the 6 direct candidates of the first run, found {len(cands)}")
+    win = F.Windows(fi["feats"], fi["kd"], _device(), variant="residual")
+    for layers in F.GRID_LAYERS:
+        for units in F.GRID_UNITS:
+            tag = f"residual {layers}x{units}"
+            fcs, logs = train_seeds(win, fi, inp, rnd, layers, units, origins, tag)
+            seeds = {}
+            for seed, fc in fcs.items():
+                mse_o = ((fc - actual) ** 2).mean(axis=(1, 2))
+                ev = _explained_variance(float(mse_o.mean()), mse_train_mean)
+                th = thermal_from_forecast(fc, origins, inp, ref, "main")["theta_h_end"]
+                seeds[str(seed)] = {"mean_hot_spot_rmse_k": float(hot_spot_rmse_per_dt(th, ref_th).mean()),
+                                    "k_mse": float(mse_o.mean()), "explained_variance": ev,
+                                    "origins_worse_than_persistence": int((mse_o > pers_mse).sum()),
+                                    "diverged": (not np.isfinite(logs[seed]["best_val_mse"])) or ev <= 0,
+                                    **{k: logs[seed][k] for k in SEED_KEYS}}
+            mean_fc = np.mean([fcs[s] for s in F.SEEDS], axis=0)
+            th = thermal_from_forecast(mean_fc, origins, inp, ref, "main")["theta_h_end"]
+            r = hot_spot_rmse_per_dt(th, ref_th)
+            k_mse = float(((mean_fc - actual) ** 2).mean())
+            cands[tag] = {"variant": "residual", "layers": layers, "units": units,
+                          "n_parameters": F.n_parameters(F.build_model(fi["feats"].shape[2], layers, units)),
+                          "mean_hot_spot_rmse_k": float(r.mean()),
+                          "per_dt_hot_spot_rmse_k": dict(zip(inp["names"], r.round(4).tolist())),
+                          "k_mse_seed_mean": k_mse,
+                          "explained_variance_seed_mean": _explained_variance(k_mse, mse_train_mean),
+                          "seeds": seeds}
+            print(f"{tag}: mean hot-spot RMSE {r.mean():.4f} K", flush=True)
+    diverged = [f"{t} seed {s}" for t, c in cands.items() for s, v in c["seeds"].items() if v["diverged"]]
+    out = {"criterion": "lowest mean over the 13 DTs of the hot-spot RMSE over all April origins x 96 steps "
+                        "(seed-mean forecast, main parameter set) across the 12 candidates "
+                        "(6 direct + 6 residual); tie-break fewer parameters",
+           "divergence_check": "a seed has diverged if its best validation loss is NaN or its April explained "
+                               "variance of K_p is <= 0 (user decision 28 Oct; worse than persistence is a "
+                               "finding, not a stop)",
+           "explained_variance": "1 - MSE(forecast) / MSE(per-series mean K_p over the training target days), "
+                                 "pooled over April origins x 96 steps x 39 series",
+           "train_target_days": [str(F.SELECTION_TRAIN[0].date()), str(F.SELECTION_TRAIN[1].date())],
+           "first_target_day": str(inp["days"][train_days[0]].date()),
+           "early_stopping_days": [str(F.SELECTION_VAL[0].date()), str(F.SELECTION_VAL[1].date())],
+           "origins": [str(F.SELECTION_ORIGINS[0].date()), str(F.SELECTION_ORIGINS[1].date())],
+           "mse_training_mean_forecast": mse_train_mean,
+           "device": str(win.device), "candidates": cands, "baselines_april": baselines, "diverged": diverged,
+           "first_run_stop": "first run (direct only) stopped on the run sheet's check: every seed's K_p MSE "
+                             "above persistence on all 30 April origins; check redefined by the user 28 Oct"}
+    if diverged:
+        out["elapsed_s"] = round(time.perf_counter() - t0, 1)
+        _write_summary("lstm_selection", out)
+        print(f"STOP: diverged seeds {diverged}")
+        return 1
+    best = min(cands, key=lambda t: (round(cands[t]["mean_hot_spot_rmse_k"], 12), cands[t]["n_parameters"]))
+    out["chosen"] = best
+    out["elapsed_s"] = round(time.perf_counter() - t0, 1)
+    _write_summary("lstm_selection", out)
+    freeze(cands[best], out)
+    print(f"chosen {best}; frozen in {PARAMS.relative_to(ROOT)}; {out['elapsed_s']} s")
+    return 0
+
+
+def freeze(size: dict, sel: dict) -> None:
+    d = {"lstm": {"variant": size["variant"], "layers": size["layers"], "units": size["units"],
+                  "dropout": F.DROPOUT,
+                  "n_parameters": size["n_parameters"], "lookback_steps": F.LOOKBACK, "horizon_steps": F.HORIZON,
+                  "april_mean_hot_spot_rmse_k": round(size["mean_hot_spot_rmse_k"], 6)},
+         "training": {"loss": "MSE on the variant's target (direct: K_p; residual: K_p(D) - K_p(D-1), equal to the K_p error before clipping)", "optimizer": "adam", "lr": F.LR, "batch": F.BATCH,
+                      "max_epochs": F.MAX_EPOCHS, "patience": F.PATIENCE, "val_days": F.VAL_DAYS,
+                      "gap_days": F.GAP_DAYS, "data_start": str(F.DATA_START.date()),
+                      "negative_forecasts": "clipped at 0"},
+         "seeds": list(F.SEEDS),
+         "grid": {"variants": list(F.VARIANTS), "layers": list(F.GRID_LAYERS), "units": list(F.GRID_UNITS)},
+         "tuned_on": {"window": f"train {sel['train_target_days'][0]}..{sel['train_target_days'][1]} "
+                                f"(first target {sel['first_target_day']}), early stopping "
+                                f"{sel['early_stopping_days'][0]}..{sel['early_stopping_days'][1]}, "
+                                f"origins {sel['origins'][0]}..{sel['origins'][1]}",
+                      "criterion": sel["criterion"]},
+         "walk_forward": {"retrain": "monthly, at the first origin of each month",
+                          "test_origins": f"{F.TEST_ORIGINS[0].date()}..{F.TEST_ORIGINS[1].date()}"},
+         "thermal": {"dt_min": T.DT_MIN, "substeps": T.SUBSTEPS, "param_sets": list(T.PARAM_SETS)}}
+    PARAMS.write_text("# Stage 3 step C: frozen before any May-December forecast (run sheet §4)\n"
+                      + yaml.safe_dump(d, sort_keys=False), encoding="utf-8", newline="\n")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("annex-e").set_defaults(fn=cmd_annex_e)
     sub.add_parser("reference").set_defaults(fn=cmd_reference)
+    sub.add_parser("select").set_defaults(fn=cmd_select)
     args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     return args.fn(args)
