@@ -6,6 +6,7 @@ Commands (PowerShell)::
     python scripts/run_layer3_thermal.py reference      # step B: reference trajectories, counts, correlation
     python scripts/run_layer3_thermal.py select         # step C: LSTM size on April origins -> freeze
     python scripts/run_layer3_thermal.py test           # step D: walk-forward test run, once
+    python scripts/run_layer3_thermal.py evaluate       # step E: metrics and paired bootstrap
 
 Outputs under ``results/layer3/thermal/`` (``summary.json``).
 Labels are read through :mod:`src.analytics.evaluate` only.
@@ -454,6 +455,89 @@ def cmd_test(args) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------
+# Step E: metrics and bootstrap
+# --------------------------------------------------------------------------
+
+def _flat(tz, m: str) -> dict:
+    """A model's stored trajectories as a simulate()-style result with the origins x 96
+    steps flattened (so :func:`thermal.day_summary` gives one row per origin day)."""
+    n_dt = tz[f"{m}__theta_h_end"].shape[-1]
+    r = {k: tz[f"{m}__{k}"].reshape(-1, n_dt) for k in ("theta_h_max", "lol_h")}
+    r["cross_min"] = {thr: tz[f"{m}__cross_min_{int(thr)}"].reshape(-1, n_dt) for thr in T.THRESHOLDS_C}
+    return r
+
+
+def _spread(vals: list) -> dict:
+    return {"mean": float(np.mean(vals)), "min": float(np.min(vals)), "max": float(np.max(vals)),
+            "range": float(np.max(vals) - np.min(vals))}
+
+
+def cmd_evaluate(args) -> int:
+    t0 = time.perf_counter()
+    inp = load_inputs()
+    fi = forecast_inputs(inp)
+    z = np.load(FORECASTS_TEST)
+    origins = z["origins"]
+    names = inp["names"]
+    seeds = [f"lstm_seed_{s}" for s in F.SEEDS]
+    models = list(F.MODELS)
+    actual = fi["kd"][origins]
+    out = {"definitions": {
+        "origins": f"{inp['days'][origins[0]].date()}..{inp['days'][origins[-1]].date()} ({len(origins)} days)",
+        "hot_spot": "theta_h at the end of forecast steps 4 / 24 / 96 (1 / 6 / 24 h) and over all 96 steps, "
+                    "forecast trajectory vs reference trajectory (same parameter set)",
+        "lstm": "seed-mean forecast (primary); per-seed results under 'seeds'",
+        "events": "event = DT-day of a test origin whose reference theta_h exceeds the threshold at any "
+                  "sub-step; detected = the forecast trajectory also exceeds it that day; lead time = from "
+                  "issue (00:00) to the reference's first crossing; crossing-time error = forecast first "
+                  "crossing - reference first crossing",
+        "event_window_note": "scored on the test origins (2024-05-01..2024-12-30); step B's test-window "
+                             "counts include 2024-12-31"},
+        "load_k_p": {m: V.load_errors(z[m], actual, names) for m in models + seeds}}
+    for ps in T.PARAM_SETS:
+        ref = load_reference(ps)
+        ref_day = T.day_summary(ref)
+        ref_th = T.per_day(ref["theta_h_end"])[origins]
+        lol_ref = ref_day["lol_h"][origins]
+        tz = np.load(trajectories_path(ps))
+        res, th_by, lol_by = {}, {}, {}
+        for m in models + seeds:
+            th = tz[f"{m}__theta_h_end"]
+            ds = T.day_summary(_flat(tz, m))
+            res[m] = {"hot_spot": V.hot_spot_errors(th, ref_th, names),
+                      "loss_of_life": V.lol_errors(ds["lol_h"], lol_ref),
+                      "events": {str(int(thr)): V.event_metrics(ds["first_cross_min"][thr],
+                                                                ref_day["first_cross_min"][thr][origins])
+                                 for thr in T.THRESHOLDS_C}}
+            th_by[m], lol_by[m] = th, ds["lol_h"]
+        spread = {h: _spread([res[s]["hot_spot"]["pooled"][h]["rmse"] for s in seeds])
+                  for h in ("1h", "6h", "24h", "all_96")}
+        spread["lol_error_mean_h"] = _spread([res[s]["loss_of_life"]["mean_h"] for s in seeds])
+        out[ps] = {"models": {m: res[m] for m in models}, "seeds": {s: res[s] for s in seeds},
+                   "seed_spread_hot_spot_rmse_k": spread,
+                   "bootstrap": V.paired_bootstrap({m: th_by[m] for m in models}, ref_th,
+                                                   {m: lol_by[m] for m in models}, lol_ref)}
+        out[ps]["seed_spread_load_rmse"] = _spread([out["load_k_p"][s]["pooled"]["rmse"] for s in seeds])
+    ref_s = json.loads(SUMMARY.read_text(encoding="utf-8"))["reference"]
+    out["peak_rise_recompute"] = {
+        "plan_estimate": "about 69 K (dt_652_1, 2024-08-01 08:45) and 66 K (dt_634_1, 2024-06-25 21:45), "
+                         "quasi-steady 3-h mean, plan §3",
+        "reference_main_max": ref_s["main"]["peak_rise"],
+        "reference_main_dt_652_1": {"value_k": ref_s["main"]["per_dt"]["dt_652_1"]["peak_rise_k"],
+                                    "at_step": ref_s["main"]["per_dt"]["dt_652_1"]["peak_rise_at_step"]},
+        "reference_main_dt_634_1": {"value_k": ref_s["main"]["per_dt"]["dt_634_1"]["peak_rise_k"],
+                                    "at_step": ref_s["main"]["per_dt"]["dt_634_1"]["peak_rise_at_step"]},
+        "true_current_main_max": ref_s["true_current_check"]["true_peak_rise_k"]}
+    out["elapsed_s"] = round(time.perf_counter() - t0, 1)
+    _write_summary("metrics", out)
+    for ps in T.PARAM_SETS:
+        print(ps, {m: round(out[ps]["models"][m]["hot_spot"]["pooled"]["all_96"]["rmse"], 4) for m in models},
+              json.dumps(out[ps]["bootstrap"]))
+    print(f"evaluate done, {out['elapsed_s']} s")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -461,6 +545,7 @@ def main() -> int:
     sub.add_parser("reference").set_defaults(fn=cmd_reference)
     sub.add_parser("select").set_defaults(fn=cmd_select)
     sub.add_parser("test").set_defaults(fn=cmd_test)
+    sub.add_parser("evaluate").set_defaults(fn=cmd_evaluate)
     args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     return args.fn(args)

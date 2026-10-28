@@ -807,3 +807,96 @@ def thermal_true_current_check(theta_h_end_metered: np.ndarray, theta_h_max_mete
             "true_peak_theta_h_c": float(r["theta_h_max"][keep].max()),
             "true_peak_rise_k": {"value": float(rise.max()), "dt": TH.dt_names()[nr],
                                  "timestamp": str(idx[keep][jr])}}
+
+
+# Step E metrics (run sheet §5), fixed before the test run
+THERMAL_HORIZONS = {"1h": 3, "6h": 23, "24h": 95}     # forecast steps 4, 24, 96 (end of each step)
+THERMAL_MIN_EVENTS = 10                                # T4: P / R only with >= 10 event DT-days
+THERMAL_BOOT_N = 2000
+THERMAL_BOOT_SEED = 20261028
+
+
+def _rmse_mae(e: np.ndarray) -> dict:
+    e = np.asarray(e, float)
+    return {"rmse": float(np.sqrt(np.mean(e ** 2))), "mae": float(np.mean(np.abs(e))), "n": int(e.size)}
+
+
+def hot_spot_errors(th: np.ndarray, ref_th: np.ndarray, names) -> dict:
+    """theta_h forecast vs reference, [origin, 96, DT]: RMSE / MAE at 1, 6, 24 h and over all 96
+    steps, pooled over DTs and origins and per DT."""
+    e = th - ref_th
+    out = {"pooled": {h: _rmse_mae(e[:, i, :]) for h, i in THERMAL_HORIZONS.items()}}
+    out["pooled"]["all_96"] = _rmse_mae(e)
+    out["per_dt"] = {n: {**{h: _rmse_mae(e[:, i, j]) for h, i in THERMAL_HORIZONS.items()},
+                         "all_96": _rmse_mae(e[:, :, j])} for j, n in enumerate(names)}
+    return out
+
+
+def load_errors(fc: np.ndarray, actual: np.ndarray, names, n_ph: int = 3) -> dict:
+    """K_p forecast vs actual (diagnostic), [origin, 96, series]: pooled and per DT (over its phases)."""
+    e = fc - actual
+    return {"pooled": _rmse_mae(e),
+            "per_dt": {n: _rmse_mae(e[:, :, j * n_ph:(j + 1) * n_ph]) for j, n in enumerate(names)}}
+
+
+def lol_errors(lol_fc: np.ndarray, lol_ref: np.ndarray) -> dict:
+    """Daily loss-of-life error |L^ - L| per DT-day (h of normal life per day), [origin, DT]."""
+    e = np.abs(lol_fc - lol_ref)
+    return {"mean_h": float(e.mean()), "median_h": float(np.median(e)), "p95_h": float(np.percentile(e, 95)),
+            "n_dt_days": int(e.size), "reference_mean_h": float(lol_ref.mean())}
+
+
+def event_metrics(fc_first: np.ndarray, ref_first: np.ndarray) -> dict:
+    """One threshold, [origin, DT] first-crossing minutes after 00:00 (NaN = none).
+    Event = a DT-day whose reference crosses (run sheet §3)."""
+    ev, pred = ~np.isnan(ref_first), ~np.isnan(fc_first)
+    det = ev & pred
+    lead = ref_first[det] / 60.0
+    terr = fc_first[det] - ref_first[det]
+    out = {"event_dt_days": int(ev.sum()), "detected": int(det.sum()),
+           "forecast_crossing_dt_days": int(pred.sum()), "forecast_only_dt_days": int((pred & ~ev).sum()),
+           "lead_time_h": ({"mean": float(lead.mean()), "median": float(np.median(lead)), "min": float(lead.min()),
+                            "max": float(lead.max())} if det.any() else None),
+           "crossing_time_error_min": ({"mean": float(terr.mean()), "median": float(np.median(terr)),
+                                        "mae": float(np.abs(terr).mean())} if det.any() else None)}
+    if ev.sum() >= THERMAL_MIN_EVENTS:
+        tp, fp = int(det.sum()), int((pred & ~ev).sum())
+        out["precision"] = wilson(tp, tp + fp)
+        out["recall"] = wilson(tp, int(ev.sum()))
+    else:
+        out["precision_recall"] = f"not reported: fewer than {THERMAL_MIN_EVENTS} event DT-days (T4)"
+    return out
+
+
+def paired_bootstrap(th: dict, ref_th: np.ndarray, lol: dict, lol_ref: np.ndarray,
+                     n: int = THERMAL_BOOT_N, seed: int = THERMAL_BOOT_SEED) -> dict:
+    """Plan §4 / run sheet §5: resample test days with replacement (a day carries all 13 DTs);
+    RMSE(persistence) - RMSE(LSTM), RMSE(seasonal naive) - RMSE(LSTM) over all 96 steps, and the
+    mean daily loss-of-life error difference (persistence - LSTM).  2.5th-97.5th percentiles; the
+    LSTM is better only if the whole interval is above zero."""
+    sse = {m: ((v - ref_th) ** 2).sum(axis=(1, 2)) for m, v in th.items()}        # per day
+    cnt = ref_th.shape[1] * ref_th.shape[2]
+    lae = {m: np.abs(v - lol_ref).sum(axis=1) for m, v in lol.items()}             # per day
+    n_dt = lol_ref.shape[1]
+    days = len(ref_th)
+    idx = np.random.default_rng(seed).integers(0, days, (n, days))
+
+    def rmse(m, ix=None):
+        s = sse[m] if ix is None else sse[m][ix]
+        return np.sqrt(s.sum(axis=-1) / (cnt * s.shape[-1]))
+
+    def lol_mean(m, ix=None):
+        s = lae[m] if ix is None else lae[m][ix]
+        return s.sum(axis=-1) / (n_dt * s.shape[-1])
+
+    def stat(point, boot):
+        lo, hi = np.percentile(boot, [2.5, 97.5])
+        return {"point": float(point), "ci95": [float(lo), float(hi)], "lstm_better": bool(lo > 0)}
+
+    return {"resamples": n, "seed": seed, "days": days,
+            "rmse_persistence_minus_lstm_k": stat(rmse("persistence") - rmse("lstm"),
+                                                  rmse("persistence", idx) - rmse("lstm", idx)),
+            "rmse_seasonal_naive_minus_lstm_k": stat(rmse("seasonal_naive") - rmse("lstm"),
+                                                     rmse("seasonal_naive", idx) - rmse("lstm", idx)),
+            "lol_error_persistence_minus_lstm_h": stat(lol_mean("persistence") - lol_mean("lstm"),
+                                                       lol_mean("persistence", idx) - lol_mean("lstm", idx))}

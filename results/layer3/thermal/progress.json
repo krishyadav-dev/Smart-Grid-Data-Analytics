@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-28 step D committed",
+  "updated": "2026-10-28 step E committed; Checkpoint 3",
   "branch": "feat/layer3",
   "decisions_28_oct": {
     "first_lstm_target_day": "2024-01-09 (all inputs and targets from 2024-01-02)",
@@ -84,7 +84,7 @@
       "commit": "ea837f5"
     },
     "D": {
-      "status": "committed (see git log layer3-thermal-D)",
+      "status": "committed",
       "elapsed_s": 504.9,
       "origins": 244,
       "clipped": {
@@ -97,8 +97,40 @@
         "trajectories_test_main.npz",
         "trajectories_test_table_e1.npz"
       ],
-      "suite": "472 passed, 0 failed, 0 skipped (814 s)"
+      "suite": "472 passed, 0 failed, 0 skipped (814 s)",
+      "commit": "9593365"
+    },
+    "E": {
+      "status": "committed (see git log layer3-thermal-E)",
+      "suite": "476 passed, 0 failed, 0 skipped (714 s)",
+      "elapsed_s": 2.6,
+      "bootstrap_main": {
+        "rmse_persistence_minus_lstm_k": {
+          "point": -0.02264306325544041,
+          "ci95": [
+            -0.11208756636547217,
+            0.06458354475594236
+          ],
+          "lstm_better": false
+        },
+        "rmse_seasonal_naive_minus_lstm_k": {
+          "point": 2.9658641701431234,
+          "ci95": [
+            2.4715415982441846,
+            3.4404559941679245
+          ],
+          "lstm_better": true
+        },
+        "lol_error_persistence_minus_lstm_h": {
+          "point": -0.003713737966770346,
+          "ci95": [
+            -0.010197673379282303,
+            0.002373283009587677
+          ],
+          "lstm_better": false
+        }
+      }
     }
   },
-  "next": "step E: metrics and bootstrap (evaluate.py), summary.json key metrics"
+  "next": "Checkpoint 3: stop and report; do not start further work until the user replies"
 }
