@@ -774,3 +774,36 @@ def sgcc_metrics(score: pd.Series, flags: pd.Series, threshold: float) -> dict:
             "map_at_100": map_at_n(s, y, 100), "map_at_200": map_at_n(s, y, 200),
             "threshold": threshold, **prf(s >= threshold, y == 1),
             "pr_curve": pr_curve(pd.Series(s), pd.Series(y.astype(float)))}
+
+
+# --------------------------------------------------------------------------
+# Thermal engine (plan §3; Stage 3 run sheet §3, §5)
+# --------------------------------------------------------------------------
+
+THERMAL_WARMUP = pd.Timestamp("2024-01-01")        # run sheet §3: excluded from every metric
+THERMAL_TEST = (pd.Timestamp("2024-05-01"), pd.Timestamp("2024-12-31"))
+TRUE_FRAME = YEAR_CACHE_DIR / "meter_frame_true.parquet"
+
+
+def thermal_true_current_check(theta_h_end_metered: np.ndarray, theta_h_max_metered: np.ndarray,
+                               ambient: np.ndarray, cache: Path = YEAR_CACHE_DIR) -> dict:
+    """Run sheet §3: each DT once on the true currents (parameter set ``main``);
+    the largest hot-spot difference to the metered reference (warm-up day excluded)."""
+    from . import thermal as TH
+    idx, i_true = TH.read_dt_currents(cache / TRUE_FRAME.name)
+    p = TH.dt_params(TH.read_dts(cache / "dts.parquet"), "main")
+    r = TH.reference_run(p, TH.load_factor(i_true, TH.rated_current()), ambient)
+    keep = np.asarray(idx.normalize() != THERMAL_WARMUP)
+    d_end = r["theta_h_end"][keep] - theta_h_end_metered[keep]
+    d_max = r["theta_h_max"][keep] - theta_h_max_metered[keep]
+    j, n = np.unravel_index(int(np.argmax(np.abs(d_end))), d_end.shape)
+    rise = r["theta_h_max"][keep] - np.asarray(ambient)[keep][:, None]
+    jr, nr = np.unravel_index(int(np.argmax(rise)), rise.shape)
+    return {"max_abs_diff_theta_h_k": float(np.abs(d_end).max()),
+            "at": {"timestamp": str(idx[keep][j]), "dt": TH.dt_names()[n]},
+            "max_abs_diff_step_peak_k": float(np.abs(d_max).max()),
+            "mean_diff_k": float(d_end.mean()),
+            "per_dt_max_abs_diff_k": dict(zip(TH.dt_names(), np.abs(d_end).max(axis=0).round(4).tolist())),
+            "true_peak_theta_h_c": float(r["theta_h_max"][keep].max()),
+            "true_peak_rise_k": {"value": float(rise.max()), "dt": TH.dt_names()[nr],
+                                 "timestamp": str(idx[keep][jr])}}

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-28 step A committed",
+  "updated": "2026-10-28 step B committed",
   "branch": "feat/layer3",
   "decisions_28_oct": {
     "first_lstm_target_day": "2024-01-09 (all inputs and targets from 2024-01-02)",
@@ -10,7 +10,7 @@
   },
   "steps": {
     "A": {
-      "status": "committed (see git log layer3-thermal-A)",
+      "status": "committed",
       "suite": "456 passed, 0 failed, 0 skipped (584 s)",
       "annex_e_dt_0.1": {
         "theta_h_30": 114.24,
@@ -33,8 +33,42 @@
         "ecmwf-datastores-client 0.5.3",
         "multiurl 0.3.9",
         "tqdm 4.70.0"
+      ],
+      "commit": "bb89248"
+    },
+    "B": {
+      "status": "committed (see git log layer3-thermal-B)",
+      "suite": "457 passed, 0 failed, 0 skipped (561 s)",
+      "elapsed_s": 14.5,
+      "events_main": {
+        "2024": {
+          "98": 0,
+          "120": 0,
+          "140": 0
+        },
+        "test_window": {
+          "98": 0,
+          "120": 0,
+          "140": 0
+        }
+      },
+      "events_table_e1": {
+        "2024": {
+          "98": 47,
+          "120": 0,
+          "140": 0
+        },
+        "test_window": {
+          "98": 47,
+          "120": 0,
+          "140": 0
+        }
+      },
+      "files": [
+        "reference_main.npz",
+        "reference_table_e1.npz"
       ]
     }
   },
-  "next": "step B: reference trajectories (both parameter sets), counts, correlation, true-current check"
+  "next": "step C: LSTM size selection on April origins, freeze config/layer3_thermal_params.yaml, commit C"
 }
