@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-28 step C committed",
+  "updated": "2026-10-28 step D committed",
   "branch": "feat/layer3",
   "decisions_28_oct": {
     "first_lstm_target_day": "2024-01-09 (all inputs and targets from 2024-01-02)",
@@ -72,7 +72,7 @@
       "commit": "2e85b6a"
     },
     "C": {
-      "status": "committed (see git log layer3-thermal-C)",
+      "status": "committed",
       "suite": "472 passed, 0 failed, 0 skipped (807 s)",
       "first_run": "direct only, 6 sizes x 3 seeds, ~6 min; stopped on the run sheet's divergence check",
       "second_run_s": 243.3,
@@ -80,8 +80,25 @@
       "files": [
         "config/layer3_thermal_params.yaml",
         "lstm_selection_first_run.json"
-      ]
+      ],
+      "commit": "ea837f5"
+    },
+    "D": {
+      "status": "committed (see git log layer3-thermal-D)",
+      "elapsed_s": 504.9,
+      "origins": 244,
+      "clipped": {
+        "20261028": 0,
+        "20261029": 0,
+        "20261030": 0
+      },
+      "files": [
+        "forecasts_test.npz",
+        "trajectories_test_main.npz",
+        "trajectories_test_table_e1.npz"
+      ],
+      "suite": "472 passed, 0 failed, 0 skipped (814 s)"
     }
   },
-  "next": "step D: walk-forward test run once (May-December origins), then step E metrics"
+  "next": "step E: metrics and bootstrap (evaluate.py), summary.json key metrics"
 }

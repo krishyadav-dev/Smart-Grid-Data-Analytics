@@ -5,6 +5,7 @@ Commands (PowerShell)::
     python scripts/run_layer3_thermal.py annex-e        # step A: acceptance test + step-size table
     python scripts/run_layer3_thermal.py reference      # step B: reference trajectories, counts, correlation
     python scripts/run_layer3_thermal.py select         # step C: LSTM size on April origins -> freeze
+    python scripts/run_layer3_thermal.py test           # step D: walk-forward test run, once
 
 Outputs under ``results/layer3/thermal/`` (``summary.json``).
 Labels are read through :mod:`src.analytics.evaluate` only.
@@ -380,12 +381,86 @@ def freeze(size: dict, sel: dict) -> None:
                       + yaml.safe_dump(d, sort_keys=False), encoding="utf-8", newline="\n")
 
 
+# --------------------------------------------------------------------------
+# Step D: walk-forward test run, once
+# --------------------------------------------------------------------------
+
+FORECASTS_TEST = OUT / "forecasts_test.npz"
+
+
+def trajectories_path(ps: str) -> Path:
+    return OUT / f"trajectories_test_{ps}.npz"
+
+
+def frozen() -> dict:
+    return yaml.safe_load(PARAMS.read_text(encoding="utf-8"))
+
+
+def cmd_test(args) -> int:
+    if FORECASTS_TEST.exists():
+        print(f"STOP: {FORECASTS_TEST.name} exists; the test run is done once")
+        return 1
+    t0 = time.perf_counter()
+    cfg = frozen()["lstm"]
+    inp = load_inputs()
+    fi = forecast_inputs(inp)
+    win = F.Windows(fi["feats"], fi["kd"], _device(), variant=cfg["variant"])
+    origins = origin_days(inp, F.TEST_ORIGINS)
+    o_days = inp["days"][origins]
+    lstm = {s: np.full((len(origins), F.HORIZON, fi["n_series"]), np.nan) for s in F.SEEDS}
+    rounds = {}
+    for month in sorted(set(o_days.month)):
+        sel = np.flatnonzero(o_days.month == month)
+        first = o_days[sel[0]]
+        rnd = F.training_round(first)
+        fcs, logs = train_seeds(win, fi, inp, rnd, cfg["layers"], cfg["units"], origins[sel],
+                                f"{first:%Y-%m} {cfg['variant']} {cfg['layers']}x{cfg['units']}")
+        for s in F.SEEDS:
+            lstm[s][sel] = fcs[s]
+        rounds[f"{first:%Y-%m}"] = {"first_origin": str(first.date()), "last_origin": str(o_days[sel[-1]].date()),
+                                    "origins": int(len(sel)),
+                                    "train_target_days": [str(rnd[0][0].date()), str(rnd[0][1].date())],
+                                    "early_stopping_days": [str(rnd[1][0].date()), str(rnd[1][1].date())],
+                                    "seeds": {str(s): {k: logs[s][k] for k in SEED_KEYS} for s in F.SEEDS}}
+    fc = {"persistence": F.persistence(fi["kd"], origins), "seasonal_naive": F.seasonal_naive(fi["kd"], origins),
+          "lstm": np.mean([lstm[s] for s in F.SEEDS], axis=0),
+          **{f"lstm_seed_{s}": lstm[s] for s in F.SEEDS}}
+    bad = [m for m, v in fc.items() if np.isnan(v).any()]
+    if bad:
+        print(f"STOP: NaN forecasts {bad}")
+        return 1
+    np.savez_compressed(FORECASTS_TEST, origins=origins, **fc)
+    for ps in T.PARAM_SETS:
+        ref = load_reference(ps)
+        arrays = {}
+        for m, v in fc.items():
+            r = thermal_from_forecast(v, origins, inp, ref, ps)
+            for k in ("theta_h_end", "theta_h_max", "lol_h"):
+                arrays[f"{m}__{k}"] = r[k]
+            for thr, c in r["cross_min"].items():
+                arrays[f"{m}__cross_min_{int(thr)}"] = c
+        bad = [k for k, v in arrays.items() if "cross_min" not in k and np.isnan(v).any()]
+        if bad:
+            print(f"STOP: NaN forecast trajectories {bad[:5]}")
+            return 1
+        np.savez_compressed(trajectories_path(ps), origins=origins, **arrays)
+    out = {"frozen": cfg, "origins": [str(o_days[0].date()), str(o_days[-1].date())], "n_origins": int(len(origins)),
+           "rounds": rounds, "device": str(win.device),
+           "clipped_lstm_values": {str(s): int(sum(r["seeds"][str(s)]["clipped"] for r in rounds.values()))
+                                   for s in F.SEEDS},
+           "elapsed_s": round(time.perf_counter() - t0, 1)}
+    _write_summary("test_run", out)
+    print(f"test run done: {len(origins)} origins, {out['elapsed_s']} s")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("annex-e").set_defaults(fn=cmd_annex_e)
     sub.add_parser("reference").set_defaults(fn=cmd_reference)
     sub.add_parser("select").set_defaults(fn=cmd_select)
+    sub.add_parser("test").set_defaults(fn=cmd_test)
     args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     return args.fn(args)

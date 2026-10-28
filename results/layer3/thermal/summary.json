@@ -1878,5 +1878,367 @@
     "first_run_stop": "first run (direct only) stopped on the run sheet's check: every seed's K_p MSE above persistence on all 30 April origins; check redefined by the user 28 Oct",
     "chosen": "residual 1x64",
     "elapsed_s": 243.3
+  },
+  "test_run": {
+    "frozen": {
+      "variant": "residual",
+      "layers": 1,
+      "units": 64,
+      "dropout": 0.1,
+      "n_parameters": 29792,
+      "lookback_steps": 672,
+      "horizon_steps": 96,
+      "april_mean_hot_spot_rmse_k": 0.773188
+    },
+    "origins": [
+      "2024-05-01",
+      "2024-12-30"
+    ],
+    "n_origins": 244,
+    "rounds": {
+      "2024-05": {
+        "first_origin": "2024-05-01",
+        "last_origin": "2024-05-31",
+        "origins": 31,
+        "train_target_days": [
+          "2024-01-02",
+          "2024-04-16"
+        ],
+        "early_stopping_days": [
+          "2024-04-17",
+          "2024-04-30"
+        ],
+        "seeds": {
+          "20261028": {
+            "best_val_mse": 0.0002427849455250484,
+            "best_epoch": 30,
+            "epochs": 35,
+            "seconds": 14.5,
+            "clipped": 0,
+            "n_train": 3861,
+            "n_val": 546
+          },
+          "20261029": {
+            "best_val_mse": 0.00023677369691828674,
+            "best_epoch": 41,
+            "epochs": 46,
+            "seconds": 13.5,
+            "clipped": 0,
+            "n_train": 3861,
+            "n_val": 546
+          },
+          "20261030": {
+            "best_val_mse": 0.00023846124779288268,
+            "best_epoch": 31,
+            "epochs": 36,
+            "seconds": 10.4,
+            "clipped": 0,
+            "n_train": 3861,
+            "n_val": 546
+          }
+        }
+      },
+      "2024-06": {
+        "first_origin": "2024-06-01",
+        "last_origin": "2024-06-30",
+        "origins": 30,
+        "train_target_days": [
+          "2024-01-02",
+          "2024-05-17"
+        ],
+        "early_stopping_days": [
+          "2024-05-18",
+          "2024-05-31"
+        ],
+        "seeds": {
+          "20261028": {
+            "best_val_mse": 0.0008009478205490806,
+            "best_epoch": 46,
+            "epochs": 50,
+            "seconds": 18.5,
+            "clipped": 0,
+            "n_train": 5070,
+            "n_val": 546
+          },
+          "20261029": {
+            "best_val_mse": 0.0008623842501899912,
+            "best_epoch": 20,
+            "epochs": 25,
+            "seconds": 9.2,
+            "clipped": 0,
+            "n_train": 5070,
+            "n_val": 546
+          },
+          "20261030": {
+            "best_val_mse": 0.0008103477112418687,
+            "best_epoch": 37,
+            "epochs": 42,
+            "seconds": 15.5,
+            "clipped": 0,
+            "n_train": 5070,
+            "n_val": 546
+          }
+        }
+      },
+      "2024-07": {
+        "first_origin": "2024-07-01",
+        "last_origin": "2024-07-31",
+        "origins": 31,
+        "train_target_days": [
+          "2024-01-02",
+          "2024-06-16"
+        ],
+        "early_stopping_days": [
+          "2024-06-17",
+          "2024-06-30"
+        ],
+        "seeds": {
+          "20261028": {
+            "best_val_mse": 0.0012083477542774593,
+            "best_epoch": 34,
+            "epochs": 39,
+            "seconds": 17.6,
+            "clipped": 0,
+            "n_train": 6240,
+            "n_val": 546
+          },
+          "20261029": {
+            "best_val_mse": 0.001244118409807387,
+            "best_epoch": 30,
+            "epochs": 35,
+            "seconds": 16.1,
+            "clipped": 0,
+            "n_train": 6240,
+            "n_val": 546
+          },
+          "20261030": {
+            "best_val_mse": 0.0012173821868184046,
+            "best_epoch": 36,
+            "epochs": 41,
+            "seconds": 18.6,
+            "clipped": 0,
+            "n_train": 6240,
+            "n_val": 546
+          }
+        }
+      },
+      "2024-08": {
+        "first_origin": "2024-08-01",
+        "last_origin": "2024-08-31",
+        "origins": 31,
+        "train_target_days": [
+          "2024-01-02",
+          "2024-07-17"
+        ],
+        "early_stopping_days": [
+          "2024-07-18",
+          "2024-07-31"
+        ],
+        "seeds": {
+          "20261028": {
+            "best_val_mse": 0.0009762633506394208,
+            "best_epoch": 9,
+            "epochs": 14,
+            "seconds": 7.6,
+            "clipped": 0,
+            "n_train": 7449,
+            "n_val": 546
+          },
+          "20261029": {
+            "best_val_mse": 0.000967436519033713,
+            "best_epoch": 6,
+            "epochs": 11,
+            "seconds": 5.9,
+            "clipped": 0,
+            "n_train": 7449,
+            "n_val": 546
+          },
+          "20261030": {
+            "best_val_mse": 0.0009673880489653756,
+            "best_epoch": 4,
+            "epochs": 9,
+            "seconds": 4.8,
+            "clipped": 0,
+            "n_train": 7449,
+            "n_val": 546
+          }
+        }
+      },
+      "2024-09": {
+        "first_origin": "2024-09-01",
+        "last_origin": "2024-09-30",
+        "origins": 30,
+        "train_target_days": [
+          "2024-01-02",
+          "2024-08-17"
+        ],
+        "early_stopping_days": [
+          "2024-08-18",
+          "2024-08-31"
+        ],
+        "seeds": {
+          "20261028": {
+            "best_val_mse": 0.0009591903988576544,
+            "best_epoch": 39,
+            "epochs": 44,
+            "seconds": 27.3,
+            "clipped": 0,
+            "n_train": 8658,
+            "n_val": 546
+          },
+          "20261029": {
+            "best_val_mse": 0.001052076993196855,
+            "best_epoch": 16,
+            "epochs": 21,
+            "seconds": 13.0,
+            "clipped": 0,
+            "n_train": 8658,
+            "n_val": 546
+          },
+          "20261030": {
+            "best_val_mse": 0.0009721612326537935,
+            "best_epoch": 37,
+            "epochs": 42,
+            "seconds": 26.1,
+            "clipped": 0,
+            "n_train": 8658,
+            "n_val": 546
+          }
+        }
+      },
+      "2024-10": {
+        "first_origin": "2024-10-01",
+        "last_origin": "2024-10-31",
+        "origins": 31,
+        "train_target_days": [
+          "2024-01-02",
+          "2024-09-16"
+        ],
+        "early_stopping_days": [
+          "2024-09-17",
+          "2024-09-30"
+        ],
+        "seeds": {
+          "20261028": {
+            "best_val_mse": 0.0005238905553055415,
+            "best_epoch": 24,
+            "epochs": 29,
+            "seconds": 20.4,
+            "clipped": 0,
+            "n_train": 9828,
+            "n_val": 546
+          },
+          "20261029": {
+            "best_val_mse": 0.0005229810129685968,
+            "best_epoch": 21,
+            "epochs": 26,
+            "seconds": 18.3,
+            "clipped": 0,
+            "n_train": 9828,
+            "n_val": 546
+          },
+          "20261030": {
+            "best_val_mse": 0.0005255637577785386,
+            "best_epoch": 21,
+            "epochs": 26,
+            "seconds": 18.3,
+            "clipped": 0,
+            "n_train": 9828,
+            "n_val": 546
+          }
+        }
+      },
+      "2024-11": {
+        "first_origin": "2024-11-01",
+        "last_origin": "2024-11-30",
+        "origins": 30,
+        "train_target_days": [
+          "2024-01-02",
+          "2024-10-17"
+        ],
+        "early_stopping_days": [
+          "2024-10-18",
+          "2024-10-31"
+        ],
+        "seeds": {
+          "20261028": {
+            "best_val_mse": 0.00017286519043010635,
+            "best_epoch": 20,
+            "epochs": 25,
+            "seconds": 19.8,
+            "clipped": 0,
+            "n_train": 11037,
+            "n_val": 546
+          },
+          "20261029": {
+            "best_val_mse": 0.00017326122525589978,
+            "best_epoch": 16,
+            "epochs": 21,
+            "seconds": 16.6,
+            "clipped": 0,
+            "n_train": 11037,
+            "n_val": 546
+          },
+          "20261030": {
+            "best_val_mse": 0.00017047501787298324,
+            "best_epoch": 25,
+            "epochs": 30,
+            "seconds": 23.7,
+            "clipped": 0,
+            "n_train": 11037,
+            "n_val": 546
+          }
+        }
+      },
+      "2024-12": {
+        "first_origin": "2024-12-01",
+        "last_origin": "2024-12-30",
+        "origins": 30,
+        "train_target_days": [
+          "2024-01-02",
+          "2024-11-16"
+        ],
+        "early_stopping_days": [
+          "2024-11-17",
+          "2024-11-30"
+        ],
+        "seeds": {
+          "20261028": {
+            "best_val_mse": 0.0001686711853891129,
+            "best_epoch": 48,
+            "epochs": 50,
+            "seconds": 43.5,
+            "clipped": 0,
+            "n_train": 12207,
+            "n_val": 546
+          },
+          "20261029": {
+            "best_val_mse": 0.0001682198736744746,
+            "best_epoch": 41,
+            "epochs": 46,
+            "seconds": 40.1,
+            "clipped": 0,
+            "n_train": 12207,
+            "n_val": 546
+          },
+          "20261030": {
+            "best_val_mse": 0.0001715938158622705,
+            "best_epoch": 32,
+            "epochs": 37,
+            "seconds": 32.2,
+            "clipped": 0,
+            "n_train": 12207,
+            "n_val": 546
+          }
+        }
+      }
+    },
+    "device": "cuda",
+    "clipped_lstm_values": {
+      "20261028": 0,
+      "20261029": 0,
+      "20261030": 0
+    },
+    "elapsed_s": 504.9
   }
 }
