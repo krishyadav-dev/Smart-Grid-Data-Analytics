@@ -56,3 +56,8 @@ Thumbs.db
 # Theft engine regenerable data (scripts/build_ntl_inputs.py, run_layer3_ntl.py); JSON summaries are versioned
 results/layer3/ntl/**/*.parquet
 results/layer3/ntl/**/*.npz
+
+# Thermal engine regenerable data (scripts/run_layer3_thermal.py); JSON summaries are versioned
+results/layer3/thermal/**/*.parquet
+results/layer3/thermal/**/*.npz
+results/layer3/thermal/**/*.pt

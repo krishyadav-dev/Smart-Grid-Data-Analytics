@@ -36,7 +36,7 @@ def engine_modules() -> list[Path]:
 
 def test_engine_modules_exist():
     names = {p.name for p in engine_modules()}
-    assert {"zones.py", "unbalance.py", "meters.py"} <= names
+    assert {"zones.py", "unbalance.py", "meters.py", "thermal.py"} <= names
 
 
 @pytest.mark.parametrize("path", engine_modules(), ids=lambda p: p.name)
@@ -96,6 +96,20 @@ def test_label_module_regex_catches_imports():
     for src in bad:
         assert any(_imports_module(src, m) for m in L.LABEL_MODULES), src
     assert not any(_imports_module("from src.data_source import theft_injector\n", m) for m in L.LABEL_MODULES)
+
+
+# Stage 3 run sheet §6: the thermal engine reads only metered DT currents,
+# config/meters.yaml, dts.parquet and the ERA5 file (and its own frozen settings)
+THERMAL_MODULES = ("thermal.py", "forecast.py")
+THERMAL_FILES = {"meter_frame_metered.parquet", "dts.parquet", "era5_t2m_delhi_2024_ist_15min.parquet",
+                 "meters.yaml", "layer3_thermal_params.yaml"}
+
+
+@pytest.mark.parametrize("name", [n for n in THERMAL_MODULES if (ANALYTICS / n).exists()])
+def test_thermal_engine_inputs(name):
+    text = (ANALYTICS / name).read_text(encoding="utf-8")
+    named = set(re.findall(r"[\w.-]+\.(?:parquet|yaml|json|npz|csv)", text))
+    assert named <= THERMAL_FILES, f"{name} names files outside the thermal inputs: {named - THERMAL_FILES}"
 
 
 def test_consumer_index_columns():
