@@ -680,6 +680,53 @@ def injection_summary(cache: Path = INJ2_CACHE) -> dict:
     }
 
 
+def head_gain_vs_true(g_hat: float, cache: Path = YEAR_CACHE_DIR) -> dict:
+    """A1: g^ against the head meter's true gain (``run_info.json``, scoring
+    only).  g^ estimates the head's reading relative to the DT meters, so it
+    is compared with 1 / g_head; the remainder is the DT meters' own errors."""
+    g = json.loads((Path(cache) / "run_info.json").read_text(encoding="utf-8"))["feeder_head_gain"]
+    return {"g_hat": g_hat, "true_head_gain": g, "one_over_true_head_gain": 1.0 / g,
+            "g_hat_times_true_gain_minus_1": g_hat * g - 1.0,
+            "note": "remainder = DT meters' class-0.5S errors (not correctable without a reference)"}
+
+
+def offline_households_vs_true(estimates: dict[str, pd.DataFrame], cache: Path = INJ2_CACHE) -> dict:
+    """A3 vs the Stage 2 rule against ``would_have_reported_kwh`` on offline
+    household-days: annual MWh, and bias / MAE / correlation per household-day
+    and per feeder-day, per window."""
+    lab = pd.read_parquet(Path(cache) / "household_daily_labels.parquet",
+                          columns=["household", "date", "offline", "would_have_reported_kwh"])
+    lab = lab[lab.offline.astype(bool)]
+    lab["date"] = pd.to_datetime(lab.date)
+    truth = lab.set_index(["household", "date"]).would_have_reported_kwh
+    out = {}
+    for name, est in estimates.items():
+        s = est.stack()
+        s.index.names = ["household", "date"]
+        e = s.reindex(truth.index)
+        if e.isna().any():
+            raise ValueError(f"{name}: no estimate on some offline household-days")
+        out[name] = {}
+        for w, r in {"year": NTL_YEAR, **NTL_WINDOWS}.items():
+            m = _in(truth.index.get_level_values("date"), r)
+            et, tt = e[m], truth[m]
+            fd_e, fd_t = et.groupby(level="date").sum(), tt.groupby(level="date").sum()
+            out[name][w] = {"household_days": int(m.sum()), "estimate_mwh": float(et.sum() / 1e3),
+                            "true_mwh": float(tt.sum() / 1e3),
+                            "per_household_day": bias_mae(et, tt), "per_feeder_day": bias_mae(fd_e, fd_t)}
+    return out
+
+
+def annual_mwh_table(estimates: dict[str, pd.Series], truth: dict) -> dict:
+    """Stage 4 §3 table: annual (and per window) MWh of each feeder estimate
+    and of the true energy theft (h1-h4)."""
+    out = {}
+    for w, r in {"year": NTL_YEAR, **NTL_WINDOWS}.items():
+        t = truth["feeder_theft"]
+        out[w] = {name: float(s[_in(s.index, r)].sum() / 1e3) for name, s in estimates.items()}
+        out[w]["true_energy_theft_h1_h4"] = float(t[_in(t.index, r)].sum() / 1e3)
+    return out
+
 
 # --------------------------------------------------------------------------
 # Consumer detector scoring (run sheet §4)

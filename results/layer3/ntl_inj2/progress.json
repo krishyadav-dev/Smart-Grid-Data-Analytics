@@ -1,6 +1,6 @@
 {
   "stage": "Stage 4 (theft-engine fixes), branch fix/layer3-theft from feat/layer3 at e3e5f90",
-  "updated": "2026-10-29 22:01 commit B",
+  "updated": "2026-10-29 22:41 commit C",
   "steps": {
     "A": {
       "status": "committed",
@@ -12,13 +12,23 @@
       "commit": "dbda42c"
     },
     "B": {
-      "status": "committed (hash in the next update)",
+      "status": "committed",
       "suite": "495 passed, 0 failed, 0 skipped (1559 s, shared CPU with the grid)",
-      "work": "A1 head-gain estimate, A2 bottom-up primary, A3 neighbour-ratio offline estimate, A4 lambda band; unit tests"
+      "work": "A1 head-gain estimate, A2 bottom-up primary, A3 neighbour-ratio offline estimate, A4 lambda band; unit tests",
+      "commit": "ff0e203"
     },
     "D": {
       "status": "running",
       "grid_24": "jokar-grid --samples 24 (static, update) started 21:34, parts saved in grid_parts_24_static_update/"
+    },
+    "C": {
+      "status": "committed (hash in the next update)",
+      "run": "balance scored once on injection 2 (balance_scored.json), 88.5 s",
+      "a_check": "A - L_tech 2024 = -58.0890394271905 MWh, equal to v1",
+      "suite": "495 passed, 0 failed, 0 skipped (2233 s, shared CPU)"
+    },
+    "F": {
+      "status": "running on the GPU since 22:05 (game Control open: ~0.75 GB GPU free), ~91 s per epoch"
     }
   },
   "written_ahead_not_committed": [
@@ -26,5 +36,5 @@
     "src/analytics/zheng_cnn.py fixed-epoch training + scripts/run_layer3_sgcc_full.py + evaluate sgcc_full_flags/sgcc_rank_metrics (step F)",
     "scripts/run_layer3_ntl_inj2.py balance/jokar-* commands + evaluate balance/detector scoring (steps C-E)"
   ],
-  "next": "step C: run balance once, suite, commit C; grid 96 after grid 24"
+  "next": "grid 24 running (57/150 chunks at 22:41); then grid 96; jokar-tune; commit D"
 }
