@@ -1,0 +1,20 @@
+{
+  "stage": "Stage 4 (theft-engine fixes), branch fix/layer3-theft from feat/layer3 at e3e5f90",
+  "updated": "2026-10-29 21:33 commit A",
+  "steps": {
+    "A": {
+      "status": "committed (hash in the next update)",
+      "reproduction_check": "passed: 18 files byte-identical to v1 (reproduction_check.json), 93.9 s",
+      "injection_run": "inj2 written (results/year_2024_inj2/, ntl_inj2/ideal_meter/), checks passed (inputs.json), 75.6 s",
+      "identity": "closes on Jul-Dec and the year (summary.json injection.energy_identity)",
+      "suite": "484 passed, 0 failed, 0 skipped (802 s)",
+      "elapsed": "reproduction 93.9 s + injection 75.6 s + report; suite 13.4 min"
+    }
+  },
+  "written_ahead_not_committed": [
+    "src/analytics/ntl_detector.py + tests/analytics/test_ntl_detector_stage4.py (step D)",
+    "src/analytics/zheng_cnn.py fixed-epoch training + scripts/run_layer3_sgcc_full.py + evaluate sgcc_full_flags/sgcc_rank_metrics (step F)",
+    "step B engine changes: scratchpad ntl_engine_stepB.py and test_ntl_engine_stage4.py (restore after commit A)"
+  ],
+  "next": "step B: restore engine edits, tests, suite, commit B"
+}

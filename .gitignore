@@ -61,3 +61,10 @@ results/layer3/ntl/**/*.npz
 results/layer3/thermal/**/*.parquet
 results/layer3/thermal/**/*.npz
 results/layer3/thermal/**/*.pt
+
+# Theft engine Stage 4 regenerable data (scripts/reinject_theft.py, run_layer3_ntl_inj2.py,
+# run_layer3_sgcc_full.py); JSON summaries are versioned
+results/layer3/ntl_inj2/**/*.parquet
+results/layer3/ntl_inj2/**/*.npz
+results/layer3/sgcc_full/**/*.npz
+results/layer3/sgcc_full/**/*.pt

@@ -534,27 +534,32 @@ def score_dt(estimates: dict[str, pd.DataFrame], truth: dict, windows=None) -> d
     return out
 
 
-def ntl_energy_identity(window=NTL_TEST, cache: Path = YEAR_CACHE_DIR) -> dict:
+def ntl_energy_identity(window=NTL_TEST, cache: Path = YEAR_CACHE_DIR,
+                        frame_cache: Optional[Path] = None) -> dict:
     """Feeder energy identity on a window (as tests/test_energy_identity.py on
     the year): head metered - billed = MV and DT losses + theft + offline +
     meter error.  Raises if it does not close within the cache's own
-    tolerance (power-flow balance error x steps + float32 rounding)."""
+    tolerance (power-flow balance error x steps + float32 rounding).
+    ``frame_cache``: where the theft-independent meter frames, state and
+    acceptance record are read (default ``cache``; Stage 4: injection 2 reads
+    its household files from ``cache`` and the v1 frames from here)."""
     cache = Path(cache)
+    fcache = Path(frame_cache) if frame_cache else cache
     end = window[1] + pd.Timedelta(days=1)
     f = [("load_id", "==", "feeder_head_650"), ("timestamp", ">=", window[0]), ("timestamp", "<", end)]
     cols = ["timestamp", "load_id", "active_power_kw"]
-    head_true = pd.read_parquet(cache / "meter_frame_true.parquet", columns=cols,
+    head_true = pd.read_parquet(fcache / "meter_frame_true.parquet", columns=cols,
                                 filters=f).active_power_kw.sum() * 0.25
-    head_met = pd.read_parquet(cache / "meter_frame_metered.parquet", columns=cols,
+    head_met = pd.read_parquet(fcache / "meter_frame_metered.parquet", columns=cols,
                                filters=f).active_power_kw.sum() * 0.25
-    st = pd.read_parquet(cache / "state.parquet", columns=["timestamp", "line_losses_mw", "dt_losses_mw"],
+    st = pd.read_parquet(fcache / "state.parquet", columns=["timestamp", "line_losses_mw", "dt_losses_mw"],
                          filters=f[1:])
     df = [("date", ">=", window[0]), ("date", "<=", window[1])]
     hd = pd.read_parquet(cache / "household_daily.parquet",
                          columns=["date", "true_kwh", "reported_kwh", "metered_kwh"], filters=df)
     lab = pd.read_parquet(cache / "household_daily_labels.parquet", columns=["date", "theft_kwh", "offline_kwh"],
                           filters=df)
-    acc = json.loads((cache / "acceptance.json").read_text(encoding="utf-8"))
+    acc = json.loads((fcache / "acceptance.json").read_text(encoding="utf-8"))
     true = hd.true_kwh.to_numpy(float)
     billed = float(np.nansum(hd.metered_kwh.to_numpy(float)))
     reported = float(np.nansum(hd.reported_kwh.to_numpy(float)))
@@ -641,6 +646,39 @@ def worked_example(est: dict, truth: dict, cache: Path = YEAR_CACHE_DIR) -> dict
         "true_theft_all_attacks_mwh": float(truth["feeder_theft_all_attacks"].sum() / 1e3),
         "note": "engine_estimated: metered head energy, L^_tech and E^_offline; true_losses_and_offline: "
                 "the plan's table (true head, true losses, would-have-reported offline energy)"}
+
+
+# --------------------------------------------------------------------------
+# Stage 4 (theft-engine fixes): injection 2 (Stage 4 run sheet §2)
+# --------------------------------------------------------------------------
+INJ2_CACHE = PROJECT_ROOT / "results" / "year_2024_inj2"
+
+
+def injection_summary(cache: Path = INJ2_CACHE) -> dict:
+    """Thieves per attack, onsets by month, and the share of DT-days with
+    energy theft (h1-h4) active on at least one household (Wilson), per window."""
+    cache = Path(cache)
+    h = load_household_labels(cache)
+    th = h[h.thief.astype(bool)]
+    d = pd.read_parquet(cache / "household_daily.parquet", columns=["household", "date", "attack_active"])
+    d["dt"] = d.household.map(h.dt)
+    d["energy_theft_active"] = d.attack_active & d.household.map(h.attack).isin(ENERGY_THEFT).to_numpy()
+    g = d.groupby(["dt", "date"]).energy_theft_active.any()
+    dates = pd.DatetimeIndex(g.index.get_level_values("date"))
+    info = json.loads((cache / "reinject_info.json").read_text(encoding="utf-8"))
+    return {
+        "streams": info["streams"], "households": int(len(h)), "thieves": int(len(th)),
+        "thieves_per_attack": {k: int(v) for k, v in th.attack.value_counts().sort_index().items()},
+        "energy_theft_h1_h4": int(th.attack.isin(ENERGY_THEFT).sum()),
+        "tariff_shift_h5_h6": int(th.attack.isin(TARIFF_SHIFT).sum()),
+        "onsets_by_month": {int(m): int(n) for m, n in th.onset.dt.month.value_counts().sort_index().items()},
+        "onsets_by_month_and_attack": {a: {int(m): int(n) for m, n in t.onset.dt.month.value_counts().sort_index()
+                                           .items()} for a, t in th.groupby("attack")},
+        "dt_days_with_energy_theft_active": {
+            w: wilson(int(g.to_numpy()[_in(dates, r)].sum()), int(_in(dates, r).sum()))
+            for w, r in {"jan_jun": NTL_TUNE, "jul_dec": NTL_TEST, "year": NTL_YEAR}.items()},
+    }
+
 
 
 # --------------------------------------------------------------------------

@@ -1,0 +1,254 @@
+{
+  "injection": {
+    "label": "injection 2: second theft draw on the same household population (D1)",
+    "summary": {
+      "streams": [
+        "theft.pick/inj2",
+        "theft.attack/inj2"
+      ],
+      "households": 8020,
+      "thieves": 684,
+      "thieves_per_attack": {
+        "h1": 122,
+        "h2": 112,
+        "h3": 120,
+        "h4": 101,
+        "h5": 106,
+        "h6": 123
+      },
+      "energy_theft_h1_h4": 455,
+      "tariff_shift_h5_h6": 229,
+      "onsets_by_month": {
+        "1": 64,
+        "2": 62,
+        "3": 48,
+        "4": 44,
+        "5": 62,
+        "6": 53,
+        "7": 60,
+        "8": 60,
+        "9": 60,
+        "10": 63,
+        "11": 53,
+        "12": 55
+      },
+      "onsets_by_month_and_attack": {
+        "h1": {
+          "1": 18,
+          "2": 7,
+          "3": 14,
+          "4": 7,
+          "5": 13,
+          "6": 11,
+          "7": 8,
+          "8": 5,
+          "9": 12,
+          "10": 12,
+          "11": 9,
+          "12": 6
+        },
+        "h2": {
+          "1": 7,
+          "2": 10,
+          "3": 6,
+          "4": 5,
+          "5": 11,
+          "6": 7,
+          "7": 12,
+          "8": 9,
+          "9": 12,
+          "10": 10,
+          "11": 8,
+          "12": 15
+        },
+        "h3": {
+          "1": 9,
+          "2": 12,
+          "3": 4,
+          "4": 15,
+          "5": 9,
+          "6": 11,
+          "7": 12,
+          "8": 14,
+          "9": 7,
+          "10": 11,
+          "11": 7,
+          "12": 9
+        },
+        "h4": {
+          "1": 9,
+          "2": 5,
+          "3": 9,
+          "4": 5,
+          "5": 8,
+          "6": 7,
+          "7": 13,
+          "8": 10,
+          "9": 9,
+          "10": 12,
+          "11": 9,
+          "12": 5
+        },
+        "h5": {
+          "1": 8,
+          "2": 14,
+          "3": 7,
+          "4": 6,
+          "5": 9,
+          "6": 10,
+          "7": 7,
+          "8": 5,
+          "9": 10,
+          "10": 10,
+          "11": 11,
+          "12": 9
+        },
+        "h6": {
+          "1": 13,
+          "2": 14,
+          "3": 8,
+          "4": 6,
+          "5": 12,
+          "6": 7,
+          "7": 8,
+          "8": 17,
+          "9": 10,
+          "10": 8,
+          "11": 9,
+          "12": 11
+        }
+      },
+      "dt_days_with_energy_theft_active": {
+        "jan_jun": {
+          "k": 2260,
+          "n": 2366,
+          "p": 0.9551986475063398,
+          "lo": 0.9460992086406962,
+          "hi": 0.9628222990246261
+        },
+        "jul_dec": {
+          "k": 2392,
+          "n": 2392,
+          "p": 1.0,
+          "lo": 0.9983965550977993,
+          "hi": 1.0
+        },
+        "year": {
+          "k": 4652,
+          "n": 4758,
+          "p": 0.9777217318200925,
+          "lo": 0.9731266939550541,
+          "hi": 0.9815459688231448
+        }
+      }
+    },
+    "reproduction_check": {
+      "all_equal": true,
+      "all_sha256_equal": true,
+      "streams": [
+        "theft.pick",
+        "theft.attack"
+      ],
+      "files_compared": [
+        "households.parquet",
+        "household_daily.parquet",
+        "household_daily_labels.parquet",
+        "ami_2024-01.parquet",
+        "ami_2024-02.parquet",
+        "ami_2024-03.parquet",
+        "ami_2024-04.parquet",
+        "ami_2024-05.parquet",
+        "ami_2024-06.parquet",
+        "ami_2024-07.parquet",
+        "ami_2024-08.parquet",
+        "ami_2024-09.parquet",
+        "ami_2024-10.parquet",
+        "ami_2024-11.parquet",
+        "ami_2024-12.parquet",
+        "dt_day_balance.parquet",
+        "lambda_sweep/metrics.json",
+        "household_daily.parquet"
+      ]
+    },
+    "theft_independence_checks": {
+      "true_kwh_equal_v1": true,
+      "offline_equal_v1": true,
+      "household_gains_equal_v1": true,
+      "dt_gains_equal_v1": true,
+      "feeder_head_gain_equal_v1": true,
+      "consumer_index_equal_rebuilt": true,
+      "dt_true_energy_vs_household_true_kwh_max_rel": 1.2683641861542378e-08,
+      "dt_true_energy_matches_households": true,
+      "passed": true
+    },
+    "energy_identity": {
+      "jul_dec_test": {
+        "window": [
+          "2024-07-01",
+          "2024-12-31"
+        ],
+        "steps": 17664,
+        "household_days": 1475680,
+        "head_metered_kwh": 7908370.743276823,
+        "billed_kwh": 7507006.641749628,
+        "losses_kwh": 172437.48632264204,
+        "theft_kwh": 203309.66372811535,
+        "offline_kwh": 53071.263856565805,
+        "meter_error_kwh": -27454.234773207456,
+        "residual_kwh": -0.07760692032752559,
+        "tolerance_kwh": 1.0090507554917119,
+        "closes": true
+      },
+      "year": {
+        "window": [
+          "2024-01-01",
+          "2024-12-31"
+        ],
+        "steps": 35136,
+        "household_days": 2935320,
+        "head_metered_kwh": 15789959.017129593,
+        "billed_kwh": 15123540.591323165,
+        "losses_kwh": 345843.5835146775,
+        "theft_kwh": 275741.9577742243,
+        "offline_kwh": 99288.25244490893,
+        "meter_error_kwh": -54455.21436026879,
+        "residual_kwh": -0.1535671146120876,
+        "tolerance_kwh": 2.013873791629292,
+        "closes": true
+      }
+    },
+    "files_regenerated": [
+      "households.parquet",
+      "household_daily.parquet",
+      "household_daily_labels.parquet",
+      "ami/",
+      "lambda_sweep/",
+      "reinject_info.json"
+    ],
+    "files_reused": {
+      "results/year_2024": [
+        "meter_frame_true.parquet",
+        "meter_frame_metered.parquet",
+        "state.parquet",
+        "dts.parquet",
+        "meter_points.parquet",
+        "acceptance.json",
+        "sgcc_detector_train.parquet",
+        "sgcc_detector_test.parquet"
+      ],
+      "results/layer3/ntl": [
+        "ltech_real.parquet",
+        "ltech_ideal.parquet",
+        "lambda_true_{0,2,4}/",
+        "ideal_meter/meter_frame_metered.parquet",
+        "consumer_index.parquet"
+      ]
+    },
+    "ideal_meter_households": "results\\layer3\\ntl_inj2\\ideal_meter\\household_daily.parquet",
+    "elapsed_s": {
+      "reproduction_run": 93.9,
+      "injection_run": 75.6,
+      "report": 1.6
+    }
+  }
+}

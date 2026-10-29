@@ -100,8 +100,11 @@ def household_matrix(daily_long: pd.DataFrame) -> pd.DataFrame:
     return m
 
 
+HOUSEHOLD_DAILY_COLUMNS = ("household", "date", "metered_kwh")    # the only columns the engine reads
+
+
 def read_household_daily(path: str | Path) -> pd.DataFrame:
-    return household_matrix(pd.read_parquet(path, columns=["household", "date", "metered_kwh"]))
+    return household_matrix(pd.read_parquet(path, columns=list(HOUSEHOLD_DAILY_COLUMNS)))
 
 
 def read_consumer_index(path: str | Path) -> pd.Series:
