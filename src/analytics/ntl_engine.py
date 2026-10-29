@@ -35,6 +35,18 @@ with the un-netted baselines C and B_DT.
   that type (equal distance: the earlier month [our choice]); then all of the
   household's online days.  Nothing is tuned.
 
+Stage 4 (theft-engine fixes; Stage 4 run sheet §3):
+
+- **A1:** head-meter gain relative to the DT meters from balance A (no
+  theft), g^ = sum (sum_DT E_DT + L^_tech) / sum E_head over January-June
+  [our choice of window]; corrected head energy = g^ E_head.  The DT meters'
+  own class-0.5S errors remain (no reference to correct them).
+- **A2:** primary feeder estimate = bottom-up sum_DT (B_DT - E^_offline,DT) at
+  lambda_assumed = 0; head-based estimates (raw and corrected) alongside.
+- **A3:** E^_offline by neighbour ratio (:func:`offline_estimate_neighbour`),
+  primary; the Stage 2 median rule is the baseline.
+- **A4:** DT estimates at lambda_assumed = 0 with the band over {0, 2, 4} %.
+
 Consumer detector (plan §2 N2; run sheet §4): Jokar et al. 2016 per-household
 SVM, leave-one-attack-out; see the section at the end of this module.
 """
@@ -60,6 +72,8 @@ STEP_H = 0.25                       # 15-min metering interval (h)
 PHASES = ("a", "b", "c")
 FALLBACK_MIN_DAYS = 3               # run sheet §3: nearest month with >= 3 online days of the type
 OFFLINE_RULES = ("same_month_day_type", "nearest_month_day_type", "all_online_days", "no_online_days")
+# Stage 4 run sheet §3 A1: window of the head-gain estimate [our choice of window]
+GAIN_WINDOW = ("2024-01-01", "2024-06-30")
 
 
 # --------------------------------------------------------------------------
@@ -122,45 +136,106 @@ def day_type(days: pd.DatetimeIndex) -> np.ndarray:
     return (pd.DatetimeIndex(days).weekday >= 5).astype(int)
 
 
+def _history_fill(x: np.ndarray, valid: np.ndarray, target: np.ndarray,
+                  days: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
+    """Per row, the median of ``x`` over the row's ``valid`` days of the same
+    calendar month and day type, at every ``target`` day; fallbacks in order:
+    same day type in the nearest month with >= FALLBACK_MIN_DAYS valid days
+    (equal distance: the earlier month), then all valid days, then 0.
+    Returns (values, rule index into OFFLINE_RULES; -1 off target)."""
+    month = pd.DatetimeIndex(days).month.to_numpy()
+    dtype = day_type(days)
+    est = np.zeros(x.shape)
+    rule = np.full(x.shape, -1, np.int8)
+    months = np.unique(month)
+    for i in np.flatnonzero(target.any(axis=1)):
+        row = x[i]
+        ok = valid[i]
+        med, n = {}, {}
+        for m in months:
+            for t in (0, 1):
+                sel = ok & (month == m) & (dtype == t)
+                n[m, t] = int(sel.sum())
+                med[m, t] = float(np.median(row[sel])) if n[m, t] else np.nan
+        all_med = float(np.median(row[ok])) if ok.any() else np.nan
+        for d in np.flatnonzero(target[i]):
+            m, t = month[d], dtype[d]
+            if n[m, t] >= 1:
+                est[i, d], rule[i, d] = med[m, t], 0
+            else:
+                cand = sorted((abs(int(k) - int(m)), int(k)) for k in months
+                              if n[k, t] >= FALLBACK_MIN_DAYS)
+                if cand:
+                    est[i, d], rule[i, d] = med[cand[0][1], t], 1
+                elif ok.any():
+                    est[i, d], rule[i, d] = all_med, 2
+                else:
+                    est[i, d], rule[i, d] = 0.0, 3
+    return est, rule
+
+
+def _rule_counts(rule: np.ndarray, names=OFFLINE_RULES) -> dict:
+    return {name: int((rule == k).sum()) for k, name in enumerate(names)}
+
+
 def offline_estimate(hh: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     """E^_offline per household and day (0 on online days) and the rule counts.
 
     ``hh``: households x days metered kWh, NaN on offline days.
     """
-    days = pd.DatetimeIndex(hh.columns)
-    month = days.month.to_numpy()
-    dtype = day_type(days)
     x = hh.to_numpy(float)
     off = np.isnan(x)
-    est = np.zeros_like(x)
-    counts = dict.fromkeys(OFFLINE_RULES, 0)
-    months = np.unique(month)
-    for i in np.flatnonzero(off.any(axis=1)):
-        row = x[i]
-        online = ~off[i]
-        med, n = {}, {}
-        for m in months:
-            for t in (0, 1):
-                sel = online & (month == m) & (dtype == t)
-                n[m, t] = int(sel.sum())
-                med[m, t] = float(np.median(row[sel])) if n[m, t] else np.nan
-        all_med = float(np.median(row[online])) if online.any() else np.nan
-        for d in np.flatnonzero(off[i]):
-            m, t = month[d], dtype[d]
-            if n[m, t] >= 1:
-                est[i, d], rule = med[m, t], OFFLINE_RULES[0]
-            else:
-                cand = sorted((abs(int(k) - int(m)), int(k)) for k in months
-                              if n[k, t] >= FALLBACK_MIN_DAYS)
-                if cand:
-                    est[i, d], rule = med[cand[0][1], t], OFFLINE_RULES[1]
-                elif online.any():
-                    est[i, d], rule = all_med, OFFLINE_RULES[2]
-                else:
-                    est[i, d], rule = 0.0, OFFLINE_RULES[3]
-            counts[rule] += 1
+    est, rule = _history_fill(x, ~off, off, hh.columns)
     out = pd.DataFrame(est, index=hh.index, columns=hh.columns)
-    return out, {"offline_household_days": int(off.sum()), "rule_counts": counts}
+    return out, {"offline_household_days": int(off.sum()), "rule_counts": _rule_counts(rule)}
+
+
+# Stage 4 run sheet §3 A3: offline estimate by neighbour ratio (primary from Stage 4)
+NEIGHBOUR_RULES = ("ratio_same_month_day_type", "ratio_nearest_month_day_type", "ratio_all_online_days",
+                   "median_rule_no_ratio_days", "median_rule_no_online_neighbour")
+
+
+def offline_estimate_neighbour(hh: pd.DataFrame, consumer_dt: pd.Series) -> tuple[pd.DataFrame, dict]:
+    """E^_offline by neighbour ratio (Stage 4 run sheet §3 A3).
+
+    For household i on DT j:
+      - on each online day d', rho_i,d' = E_i,d' / mean of E_k,d' over the
+        other households k on DT j online that day (defined when at least one
+        other is online and their mean is above 0);
+      - rho^ = median of rho_i,d' over i's online days of the same calendar
+        month and day type, with the Stage 2 fallbacks in the same order
+        (nearest month with >= 3 days of the type, then all days);
+      - E^_i,d = rho^ x mean of E_k,d over i's online neighbours on day d.
+    If DT j has no online neighbour on day d, or i has no day with a defined
+    ratio, the Stage 2 median rule (:func:`offline_estimate`) is used.
+    """
+    x = hh.to_numpy(float)
+    off = np.isnan(x)
+    days = pd.DatetimeIndex(hh.columns)
+    dt_of = consumer_dt.reindex(hh.index).to_numpy()
+    med, med_rule = _history_fill(x, ~off, off, days)              # the Stage 2 median rule
+    est = np.zeros_like(x)
+    rule = np.full(x.shape, -1, np.int8)
+    for j in pd.unique(dt_of):
+        r = np.flatnonzero(dt_of == j)
+        xj, onj = np.where(off[r], 0.0, x[r]), ~off[r]
+        s, n = xj.sum(axis=0), onj.sum(axis=0)                    # per day, online households of DT j
+        with np.errstate(invalid="ignore", divide="ignore"):
+            others = (s[None, :] - xj) / (n[None, :] - 1)          # mean of the other online households
+            rho = xj / others
+            nb_mean = s / n                                         # i offline: every online one is a neighbour
+        ok = onj & (n[None, :] >= 2) & (others > 0)
+        rho_hat, rr = _history_fill(rho, ok, off[r], days)         # rule 3: no day with a defined ratio
+        no_nb = off[r] & (n[None, :] == 0)
+        e = rho_hat * np.where(n > 0, nb_mean, 0.0)[None, :]
+        rr[no_nb] = 4
+        fallback = (rr == 3) | no_nb
+        e[fallback] = med[r][fallback]
+        e[~off[r]] = 0.0
+        est[r], rule[r] = e, rr
+    out = pd.DataFrame(est, index=hh.index, columns=hh.columns)
+    return out, {"offline_household_days": int(off.sum()), "rule_counts": _rule_counts(rule, NEIGHBOUR_RULES),
+                 "median_rule_counts_on_fallback_days": _rule_counts(np.where(rule >= 3, med_rule, -1))}
 
 
 # --------------------------------------------------------------------------
@@ -170,7 +245,7 @@ def offline_estimate(hh: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
 def per_dt(hh_values: pd.DataFrame, consumer_dt: pd.Series, dt_names) -> pd.DataFrame:
     """days x DT sums of a households x days table (NaN counted as 0)."""
     s = hh_values.fillna(0.0).groupby(consumer_dt.reindex(hh_values.index).to_numpy()).sum()
-    return s.reindex(list(dt_names)).T
+    return s.reindex(list(dt_names), fill_value=0.0).T            # a DT without households bills 0
 
 
 def balances(head_day: pd.Series, dt_day: pd.DataFrame, hh: pd.DataFrame,
@@ -249,14 +324,29 @@ def ltech_daily(ltech: pd.DataFrame) -> pd.DataFrame:
 # One run of the balance engine
 # --------------------------------------------------------------------------
 
+def head_gain_estimate(head_day: pd.Series, dt_day: pd.DataFrame, ltech_kwh_day: pd.Series,
+                       window=GAIN_WINDOW) -> float:
+    """A1 (Stage 4 run sheet §3): the head meter's gain relative to the DT
+    meters, estimated without labels from balance A (no theft):
+    g^ = sum_window (sum_DT E_DT + L^_tech) / sum_window E_head."""
+    m = window_mask(pd.DatetimeIndex(head_day.index), window)
+    return float((dt_day[m].sum(axis=1).sum() + ltech_kwh_day[m].sum()) / head_day[m].sum())
+
+
 def balance_estimates(frame: pd.DataFrame, hh: pd.DataFrame, consumer_dt: pd.Series,
                       ltech: Optional[pd.DataFrame], lambdas_assumed=(0.0,),
-                      dt_energy_15min: Optional[pd.DataFrame] = None) -> dict:
+                      dt_energy_15min: Optional[pd.DataFrame] = None, offline: str = "median") -> dict:
     """Every balance-engine output for one set of inputs.
 
     ``dt_energy_15min`` replaces the DT-meter energies of ``frame`` (the
     lambda_true scenario inputs, read like the normal DT-meter energies).
     ``ltech`` = :func:`ltech_run` output (None: feeder netting skipped).
+    ``offline``: the E^_offline used in the netted estimates, ``"median"``
+    (Stage 2 rule) or ``"neighbour"`` (Stage 4 A3, primary from Stage 4);
+    both are returned under ``eoff_rules``.  With ``ltech``, the Stage 4
+    outputs are added: the head-gain estimate g^ (A1), the corrected head
+    energy, the head-based netted estimate with it, and the bottom-up feeder
+    estimate sum_DT (B_DT - E^_offline,DT) at lambda_assumed = 0 (A2).
     """
     head15, dt15 = meter_energy_15min(frame)
     if dt_energy_15min is not None:
@@ -264,17 +354,31 @@ def balance_estimates(frame: pd.DataFrame, hh: pd.DataFrame, consumer_dt: pd.Ser
     head_day, dt_day = daily(head15), daily(dt15)
     hh = hh.reindex(columns=head_day.index)
     bal = balances(head_day, dt_day, hh, consumer_dt)
-    eoff, eoff_info = offline_estimate(hh)
+    rules = {"median": offline_estimate(hh)}
+    if offline == "neighbour":
+        rules["neighbour"] = offline_estimate_neighbour(hh, consumer_dt)
+    elif offline != "median":
+        raise ValueError(f"offline must be 'median' or 'neighbour', got {offline!r}")
+    eoff, eoff_info = rules[offline]
     eoff_day = eoff.sum(axis=0)
     eoff_dt = per_dt(eoff, consumer_dt, dt_day.columns).reindex(dt_day.index)
     out = {"head_day": head_day, "dt_day": dt_day, **bal, "eoff_day": eoff_day, "eoff_dt": eoff_dt,
-           "eoff_info": eoff_info,
+           "eoff_info": eoff_info, "offline_rule": offline,
+           "eoff_rules": {k: {"household": v[0], "day": v[0].sum(axis=0), "info": v[1]} for k, v in rules.items()},
            "ntl_dt": {lam: netted_dt(bal["B"], bal["billed_dt"], eoff_dt, lam) for lam in lambdas_assumed}}
+    if 0.0 in out["ntl_dt"]:
+        out["bottom_up"] = out["ntl_dt"][0.0].sum(axis=1)                  # A2 primary feeder estimate
     if ltech is not None:
         ld = ltech_daily(ltech).reindex(head_day.index)
         out["ltech_day"] = ld
         out["ntl_feeder"] = netted_feeder(bal["C"], ld.ltech_kw, eoff_day)
         out["a_minus_ltech"] = bal["A"] - ld.ltech_kw
+        g = head_gain_estimate(head_day, dt_day, ld.ltech_kw)
+        head_c = g * head_day
+        out["g_hat"] = g
+        out["head_corrected_day"] = head_c
+        out["a_minus_ltech_corrected"] = head_c - dt_day.sum(axis=1) - ld.ltech_kw
+        out["ntl_feeder_corrected"] = netted_feeder(head_c - bal["billed"], ld.ltech_kw, eoff_day)
     return out
 
 
