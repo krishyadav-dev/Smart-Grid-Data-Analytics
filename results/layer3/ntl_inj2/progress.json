@@ -1,6 +1,6 @@
 {
   "stage": "Stage 4 (theft-engine fixes), branch fix/layer3-theft from feat/layer3 at e3e5f90",
-  "updated": "2026-10-30 16:50",
+  "updated": "2026-10-30 17:38",
   "steps": {
     "A": {
       "status": "committed",
@@ -38,7 +38,7 @@
       "elapsed_s": 2745.1,
       "summary": "results/layer3/sgcc_full/summary.json",
       "suite": "521 passed, 0 failed, 0 skipped (519 s; all tests)",
-      "commit": "see git log: fix(layer3-theft-F)"
+      "commit": "07aa078"
     },
     "E": {
       "status": "committed (metrics from the saved scores of the 07:27 run after the loader fix)",
@@ -85,5 +85,13 @@
     }
   },
   "written_ahead_not_committed": [],
-  "next": "Checkpoint 4 report, then stop"
+  "next": "addendum J report, then stop",
+  "addendum_j": {
+    "status": "committed",
+    "what": "post-hoc, after Checkpoint 4, descriptive: J1 shape similarity (simulated honest vs raw eMARC), J2 attack closeness, J3 flagged honest days; summary key addendum_j",
+    "script": "scripts/layer3_ntl_addendum.py j",
+    "suite": "524 passed, 0 failed, 0 skipped (790 s)",
+    "elapsed_s": 31.6,
+    "commit": "see git log: feat(layer3-theft-J)"
+  }
 }
