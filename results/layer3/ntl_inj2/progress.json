@@ -1,6 +1,6 @@
 {
   "stage": "Stage 4 (theft-engine fixes), branch fix/layer3-theft from feat/layer3 at e3e5f90",
-  "updated": "2026-10-29 22:41 commit C",
+  "updated": "2026-10-30 07:28",
   "steps": {
     "A": {
       "status": "committed",
@@ -18,23 +18,29 @@
       "commit": "ff0e203"
     },
     "D": {
-      "status": "running",
-      "grid_24": "jokar-grid --samples 24 (static, update) started 21:34, parts saved in grid_parts_24_static_update/"
+      "status": "committed (frozen detector settings before any July-December run)",
+      "grid_24": "done 01:44, 150/150 chunks, 15016 s (jokar_grid_auc_24_static_update.npz, no NaN)",
+      "grid_96": "done 06:43, 150/150 chunks (jokar_grid_auc_96_static_update.npz, no NaN); run 22:42-02:15 (91 chunks) + paused 02:15-05:58 at the user's request + resumed 05:58-06:43 (59 chunks, 2699 s)",
+      "tune": "done 07:16, 1941 s (validation run 1922 s): samples_per_day 96 (B9b 0.7724 vs 0.7713), no edge picks, frozen settings config/layer3_ntl_params_inj2.yaml, jokar_tuning.json",
+      "grid_elapsed_note": "jokar_tuning.json elapsed_s for the 96 grid (2698 s) covers only the resumed part; the first part ran 22:42-02:15 (91 chunks)",
+      "suite": "512 passed, 0 failed, 0 skipped (590 s; step F tests excluded until commit F)",
+      "commit": "see git log: fix(layer3-theft-D)"
     },
     "C": {
-      "status": "committed (hash in the next update)",
+      "status": "committed",
       "run": "balance scored once on injection 2 (balance_scored.json), 88.5 s",
       "a_check": "A - L_tech 2024 = -58.0890394271905 MWh, equal to v1",
-      "suite": "495 passed, 0 failed, 0 skipped (2233 s, shared CPU)"
+      "suite": "495 passed, 0 failed, 0 skipped (2233 s, shared CPU)",
+      "commit": "abae7f0"
     },
     "F": {
-      "status": "running on the GPU since 22:05 (game Control open: ~0.75 GB GPU free), ~91 s per epoch"
+      "status": "run done (test set scored once, test_opened.json); commit after E",
+      "elapsed_s": 2745.1,
+      "summary": "results/layer3/sgcc_full/summary.json"
     }
   },
   "written_ahead_not_committed": [
-    "src/analytics/ntl_detector.py + tests/analytics/test_ntl_detector_stage4.py (step D)",
-    "src/analytics/zheng_cnn.py fixed-epoch training + scripts/run_layer3_sgcc_full.py + evaluate sgcc_full_flags/sgcc_rank_metrics (step F)",
-    "scripts/run_layer3_ntl_inj2.py balance/jokar-* commands + evaluate balance/detector scoring (steps C-E)"
+    "src/analytics/zheng_cnn.py fixed-epoch training + scripts/run_layer3_sgcc_full.py + evaluate sgcc_full_flags/sgcc_rank_metrics (step F)"
   ],
-  "next": "grid 24 running (57/150 chunks at 22:41); then grid 96; jokar-tune; commit D"
+  "next": "jokar-test (once) -> suite -> commit E -> commit F -> report"
 }

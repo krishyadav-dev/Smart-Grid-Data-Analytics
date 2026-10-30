@@ -818,6 +818,151 @@ def by_onset_month(scores: dict[str, pd.Series], q: dict[str, float], labels: pd
     return out
 
 # --------------------------------------------------------------------------
+# Consumer detector, Stage 4 (Stage 4 run sheet §4): monthly metrics and diagnostics
+# --------------------------------------------------------------------------
+# Inputs: per fold and variant, per-day flags (1 flagged, 0 benign, -1 offline),
+# day scores and the B1 "added" mask of every household over a window.
+BUDGETS = (0.01, 0.02, 0.05)                       # B7: monthly inspection budgets
+
+
+def month_targets(labels: pd.DataFrame, households, fold_attacks, month_end) -> pd.Series:
+    """Targets for one month: 1 = thief of ``fold_attacks`` active on at least
+    one day of the month (onset on or before its end), 0 = honest, NaN =
+    excluded (as :func:`fold_targets`)."""
+    return fold_targets(labels, households, fold_attacks, (None, month_end))
+
+
+def monthly_shares(flags: np.ndarray, scores: np.ndarray, days: pd.DatetimeIndex) -> dict:
+    """Per month: (flag share, mean day score, online days) per household,
+    NaN where the household has no online day that month."""
+    out = {}
+    for m in np.unique(days.month):
+        sel = np.asarray(days.month == m)
+        f, s = flags[:, sel], scores[:, sel]
+        on = f >= 0
+        n = on.sum(axis=1)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            share = np.where(n > 0, (f == 1).sum(axis=1) / n, np.nan)
+            mean = np.where(n > 0, np.nansum(np.where(on, s, 0.0), axis=1) / n, np.nan)
+        out[int(m)] = (share, mean, n)
+    return out
+
+
+def budget_k(budget: float, n: int) -> int:
+    """Households inspected at ``budget`` of ``n`` scored households:
+    round(budget x n), at least 1 [our choice of rounding]."""
+    return max(1, int(round(budget * n)))
+
+
+def precision_at_budgets(flags: np.ndarray, scores: np.ndarray, days: pd.DatetimeIndex, ids,
+                         labels: pd.DataFrame, fold_attacks, budgets=BUDGETS) -> dict:
+    """B7, one fold: each month, households ranked by that month's flag share
+    (ties: the month's mean day score [our choice], then household order); the
+    top round(b x scored) are inspected.  Precision (Wilson) against the month's
+    prevalence (the random-inspection baseline); pooled over months as
+    sum TP / sum inspected."""
+    ms = monthly_shares(flags, scores, days)
+    out = {"months": {}, "pooled": {}}
+    tot = {b: [0, 0] for b in budgets}
+    for m, (share, mean, n) in ms.items():
+        end = pd.Timestamp(days[days.month == m][-1])
+        y = month_targets(labels, ids, fold_attacks, end).to_numpy()
+        ok = (n > 0) & ~np.isnan(y)
+        idx = np.flatnonzero(ok)
+        order = idx[np.lexsort((np.arange(len(idx)), -mean[idx], -share[idx]))]
+        pos = int(y[ok].sum())
+        rec = {"scored": int(ok.sum()), "positives": pos, "prevalence": pos / ok.sum() if ok.any() else None}
+        for b in budgets:
+            k = budget_k(b, int(ok.sum()))
+            tp = int(y[order[:k]].sum())
+            rec[f"precision_at_{b:g}"] = wilson(tp, k)
+            tot[b][0] += tp
+            tot[b][1] += k
+        out["months"][m] = rec
+    pos = sum(r["positives"] for r in out["months"].values())
+    sc = sum(r["scored"] for r in out["months"].values())
+    out["pooled"] = {f"precision_at_{b:g}": wilson(*tot[b]) for b in budgets}
+    out["pooled"]["prevalence"] = pos / sc if sc else None
+    return out
+
+
+def recall_by_month(flags: np.ndarray, scores: np.ndarray, days: pd.DatetimeIndex, ids,
+                    labels: pd.DataFrame, fold_attacks, q: float) -> dict:
+    """Recall per month: positives of the month (active thieves of the fold's
+    attack) whose flag share that month is at least q [our choice: the frozen
+    window threshold applied to the monthly share]."""
+    ms = monthly_shares(flags, scores, days)
+    out = {}
+    for m, (share, _, n) in ms.items():
+        end = pd.Timestamp(days[days.month == m][-1])
+        y = month_targets(labels, ids, fold_attacks, end).to_numpy()
+        p = (y == 1) & (n > 0)
+        out[m] = wilson(int((share[p] >= q).sum()), int(p.sum()))
+    return out
+
+
+def honest_flag_share_by_month(flags: dict, days: pd.DatetimeIndex, ids, labels: pd.DataFrame) -> dict:
+    """Drift diagnostic: honest households' flagged-day share by month, pooled
+    over the folds in ``flags`` (fold -> (households, days) int8)."""
+    honest = ~labels.reindex(list(ids)).thief.astype(bool).to_numpy()
+    out = {}
+    for m in np.unique(days.month):
+        sel = np.asarray(days.month == m)
+        k = n = 0
+        for f in flags.values():
+            x = f[honest][:, sel]
+            k += int((x == 1).sum())
+            n += int((x >= 0).sum())
+        out[int(m)] = wilson(k, n)
+    return out
+
+
+def absorption(flags: dict, added: dict, days: pd.DatetimeIndex, ids, labels: pd.DataFrame) -> dict:
+    """Absorption diagnostic (``update`` only): for each thief and fold, per
+    month after its onset in which B1 adds days (July-November in the test
+    phase), the share of its attacked online days that the model classified
+    benign and B1 added to its benign set.  Pooled over folds by attack type
+    and onset month, plus the per-thief distribution (median, 90th percentile)."""
+    lab = labels.reindex(list(ids))
+    thief = np.flatnonzero(lab.thief.astype(bool).to_numpy())
+    onset = lab.onset.to_numpy()
+    add_months = sorted({int(m) for f in added.values() for m in days.month[added_any(f)]})
+    rows = []
+    for fold, a in added.items():
+        f = flags[fold]
+        for i in thief:
+            att = (days >= onset[i]) & (f[i] >= 0)
+            for m in add_months:
+                sel = att & np.asarray(days.month == m)
+                if sel.any():
+                    rows.append({"fold": fold, "household": ids[i], "attack": lab.attack.iloc[i],
+                                 "onset_month": int(pd.Timestamp(onset[i]).month), "month": m,
+                                 "attacked_days": int(sel.sum()), "absorbed": int(a[i, sel].sum())})
+    r = pd.DataFrame(rows)
+    if r.empty:
+        return {"months_with_updates": add_months, "thief_months": 0}
+    per_thief = r.groupby(["fold", "household"])[["absorbed", "attacked_days"]].sum()
+    share = per_thief.absorbed / per_thief.attacked_days
+    ho = r[r.fold == r.attack]                       # the fold that holds the thief's attack out (scored there)
+    return {
+        "months_with_updates": add_months, "thief_fold_months": int(len(r)),
+        "pooled": wilson(int(r.absorbed.sum()), int(r.attacked_days.sum())),
+        "held_out_fold_only": wilson(int(ho.absorbed.sum()), int(ho.attacked_days.sum())),
+        "by_attack": {k: wilson(int(g.absorbed.sum()), int(g.attacked_days.sum())) for k, g in r.groupby("attack")},
+        "by_onset_month": {int(k): wilson(int(g.absorbed.sum()), int(g.attacked_days.sum()))
+                           for k, g in r.groupby("onset_month")},
+        "by_month": {int(k): wilson(int(g.absorbed.sum()), int(g.attacked_days.sum())) for k, g in r.groupby("month")},
+        "per_thief_fold_share": {"n": int(len(share)), "median": float(share.median()),
+                                 "p90": float(share.quantile(0.9)), "mean": float(share.mean())},
+    }
+
+
+def added_any(a: np.ndarray) -> np.ndarray:
+    """Days on which B1 added at least one household's day."""
+    return a.any(axis=0)
+
+
+# --------------------------------------------------------------------------
 # SGCC check: Zheng Wide & Deep CNN (run sheet §5)
 # --------------------------------------------------------------------------
 SGCC_TEST_POOL = YEAR_CACHE_DIR / "sgcc_detector_test.parquet"

@@ -66,5 +66,6 @@ results/layer3/thermal/**/*.pt
 # run_layer3_sgcc_full.py); JSON summaries are versioned
 results/layer3/ntl_inj2/**/*.parquet
 results/layer3/ntl_inj2/**/*.npz
+results/layer3/ntl_inj2/*_parts*/
 results/layer3/sgcc_full/**/*.npz
 results/layer3/sgcc_full/**/*.pt
