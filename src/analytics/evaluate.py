@@ -995,6 +995,21 @@ def threshold_max_f1(score: np.ndarray, y: np.ndarray) -> float:
     return float(t[int(np.flatnonzero(f1 == f1.max())[0])])
 
 
+def sgcc_full_flags(path: Optional[Path] = None) -> np.ndarray:
+    """FLAG of every consumer of the full SGCC file, in file row order
+    (Stage 4 C1; the order :func:`sgcc.load_matrix` keeps)."""
+    from src.data_source.config import SGCC_FALLBACK_PATH
+    return pd.read_csv(path or SGCC_FALLBACK_PATH, usecols=["FLAG"]).FLAG.to_numpy(np.int64)
+
+
+def sgcc_rank_metrics(score: np.ndarray, y: np.ndarray) -> dict:
+    """AUC, MAP@100 and MAP@200 (Zheng §V; no operating point: no validation set)."""
+    from sklearn.metrics import roc_auc_score
+    score, y = np.asarray(score), np.asarray(y)
+    return {"n": int(len(y)), "thieves": int(y.sum()), "auc": float(roc_auc_score(y, score)),
+            "map_at_100": map_at_n(score, y, 100), "map_at_200": map_at_n(score, y, 200)}
+
+
 def sgcc_metrics(score: pd.Series, flags: pd.Series, threshold: float) -> dict:
     """AUC, MAP@100 / @200, P / R / F1 at ``threshold`` (Wilson) and the PR curve."""
     from sklearn.metrics import roc_auc_score

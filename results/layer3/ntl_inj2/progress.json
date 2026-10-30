@@ -1,6 +1,6 @@
 {
   "stage": "Stage 4 (theft-engine fixes), branch fix/layer3-theft from feat/layer3 at e3e5f90",
-  "updated": "2026-10-30 16:35",
+  "updated": "2026-10-30 16:50",
   "steps": {
     "A": {
       "status": "committed",
@@ -34,9 +34,11 @@
       "commit": "abae7f0"
     },
     "F": {
-      "status": "run done (test set scored once, test_opened.json); commit after E",
+      "status": "committed",
       "elapsed_s": 2745.1,
-      "summary": "results/layer3/sgcc_full/summary.json"
+      "summary": "results/layer3/sgcc_full/summary.json",
+      "suite": "521 passed, 0 failed, 0 skipped (519 s; all tests)",
+      "commit": "see git log: fix(layer3-theft-F)"
     },
     "E": {
       "status": "committed (metrics from the saved scores of the 07:27 run after the loader fix)",
@@ -79,11 +81,9 @@
       "metrics": "jokar-metrics: all 403 hashes re-verified, settings hash equal to the test run record; summary key jokar written once (14.1 s); jokar_metrics_opened.json",
       "suite": "516 passed, 0 failed, 0 skipped (671 s; step F tests excluded until commit F)",
       "elapsed": "fit and score 10564 s wall clock (07:27:51-10:23:55); metrics 14.1 s",
-      "commit": "see git log: fix(layer3-theft-E)"
+      "commit": "5a92def"
     }
   },
-  "written_ahead_not_committed": [
-    "src/analytics/zheng_cnn.py fixed-epoch training + scripts/run_layer3_sgcc_full.py + evaluate sgcc_full_flags/sgcc_rank_metrics (step F)"
-  ],
-  "next": "suite -> commit F -> report"
+  "written_ahead_not_committed": [],
+  "next": "Checkpoint 4 report, then stop"
 }
