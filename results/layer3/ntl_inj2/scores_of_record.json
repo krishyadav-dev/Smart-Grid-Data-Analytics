@@ -2019,5 +2019,20 @@
       "bytes": 372210,
       "mtime": "2026-10-30T10:23:43"
     }
+  },
+  "converted": {
+    "at": "2026-10-30T16:21:51",
+    "jokar_validation.npz": {
+      "old_sha256": "2cbc9bb2b6d9cf1c554c926d9703b379bc54e0fdaed6b8504ed164cd706bea52",
+      "new_sha256": "5e6486c3fd1a0b521020eca3d5dc362e53f4246c6bbde41eae624368d3b860f2",
+      "arrays_checked_equal": 44,
+      "days_dtype": "object -> <U10"
+    },
+    "jokar_test.npz": {
+      "old_sha256": "4ec8f435671534d13d8cf97d4db1df521acbfab4afb9f58ded1c52a85b363217",
+      "new_sha256": "553b65e00c5e58e9cc0d2e57634b20449a6da6e4565eca301f670112d09b51fd",
+      "arrays_checked_equal": 44,
+      "days_dtype": "object -> <U10"
+    }
   }
 }

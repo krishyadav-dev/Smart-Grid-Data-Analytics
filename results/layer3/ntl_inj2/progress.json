@@ -1,6 +1,6 @@
 {
   "stage": "Stage 4 (theft-engine fixes), branch fix/layer3-theft from feat/layer3 at e3e5f90",
-  "updated": "2026-10-30 16:22",
+  "updated": "2026-10-30 16:35",
   "steps": {
     "A": {
       "status": "committed",
@@ -39,7 +39,7 @@
       "summary": "results/layer3/sgcc_full/summary.json"
     },
     "E": {
-      "status": "STOPPED: reporting bug after the test window was scored; waiting for the user's decision",
+      "status": "committed (metrics from the saved scores of the 07:27 run after the loader fix)",
       "run": "jokar-test opened 07:27:51 at HEAD 7b5d522 (jokar_test_opened.json); all 401 chunks fitted and scored, jokar_test.npz written 10:23 (~2 h 55 min)",
       "failure": "crashed at the drift diagnostic: _load_phase reads jokar_validation.npz with np.load(allow_pickle=False), but _save_phase stored days as an object array (pandas 2.3 strftime returns an object Index); ValueError before any metric was written or printed (summary.json unchanged since 2026-10-29 22:03)",
       "not_done": "no test metrics seen, summary key jokar not written, no commit E",
@@ -73,12 +73,17 @@
         "approved": "2026-10-30, option 1 with conditions 1-7",
         "change": "_save_phase stores days as fixed-width text (U10); metrics block moved unchanged (61 lines, checked identical) into _jokar_results; new one-off commands jokar-convert-dates and jokar-metrics; save/reload tests",
         "suite": "516 passed, 0 failed, 0 skipped (541 s; step F tests excluded until commit F)",
-        "commit": "see git log: fix(layer3-theft-E0)"
-      }
+        "commit": "ba36aad"
+      },
+      "convert": "jokar-convert-dates 16:21: both phase files, 44 arrays each checked equal; old and new sha256 in scores_of_record.json",
+      "metrics": "jokar-metrics: all 403 hashes re-verified, settings hash equal to the test run record; summary key jokar written once (14.1 s); jokar_metrics_opened.json",
+      "suite": "516 passed, 0 failed, 0 skipped (671 s; step F tests excluded until commit F)",
+      "elapsed": "fit and score 10564 s wall clock (07:27:51-10:23:55); metrics 14.1 s",
+      "commit": "see git log: fix(layer3-theft-E)"
     }
   },
   "written_ahead_not_committed": [
     "src/analytics/zheng_cnn.py fixed-epoch training + scripts/run_layer3_sgcc_full.py + evaluate sgcc_full_flags/sgcc_rank_metrics (step F)"
   ],
-  "next": "commit fix -> jokar-convert-dates -> jokar-metrics -> suite -> commit E -> suite -> commit F -> report"
+  "next": "suite -> commit F -> report"
 }
