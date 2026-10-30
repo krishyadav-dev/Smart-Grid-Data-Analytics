@@ -1,6 +1,6 @@
 {
   "stage": "Stage 4 (theft-engine fixes), branch fix/layer3-theft from feat/layer3 at e3e5f90",
-  "updated": "2026-10-30 07:28",
+  "updated": "2026-10-30 16:22",
   "steps": {
     "A": {
       "status": "committed",
@@ -24,7 +24,7 @@
       "tune": "done 07:16, 1941 s (validation run 1922 s): samples_per_day 96 (B9b 0.7724 vs 0.7713), no edge picks, frozen settings config/layer3_ntl_params_inj2.yaml, jokar_tuning.json",
       "grid_elapsed_note": "jokar_tuning.json elapsed_s for the 96 grid (2698 s) covers only the resumed part; the first part ran 22:42-02:15 (91 chunks)",
       "suite": "512 passed, 0 failed, 0 skipped (590 s; step F tests excluded until commit F)",
-      "commit": "see git log: fix(layer3-theft-D)"
+      "commit": "7b5d522"
     },
     "C": {
       "status": "committed",
@@ -37,10 +37,48 @@
       "status": "run done (test set scored once, test_opened.json); commit after E",
       "elapsed_s": 2745.1,
       "summary": "results/layer3/sgcc_full/summary.json"
+    },
+    "E": {
+      "status": "STOPPED: reporting bug after the test window was scored; waiting for the user's decision",
+      "run": "jokar-test opened 07:27:51 at HEAD 7b5d522 (jokar_test_opened.json); all 401 chunks fitted and scored, jokar_test.npz written 10:23 (~2 h 55 min)",
+      "failure": "crashed at the drift diagnostic: _load_phase reads jokar_validation.npz with np.load(allow_pickle=False), but _save_phase stored days as an object array (pandas 2.3 strftime returns an object Index); ValueError before any metric was written or printed (summary.json unchanged since 2026-10-29 22:03)",
+      "not_done": "no test metrics seen, summary key jokar not written, no commit E",
+      "scores_of_record": {
+        "file": "results/layer3/ntl_inj2/scores_of_record.json (per-file sha256, bytes, mtime of all 403 files)",
+        "n_files": 403,
+        "digest_of_file_hashes": "7645ed1ec826c9849f5c75f374e225531f7dc3a79da279805196ae667602d72d",
+        "jokar_test.npz": {
+          "sha256": "4ec8f435671534d13d8cf97d4db1df521acbfab4afb9f58ded1c52a85b363217",
+          "bytes": 58042814,
+          "mtime": "2026-10-30T10:23:55"
+        },
+        "jokar_validation.npz": {
+          "sha256": "2cbc9bb2b6d9cf1c554c926d9703b379bc54e0fdaed6b8504ed164cd706bea52",
+          "bytes": 57159764,
+          "mtime": "2026-10-30T07:16:23"
+        }
+      },
+      "completeness": {
+        "chunks": "401/401",
+        "household_records": 8020,
+        "skipped_households": 0,
+        "household_fold_variant_cells": "112280/112280 (8020 x 7 folds x 2 variants)",
+        "days": 184,
+        "nan_scores": "147952 = 10568 offline household-days x 14; every NaN score is a meter-offline day (flag -1), none elsewhere",
+        "jokar_test.npz_equal_to_chunks": true,
+        "labels_read": false,
+        "refitted": 0
+      },
+      "fix": {
+        "approved": "2026-10-30, option 1 with conditions 1-7",
+        "change": "_save_phase stores days as fixed-width text (U10); metrics block moved unchanged (61 lines, checked identical) into _jokar_results; new one-off commands jokar-convert-dates and jokar-metrics; save/reload tests",
+        "suite": "516 passed, 0 failed, 0 skipped (541 s; step F tests excluded until commit F)",
+        "commit": "see git log: fix(layer3-theft-E0)"
+      }
     }
   },
   "written_ahead_not_committed": [
     "src/analytics/zheng_cnn.py fixed-epoch training + scripts/run_layer3_sgcc_full.py + evaluate sgcc_full_flags/sgcc_rank_metrics (step F)"
   ],
-  "next": "jokar-test (once) -> suite -> commit E -> commit F -> report"
+  "next": "commit fix -> jokar-convert-dates -> jokar-metrics -> suite -> commit E -> suite -> commit F -> report"
 }

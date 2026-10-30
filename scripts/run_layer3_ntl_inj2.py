@@ -15,6 +15,8 @@ Commands (PowerShell)::
     python scripts/run_layer3_ntl_inj2.py jokar-grid --samples 96 --variants static   # step D: B9b
     python scripts/run_layer3_ntl_inj2.py jokar-tune    # step D: freeze config/layer3_ntl_params_inj2.yaml
     python scripts/run_layer3_ntl_inj2.py jokar-test    # step E: July-December, run once
+    python scripts/run_layer3_ntl_inj2.py jokar-convert-dates   # step E recovery (30 Oct), once
+    python scripts/run_layer3_ntl_inj2.py jokar-metrics         # step E recovery: metrics from saved scores, once
 
 Outputs under ``results/layer3/ntl_inj2/`` (``summary.json``).  Labels are
 read through :mod:`src.analytics.evaluate` only.
@@ -391,7 +393,9 @@ def _k_prime_after_updates(scored) -> dict:
 
 
 def _save_phase(path: Path, ids, days, arr: dict) -> None:
-    np.savez_compressed(path, ids=np.array(ids), days=np.array(days.strftime("%Y-%m-%d")),
+    # days as fixed-width text: strftime returns an object Index, which np.savez stores
+    # pickled and np.load (allow_pickle=False, as in _load_phase) refuses
+    np.savez_compressed(path, ids=np.array(ids), days=np.asarray(days.strftime("%Y-%m-%d"), dtype="U10"),
                         **{f"{k}__{v}__{f}": a[k] for (v, f), a in arr.items() for k in ("flag", "score", "added")})
 
 
@@ -540,6 +544,16 @@ def cmd_jokar_test(args) -> int:
     out_days = days[N.window_mask(days, D.PHASES["test"][2])]
     arr = _stack(scored, len(out_days))
     _save_phase(OUT / "jokar_test.npz", ids, out_days, arr)
+    res = _jokar_results(ids, out_days, scored, arr, params, samples)
+    res["elapsed_s"] = {"fit_and_score": round(t_fit, 1), "total": round(time.perf_counter() - t0, 1)}
+    _write_summary("jokar", res)
+    _print_headline(res)
+    return 0
+
+
+def _jokar_results(ids, out_days, scored, arr: dict, params: dict, samples: int) -> dict:
+    """Step E metrics and diagnostics from the July-December scores (moved unchanged
+    out of cmd_jokar_test so that jokar-metrics computes the same from saved scores)."""
     labels = V.load_household_labels(INJ2)
     idx = _consumer_index()
     gate = _gate(ids, out_days, idx)
@@ -601,11 +615,141 @@ def cmd_jokar_test(args) -> int:
     res["absorption_update"] = V.absorption({f: arr["update", f]["flag"] for f in loo},
                                             {f: arr["update", f]["added"] for f in loo}, out_days, ids, labels)
     res["primary_gate"] = "ungated" if (gate_rate["p"] or 0) > 0.95 else "gated"
-    res["elapsed_s"] = {"fit_and_score": round(t_fit, 1), "total": round(time.perf_counter() - t0, 1)}
-    _write_summary("jokar", res)
+    return res
+
+
+def _print_headline(res: dict) -> None:
     print(json.dumps({v: {k: res[v]["ungated"][k] for k in ("macro_energy_theft_h1_h4", "macro_tariff_shift_h5_h6",
                                                               "macro_all_six")} for v in D.VARIANTS}
-                     | {"gate": gate_rate, "elapsed_s": res["elapsed_s"]}, indent=2, default=str))
+                     | {"gate": res["gate_open_dt_days"], "elapsed_s": res["elapsed_s"]}, indent=2, default=str))
+
+
+# --------------------------------------------------------------------------
+# Step E recovery (approved 30 Oct): the 07:27 jokar-test run scored every
+# household, then stopped at the drift diagnostic because _save_phase had
+# stored the days as a pickled object array.  The two phase files are
+# converted once to fixed-width text and the metrics computed from the saved
+# scores; nothing is refitted.
+# --------------------------------------------------------------------------
+RECORD = OUT / "scores_of_record.json"          # sha256 of the saved scores, taken before any code change
+PHASE_FILES = ("jokar_validation.npz", "jokar_test.npz")
+
+
+def _sha256(path: Path) -> str:
+    import hashlib
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _check_record(names) -> None:
+    """Refuse unless every named file still has the hash of record (converted
+    phase files: their hash after the conversion)."""
+    rec = json.loads(RECORD.read_text(encoding="utf-8"))
+    conv = rec.get("converted", {})
+    for name in names:
+        want = conv[name]["new_sha256"] if name in conv else rec["files"][name]["sha256"]
+        if _sha256(OUT / name) != want:
+            raise SystemExit(f"{name}: sha256 differs from the record; stop")
+
+
+def cmd_jokar_convert_dates(args) -> int:
+    """Rewrite the two phase files with the days as fixed-width text, once; every
+    array is checked equal before the old file is replaced (old and new sha256
+    recorded)."""
+    rec = json.loads(RECORD.read_text(encoding="utf-8"))
+    if "converted" in rec:
+        raise SystemExit("phase files already converted (run once)")
+    _check_record(PHASE_FILES)
+    conv = {}
+    for name in PHASE_FILES:
+        path, tmp = OUT / name, OUT / f"{name}.tmp.npz"
+        old = np.load(path, allow_pickle=True)                 # our own file; the pickled array is "days"
+        arrays = {k: old[k] for k in old.files}
+        if arrays["days"].dtype != object:
+            raise SystemExit(f"{name}: days are not an object array; nothing to convert")
+        arrays["days"] = np.asarray(arrays["days"], dtype="U10")
+        np.savez_compressed(tmp, **arrays)
+        new = np.load(tmp)                                     # reads without pickle
+        if new.files != old.files or new["days"].dtype != np.dtype("U10"):
+            raise SystemExit(f"{name}: converted file differs in layout")
+        for k in old.files:
+            a, b = old[k], new[k]
+            same = (list(a) == list(b)) if k == "days" else (
+                a.dtype == b.dtype and np.array_equal(a, b, equal_nan=a.dtype.kind == "f"))
+            if not same:
+                raise SystemExit(f"{name}: array {k} changed in the conversion")
+        old.close()
+        new.close()
+        conv[name] = {"old_sha256": rec["files"][name]["sha256"], "new_sha256": _sha256(tmp),
+                      "arrays_checked_equal": len(old.files), "days_dtype": "object -> <U10"}
+        tmp.replace(path)
+    rec["converted"] = {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), **conv}
+    RECORD.write_text(json.dumps(rec, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(rec["converted"], indent=2))
+    return 0
+
+
+def _load_parts(parts: Path, n_households: int) -> list:
+    """The saved per-household results, in order; refuses (never fits) if a chunk is missing."""
+    import pickle
+    files = sorted(parts.glob("*.pkl"))
+    if [p.name for p in files] != [f"{k:05d}.pkl" for k in range(len(files))]:
+        raise SystemExit(f"{parts.name}: chunks are not contiguous")
+    out = []
+    for p in files:
+        out += pickle.loads(p.read_bytes())
+    if len(out) != n_households:
+        raise SystemExit(f"{parts.name}: {len(out)} households saved, {n_households} expected")
+    return out
+
+
+def cmd_jokar_metrics(args) -> int:
+    """Step E metrics from the saved scores of the 07:27 jokar-test run, once:
+    retrains nothing; refuses unless the frozen settings are the ones the test
+    run opened with and every score file has its hash of record."""
+    import subprocess
+
+    import yaml
+    t0 = time.perf_counter()
+    opened = OUT / "jokar_test_opened.json"
+    if not opened.exists():
+        raise SystemExit("jokar_test_opened.json missing: there is no scored test run to compute metrics from")
+    if (OUT / "jokar_metrics_opened.json").exists():
+        raise SystemExit("metrics were already computed from the saved scores (run once)")
+    tracked = subprocess.run(["git", "ls-files", "--error-unmatch", str(PARAMS)], cwd=ROOT, capture_output=True)
+    dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", str(PARAMS)], cwd=ROOT)
+    if tracked.returncode or dirty.returncode:
+        raise SystemExit(f"{PARAMS.name} is not committed as it is")
+    test_run = json.loads(opened.read_text(encoding="utf-8"))
+    if _sha256(PARAMS) != test_run["params_sha256"]:
+        raise SystemExit(f"{PARAMS.name} differs from the settings the test run opened with")
+    rec = json.loads(RECORD.read_text(encoding="utf-8"))
+    if "converted" not in rec:
+        raise SystemExit("run jokar-convert-dates first")
+    _check_record(list(rec["files"]))                          # immediately before computing metrics
+    head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    (OUT / "jokar_metrics_opened.json").write_text(json.dumps({
+        "opened_at": time.strftime("%Y-%m-%dT%H:%M:%S"), "head_commit": head,
+        "params_sha256": test_run["params_sha256"], "scores_of_record_verified": len(rec["files"]),
+        "from_test_run": test_run}, indent=2), encoding="utf-8")
+    frozen = yaml.safe_load(PARAMS.read_text(encoding="utf-8"))
+    params, samples = frozen["folds"], frozen["samples_per_day"]
+    ids, out_days, arr = _load_phase(OUT / "jokar_test.npz")
+    scored = _load_parts(OUT / f"test_parts_{samples}", len(ids))
+    stacked = _stack(scored, len(out_days))
+    for key, a in arr.items():
+        for k in ("flag", "score", "added"):
+            if not np.array_equal(a[k], stacked[key][k], equal_nan=k == "score"):
+                raise SystemExit(f"jokar_test.npz differs from the saved chunks at {key} {k}")
+    res = _jokar_results(ids, out_days, scored, arr, params, samples)
+    res["computed_from_saved_scores"] = {
+        "note": "metrics computed from the saved scores of the 07:27 jokar-test run after the loader fix "
+                "(that run stopped at the drift diagnostic before writing any metric); nothing refitted",
+        "test_run": test_run, "scores_of_record": RECORD.name, "digest_of_file_hashes": rec["digest_of_file_hashes"]}
+    res["elapsed_s"] = {"fit_and_score_wall_clock_07_27_run": round(
+        (pd.Timestamp(rec["files"]["jokar_test.npz"]["mtime"]) - pd.Timestamp(test_run["opened_at"])).total_seconds(), 1),
+        "metrics_only": round(time.perf_counter() - t0, 1)}
+    _write_summary("jokar", res)
+    _print_headline(res)
     return 0
 
 
@@ -621,6 +765,10 @@ def main(argv=None) -> int:
     p.set_defaults(func=cmd_jokar_grid)
     sub.add_parser("jokar-tune", help="step D: choose and freeze the detector settings").set_defaults(func=cmd_jokar_tune)
     sub.add_parser("jokar-test", help="step E: score July-December once").set_defaults(func=cmd_jokar_test)
+    sub.add_parser("jokar-convert-dates", help="step E recovery: phase files' days to fixed-width text, once"
+                   ).set_defaults(func=cmd_jokar_convert_dates)
+    sub.add_parser("jokar-metrics", help="step E recovery: metrics from the saved test scores, once"
+                   ).set_defaults(func=cmd_jokar_metrics)
     args = ap.parse_args(argv)
     return args.func(args)
 
