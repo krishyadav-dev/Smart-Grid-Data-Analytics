@@ -112,6 +112,41 @@ def test_thermal_engine_inputs(name):
     assert named <= THERMAL_FILES, f"{name} names files outside the thermal inputs: {named - THERMAL_FILES}"
 
 
+def test_stage4_engine_files_carry_no_labels():
+    """Stage 4 run sheet §0: every engine-facing file in the injection-2 input
+    directories has only its listed columns and no label column, and the AMI
+    export there is timestamps x household ids only."""
+    import pyarrow.parquet as pq
+    for rel, cols in L.STAGE4_ENGINE_FILES.items():
+        assert any(rel.startswith(d + "/") for d in L.STAGE4_INPUT_DIRS), rel
+        assert not set(cols) & set(L.LABEL_COLUMNS) and Path(rel).name not in L.LABEL_FILES, rel
+    from src.analytics import ntl_engine as N
+    assert N.HOUSEHOLD_DAILY_COLUMNS == ("household", "date", "metered_kwh")
+    found = 0
+    for d in L.STAGE4_INPUT_DIRS:
+        base = ROOT / d
+        if not base.exists():
+            continue
+        for p in base.rglob("*.parquet"):
+            if p.name in L.LABEL_FILES:
+                continue
+            names = pq.read_schema(p).names
+            hits = set(names) & set(L.LABEL_COLUMNS)
+            rel = p.relative_to(ROOT).as_posix()
+            if rel in L.STAGE4_ENGINE_FILES:
+                # the engine reads only the listed columns of a mixed file
+                assert set(L.STAGE4_ENGINE_FILES[rel]) <= set(names), rel
+                continue
+            if p.parent.name == "ami":
+                assert names[0] == "timestamp" and all(n.startswith("hh_") for n in names[1:]), rel
+            elif p.parent.name == "lambda_sweep":
+                continue                                   # Layer 1 sweep output, not an engine input
+            assert not hits, f"{rel} carries label columns {sorted(hits)}"
+            found += 1
+    if not found:
+        pytest.skip("injection-2 inputs absent (scripts/reinject_theft.py, step A)")
+
+
 def test_consumer_index_columns():
     assert tuple(ntl_inputs.CONSUMER_INDEX_COLUMNS) == L.CONSUMER_INDEX_COLUMNS
     path = ntl_inputs.OUT_DIR / "consumer_index.parquet"

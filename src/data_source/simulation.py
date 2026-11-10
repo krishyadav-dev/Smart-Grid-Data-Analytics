@@ -654,7 +654,8 @@ def _pr_auc(score: np.ndarray, label: np.ndarray) -> float:
 
 
 def lambda_sweep(cache: Path | str = config.YEAR_CACHE_DIR, lambdas=LAMBDAS,
-                 out_dir: Optional[Path | str] = None) -> dict:
+                 out_dir: Optional[Path | str] = None,
+                 frame_cache: Optional[Path | str] = None) -> dict:
     """DT-day energy balance dE = E_DT - sum(E_consumer) for each lambda.
 
     Primary result: dE against the true theft energy per DT-day (bias, MAE,
@@ -667,12 +668,15 @@ def lambda_sweep(cache: Path | str = config.YEAR_CACHE_DIR, lambdas=LAMBDAS,
     for three label sets (X.3.1 item 4 / X.3.2 item 20): ``all_attacks``,
     ``without_h6`` and ``without_h5_h6`` (the load-shifting attacks); in a
     set without an attack its thieves count as neither active nor theft.
+    ``frame_cache``: where the theft-independent true frame and DT table are
+    read (default ``cache``; Layer 3 Stage 4: a second theft injection).
     """
     cache = Path(cache)
+    fcache = Path(frame_cache) if frame_cache else cache
     out = Path(out_dir) if out_dir else cache / "lambda_sweep"
     out.mkdir(parents=True, exist_ok=True)
-    frame = pd.read_parquet(cache / "meter_frame_true.parquet")
-    dts = pd.read_parquet(cache / "dts.parquet")
+    frame = pd.read_parquet(fcache / "meter_frame_true.parquet")
+    dts = pd.read_parquet(fcache / "dts.parquet")
     daily = pd.read_parquet(cache / "household_daily.parquet")
     hhs = pd.read_parquet(cache / "households.parquet")[["household", "dt", "attack"]]
     dt_rows = frame[frame.load_id.str.startswith("dt_")]

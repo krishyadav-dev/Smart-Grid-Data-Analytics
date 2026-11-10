@@ -1,0 +1,102 @@
+{
+  "files": [
+    {
+      "file": "households.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "household_daily.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "household_daily_labels.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-01.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-02.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-03.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-04.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-05.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-06.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-07.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-08.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-09.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-10.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-11.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "ami_2024-12.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "dt_day_balance.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    },
+    {
+      "file": "lambda_sweep/metrics.json",
+      "json_equal": true
+    },
+    {
+      "file": "household_daily.parquet",
+      "sha256_equal": true,
+      "frame_equal": true
+    }
+  ],
+  "all_equal": true,
+  "all_sha256_equal": true,
+  "tag": "",
+  "streams": [
+    "theft.pick",
+    "theft.attack"
+  ],
+  "out": "results\\year_2024_repro",
+  "elapsed_s": 93.9
+}

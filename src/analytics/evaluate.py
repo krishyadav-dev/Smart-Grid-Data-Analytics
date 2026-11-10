@@ -534,27 +534,32 @@ def score_dt(estimates: dict[str, pd.DataFrame], truth: dict, windows=None) -> d
     return out
 
 
-def ntl_energy_identity(window=NTL_TEST, cache: Path = YEAR_CACHE_DIR) -> dict:
+def ntl_energy_identity(window=NTL_TEST, cache: Path = YEAR_CACHE_DIR,
+                        frame_cache: Optional[Path] = None) -> dict:
     """Feeder energy identity on a window (as tests/test_energy_identity.py on
     the year): head metered - billed = MV and DT losses + theft + offline +
     meter error.  Raises if it does not close within the cache's own
-    tolerance (power-flow balance error x steps + float32 rounding)."""
+    tolerance (power-flow balance error x steps + float32 rounding).
+    ``frame_cache``: where the theft-independent meter frames, state and
+    acceptance record are read (default ``cache``; Stage 4: injection 2 reads
+    its household files from ``cache`` and the v1 frames from here)."""
     cache = Path(cache)
+    fcache = Path(frame_cache) if frame_cache else cache
     end = window[1] + pd.Timedelta(days=1)
     f = [("load_id", "==", "feeder_head_650"), ("timestamp", ">=", window[0]), ("timestamp", "<", end)]
     cols = ["timestamp", "load_id", "active_power_kw"]
-    head_true = pd.read_parquet(cache / "meter_frame_true.parquet", columns=cols,
+    head_true = pd.read_parquet(fcache / "meter_frame_true.parquet", columns=cols,
                                 filters=f).active_power_kw.sum() * 0.25
-    head_met = pd.read_parquet(cache / "meter_frame_metered.parquet", columns=cols,
+    head_met = pd.read_parquet(fcache / "meter_frame_metered.parquet", columns=cols,
                                filters=f).active_power_kw.sum() * 0.25
-    st = pd.read_parquet(cache / "state.parquet", columns=["timestamp", "line_losses_mw", "dt_losses_mw"],
+    st = pd.read_parquet(fcache / "state.parquet", columns=["timestamp", "line_losses_mw", "dt_losses_mw"],
                          filters=f[1:])
     df = [("date", ">=", window[0]), ("date", "<=", window[1])]
     hd = pd.read_parquet(cache / "household_daily.parquet",
                          columns=["date", "true_kwh", "reported_kwh", "metered_kwh"], filters=df)
     lab = pd.read_parquet(cache / "household_daily_labels.parquet", columns=["date", "theft_kwh", "offline_kwh"],
                           filters=df)
-    acc = json.loads((cache / "acceptance.json").read_text(encoding="utf-8"))
+    acc = json.loads((fcache / "acceptance.json").read_text(encoding="utf-8"))
     true = hd.true_kwh.to_numpy(float)
     billed = float(np.nansum(hd.metered_kwh.to_numpy(float)))
     reported = float(np.nansum(hd.reported_kwh.to_numpy(float)))
@@ -641,6 +646,86 @@ def worked_example(est: dict, truth: dict, cache: Path = YEAR_CACHE_DIR) -> dict
         "true_theft_all_attacks_mwh": float(truth["feeder_theft_all_attacks"].sum() / 1e3),
         "note": "engine_estimated: metered head energy, L^_tech and E^_offline; true_losses_and_offline: "
                 "the plan's table (true head, true losses, would-have-reported offline energy)"}
+
+
+# --------------------------------------------------------------------------
+# Stage 4 (theft-engine fixes): injection 2 (Stage 4 run sheet §2)
+# --------------------------------------------------------------------------
+INJ2_CACHE = PROJECT_ROOT / "results" / "year_2024_inj2"
+
+
+def injection_summary(cache: Path = INJ2_CACHE) -> dict:
+    """Thieves per attack, onsets by month, and the share of DT-days with
+    energy theft (h1-h4) active on at least one household (Wilson), per window."""
+    cache = Path(cache)
+    h = load_household_labels(cache)
+    th = h[h.thief.astype(bool)]
+    d = pd.read_parquet(cache / "household_daily.parquet", columns=["household", "date", "attack_active"])
+    d["dt"] = d.household.map(h.dt)
+    d["energy_theft_active"] = d.attack_active & d.household.map(h.attack).isin(ENERGY_THEFT).to_numpy()
+    g = d.groupby(["dt", "date"]).energy_theft_active.any()
+    dates = pd.DatetimeIndex(g.index.get_level_values("date"))
+    info = json.loads((cache / "reinject_info.json").read_text(encoding="utf-8"))
+    return {
+        "streams": info["streams"], "households": int(len(h)), "thieves": int(len(th)),
+        "thieves_per_attack": {k: int(v) for k, v in th.attack.value_counts().sort_index().items()},
+        "energy_theft_h1_h4": int(th.attack.isin(ENERGY_THEFT).sum()),
+        "tariff_shift_h5_h6": int(th.attack.isin(TARIFF_SHIFT).sum()),
+        "onsets_by_month": {int(m): int(n) for m, n in th.onset.dt.month.value_counts().sort_index().items()},
+        "onsets_by_month_and_attack": {a: {int(m): int(n) for m, n in t.onset.dt.month.value_counts().sort_index()
+                                           .items()} for a, t in th.groupby("attack")},
+        "dt_days_with_energy_theft_active": {
+            w: wilson(int(g.to_numpy()[_in(dates, r)].sum()), int(_in(dates, r).sum()))
+            for w, r in {"jan_jun": NTL_TUNE, "jul_dec": NTL_TEST, "year": NTL_YEAR}.items()},
+    }
+
+
+def head_gain_vs_true(g_hat: float, cache: Path = YEAR_CACHE_DIR) -> dict:
+    """A1: g^ against the head meter's true gain (``run_info.json``, scoring
+    only).  g^ estimates the head's reading relative to the DT meters, so it
+    is compared with 1 / g_head; the remainder is the DT meters' own errors."""
+    g = json.loads((Path(cache) / "run_info.json").read_text(encoding="utf-8"))["feeder_head_gain"]
+    return {"g_hat": g_hat, "true_head_gain": g, "one_over_true_head_gain": 1.0 / g,
+            "g_hat_times_true_gain_minus_1": g_hat * g - 1.0,
+            "note": "remainder = DT meters' class-0.5S errors (not correctable without a reference)"}
+
+
+def offline_households_vs_true(estimates: dict[str, pd.DataFrame], cache: Path = INJ2_CACHE) -> dict:
+    """A3 vs the Stage 2 rule against ``would_have_reported_kwh`` on offline
+    household-days: annual MWh, and bias / MAE / correlation per household-day
+    and per feeder-day, per window."""
+    lab = pd.read_parquet(Path(cache) / "household_daily_labels.parquet",
+                          columns=["household", "date", "offline", "would_have_reported_kwh"])
+    lab = lab[lab.offline.astype(bool)]
+    lab["date"] = pd.to_datetime(lab.date)
+    truth = lab.set_index(["household", "date"]).would_have_reported_kwh
+    out = {}
+    for name, est in estimates.items():
+        s = est.stack()
+        s.index.names = ["household", "date"]
+        e = s.reindex(truth.index)
+        if e.isna().any():
+            raise ValueError(f"{name}: no estimate on some offline household-days")
+        out[name] = {}
+        for w, r in {"year": NTL_YEAR, **NTL_WINDOWS}.items():
+            m = _in(truth.index.get_level_values("date"), r)
+            et, tt = e[m], truth[m]
+            fd_e, fd_t = et.groupby(level="date").sum(), tt.groupby(level="date").sum()
+            out[name][w] = {"household_days": int(m.sum()), "estimate_mwh": float(et.sum() / 1e3),
+                            "true_mwh": float(tt.sum() / 1e3),
+                            "per_household_day": bias_mae(et, tt), "per_feeder_day": bias_mae(fd_e, fd_t)}
+    return out
+
+
+def annual_mwh_table(estimates: dict[str, pd.Series], truth: dict) -> dict:
+    """Stage 4 §3 table: annual (and per window) MWh of each feeder estimate
+    and of the true energy theft (h1-h4)."""
+    out = {}
+    for w, r in {"year": NTL_YEAR, **NTL_WINDOWS}.items():
+        t = truth["feeder_theft"]
+        out[w] = {name: float(s[_in(s.index, r)].sum() / 1e3) for name, s in estimates.items()}
+        out[w]["true_energy_theft_h1_h4"] = float(t[_in(t.index, r)].sum() / 1e3)
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -733,6 +818,151 @@ def by_onset_month(scores: dict[str, pd.Series], q: dict[str, float], labels: pd
     return out
 
 # --------------------------------------------------------------------------
+# Consumer detector, Stage 4 (Stage 4 run sheet §4): monthly metrics and diagnostics
+# --------------------------------------------------------------------------
+# Inputs: per fold and variant, per-day flags (1 flagged, 0 benign, -1 offline),
+# day scores and the B1 "added" mask of every household over a window.
+BUDGETS = (0.01, 0.02, 0.05)                       # B7: monthly inspection budgets
+
+
+def month_targets(labels: pd.DataFrame, households, fold_attacks, month_end) -> pd.Series:
+    """Targets for one month: 1 = thief of ``fold_attacks`` active on at least
+    one day of the month (onset on or before its end), 0 = honest, NaN =
+    excluded (as :func:`fold_targets`)."""
+    return fold_targets(labels, households, fold_attacks, (None, month_end))
+
+
+def monthly_shares(flags: np.ndarray, scores: np.ndarray, days: pd.DatetimeIndex) -> dict:
+    """Per month: (flag share, mean day score, online days) per household,
+    NaN where the household has no online day that month."""
+    out = {}
+    for m in np.unique(days.month):
+        sel = np.asarray(days.month == m)
+        f, s = flags[:, sel], scores[:, sel]
+        on = f >= 0
+        n = on.sum(axis=1)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            share = np.where(n > 0, (f == 1).sum(axis=1) / n, np.nan)
+            mean = np.where(n > 0, np.nansum(np.where(on, s, 0.0), axis=1) / n, np.nan)
+        out[int(m)] = (share, mean, n)
+    return out
+
+
+def budget_k(budget: float, n: int) -> int:
+    """Households inspected at ``budget`` of ``n`` scored households:
+    round(budget x n), at least 1 [our choice of rounding]."""
+    return max(1, int(round(budget * n)))
+
+
+def precision_at_budgets(flags: np.ndarray, scores: np.ndarray, days: pd.DatetimeIndex, ids,
+                         labels: pd.DataFrame, fold_attacks, budgets=BUDGETS) -> dict:
+    """B7, one fold: each month, households ranked by that month's flag share
+    (ties: the month's mean day score [our choice], then household order); the
+    top round(b x scored) are inspected.  Precision (Wilson) against the month's
+    prevalence (the random-inspection baseline); pooled over months as
+    sum TP / sum inspected."""
+    ms = monthly_shares(flags, scores, days)
+    out = {"months": {}, "pooled": {}}
+    tot = {b: [0, 0] for b in budgets}
+    for m, (share, mean, n) in ms.items():
+        end = pd.Timestamp(days[days.month == m][-1])
+        y = month_targets(labels, ids, fold_attacks, end).to_numpy()
+        ok = (n > 0) & ~np.isnan(y)
+        idx = np.flatnonzero(ok)
+        order = idx[np.lexsort((np.arange(len(idx)), -mean[idx], -share[idx]))]
+        pos = int(y[ok].sum())
+        rec = {"scored": int(ok.sum()), "positives": pos, "prevalence": pos / ok.sum() if ok.any() else None}
+        for b in budgets:
+            k = budget_k(b, int(ok.sum()))
+            tp = int(y[order[:k]].sum())
+            rec[f"precision_at_{b:g}"] = wilson(tp, k)
+            tot[b][0] += tp
+            tot[b][1] += k
+        out["months"][m] = rec
+    pos = sum(r["positives"] for r in out["months"].values())
+    sc = sum(r["scored"] for r in out["months"].values())
+    out["pooled"] = {f"precision_at_{b:g}": wilson(*tot[b]) for b in budgets}
+    out["pooled"]["prevalence"] = pos / sc if sc else None
+    return out
+
+
+def recall_by_month(flags: np.ndarray, scores: np.ndarray, days: pd.DatetimeIndex, ids,
+                    labels: pd.DataFrame, fold_attacks, q: float) -> dict:
+    """Recall per month: positives of the month (active thieves of the fold's
+    attack) whose flag share that month is at least q [our choice: the frozen
+    window threshold applied to the monthly share]."""
+    ms = monthly_shares(flags, scores, days)
+    out = {}
+    for m, (share, _, n) in ms.items():
+        end = pd.Timestamp(days[days.month == m][-1])
+        y = month_targets(labels, ids, fold_attacks, end).to_numpy()
+        p = (y == 1) & (n > 0)
+        out[m] = wilson(int((share[p] >= q).sum()), int(p.sum()))
+    return out
+
+
+def honest_flag_share_by_month(flags: dict, days: pd.DatetimeIndex, ids, labels: pd.DataFrame) -> dict:
+    """Drift diagnostic: honest households' flagged-day share by month, pooled
+    over the folds in ``flags`` (fold -> (households, days) int8)."""
+    honest = ~labels.reindex(list(ids)).thief.astype(bool).to_numpy()
+    out = {}
+    for m in np.unique(days.month):
+        sel = np.asarray(days.month == m)
+        k = n = 0
+        for f in flags.values():
+            x = f[honest][:, sel]
+            k += int((x == 1).sum())
+            n += int((x >= 0).sum())
+        out[int(m)] = wilson(k, n)
+    return out
+
+
+def absorption(flags: dict, added: dict, days: pd.DatetimeIndex, ids, labels: pd.DataFrame) -> dict:
+    """Absorption diagnostic (``update`` only): for each thief and fold, per
+    month after its onset in which B1 adds days (July-November in the test
+    phase), the share of its attacked online days that the model classified
+    benign and B1 added to its benign set.  Pooled over folds by attack type
+    and onset month, plus the per-thief distribution (median, 90th percentile)."""
+    lab = labels.reindex(list(ids))
+    thief = np.flatnonzero(lab.thief.astype(bool).to_numpy())
+    onset = lab.onset.to_numpy()
+    add_months = sorted({int(m) for f in added.values() for m in days.month[added_any(f)]})
+    rows = []
+    for fold, a in added.items():
+        f = flags[fold]
+        for i in thief:
+            att = (days >= onset[i]) & (f[i] >= 0)
+            for m in add_months:
+                sel = att & np.asarray(days.month == m)
+                if sel.any():
+                    rows.append({"fold": fold, "household": ids[i], "attack": lab.attack.iloc[i],
+                                 "onset_month": int(pd.Timestamp(onset[i]).month), "month": m,
+                                 "attacked_days": int(sel.sum()), "absorbed": int(a[i, sel].sum())})
+    r = pd.DataFrame(rows)
+    if r.empty:
+        return {"months_with_updates": add_months, "thief_months": 0}
+    per_thief = r.groupby(["fold", "household"])[["absorbed", "attacked_days"]].sum()
+    share = per_thief.absorbed / per_thief.attacked_days
+    ho = r[r.fold == r.attack]                       # the fold that holds the thief's attack out (scored there)
+    return {
+        "months_with_updates": add_months, "thief_fold_months": int(len(r)),
+        "pooled": wilson(int(r.absorbed.sum()), int(r.attacked_days.sum())),
+        "held_out_fold_only": wilson(int(ho.absorbed.sum()), int(ho.attacked_days.sum())),
+        "by_attack": {k: wilson(int(g.absorbed.sum()), int(g.attacked_days.sum())) for k, g in r.groupby("attack")},
+        "by_onset_month": {int(k): wilson(int(g.absorbed.sum()), int(g.attacked_days.sum()))
+                           for k, g in r.groupby("onset_month")},
+        "by_month": {int(k): wilson(int(g.absorbed.sum()), int(g.attacked_days.sum())) for k, g in r.groupby("month")},
+        "per_thief_fold_share": {"n": int(len(share)), "median": float(share.median()),
+                                 "p90": float(share.quantile(0.9)), "mean": float(share.mean())},
+    }
+
+
+def added_any(a: np.ndarray) -> np.ndarray:
+    """Days on which B1 added at least one household's day."""
+    return a.any(axis=0)
+
+
+# --------------------------------------------------------------------------
 # SGCC check: Zheng Wide & Deep CNN (run sheet §5)
 # --------------------------------------------------------------------------
 SGCC_TEST_POOL = YEAR_CACHE_DIR / "sgcc_detector_test.parquet"
@@ -763,6 +993,21 @@ def threshold_max_f1(score: np.ndarray, y: np.ndarray) -> float:
     p, r, t = precision_recall_curve(y, score)
     f1 = np.where(p[:-1] + r[:-1] > 0, 2 * p[:-1] * r[:-1] / np.maximum(p[:-1] + r[:-1], 1e-300), 0.0)
     return float(t[int(np.flatnonzero(f1 == f1.max())[0])])
+
+
+def sgcc_full_flags(path: Optional[Path] = None) -> np.ndarray:
+    """FLAG of every consumer of the full SGCC file, in file row order
+    (Stage 4 C1; the order :func:`sgcc.load_matrix` keeps)."""
+    from src.data_source.config import SGCC_FALLBACK_PATH
+    return pd.read_csv(path or SGCC_FALLBACK_PATH, usecols=["FLAG"]).FLAG.to_numpy(np.int64)
+
+
+def sgcc_rank_metrics(score: np.ndarray, y: np.ndarray) -> dict:
+    """AUC, MAP@100 and MAP@200 (Zheng §V; no operating point: no validation set)."""
+    from sklearn.metrics import roc_auc_score
+    score, y = np.asarray(score), np.asarray(y)
+    return {"n": int(len(y)), "thieves": int(y.sum()), "auc": float(roc_auc_score(y, score)),
+            "map_at_100": map_at_n(score, y, 100), "map_at_200": map_at_n(score, y, 200)}
 
 
 def sgcc_metrics(score: pd.Series, flags: pd.Series, threshold: float) -> dict:
