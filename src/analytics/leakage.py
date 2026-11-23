@@ -20,6 +20,8 @@ LABEL_FILES = (
     "unbalance_weekly_labels.parquet",  # results/unbalance_scenarios: weekly IS 17036 flags (P2)
     "baseline_true_frame.parquet",      # results/unbalance_scenarios: s = 0 true frame (P2)
     "states.parquet",                   # results/unbalance_scenarios: power-flow states (P2)
+    "reinject_info.json",               # results/year_2024_inj2: thieves per attack (Stage 4, D1)
+    "run_info.json",                    # results/year_2024*: thieves per attack, meter gains
 )
 
 # Label columns (by column name)
@@ -43,7 +45,21 @@ LABEL_COLUMNS = (
 # Layer 1 modules that read the true frame or rebuild the labelled population
 # (Stage 2 run sheet §0: scenario generators live in Layer 1 and write
 # metered-format inputs).  Engines read their outputs, never import them.
-LABEL_MODULES = ("simulation", "metering", "ntl_inputs", "households")
+LABEL_MODULES = ("simulation", "metering", "ntl_inputs", "households", "theft_reinjection")
+
+# Stage 4 run sheet §0: the input directories added for injection 2.  Every
+# Parquet file an engine reads there must carry no label column; the label
+# files in them (households.parquet, household_daily_labels.parquet,
+# reinject_info.json) are listed above by name.
+STAGE4_INPUT_DIRS = (
+    "results/year_2024_inj2",              # households' metered kWh and AMI export, injection 2
+    "results/layer3/ntl_inj2/ideal_meter",  # ideal-meter household inputs, injection 2
+)
+# engine-facing files there, with the only columns the engine may read
+STAGE4_ENGINE_FILES = {
+    "results/year_2024_inj2/household_daily.parquet": ("household", "date", "metered_kwh"),
+    "results/layer3/ntl_inj2/ideal_meter/household_daily.parquet": ("household", "date", "metered_kwh"),
+}
 
 # The consumer index the theft engine reads (step A; user decision 27 Oct:
 # consumer-to-DT indexing only, no LV phase)

@@ -78,3 +78,18 @@ def test_head_energy_is_households_plus_losses(cache):
     """Power-flow balance: head (true) = true household energy + line and DT losses."""
     c = cache
     assert abs(c["head_true"] - c["true"] - c["losses"]) <= c["tol"]
+
+
+# Stage 4 run sheet §2: the identity on injection 2 (its household files, the
+# v1 theft-independent frames and state)
+INJ2 = config.PROJECT_ROOT / "results" / "year_2024_inj2"
+
+
+@pytest.mark.parametrize("window", ["test", "year"])
+def test_energy_identity_closes_on_injection2(window):
+    if not (INJ2 / S.LABELS_FILE).exists() or not (C / "state.parquet").exists():
+        pytest.skip("injection-2 cache absent (scripts/reinject_theft.py, step A)")
+    from src.analytics import evaluate as V
+    w = V.NTL_TEST if window == "test" else V.NTL_YEAR
+    rec = V.ntl_energy_identity(w, INJ2, frame_cache=C)
+    assert rec["closes"] and abs(rec["residual_kwh"]) <= rec["tolerance_kwh"]

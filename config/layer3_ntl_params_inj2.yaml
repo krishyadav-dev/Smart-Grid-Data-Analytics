@@ -1,0 +1,153 @@
+label: 'Stage 4 (theft-engine fixes), injection 2; supersedes nothing (v1: config/layer3_ntl_params.yaml)'
+tuned_on:
+  data: injection 2 (results/year_2024_inj2), January-June 2024 only
+  inner_split: 'initial training January-April, validation May-June; update variant:
+    B1 at the start of June with May''s benign-classified days'
+  svm_params: 300 households, rng 20261027; mean per-household day-level ROC AUC,
+    May-June days vs synthetic attacked versions (fold's attacks)
+  threshold: 'household-level F1 on May-June; positives: thieves of the fold''s training
+    attacks active on >= 1 May-June day; negatives: honest households; ties: lowest
+    q'
+samples_per_day: 96
+resolution_choice_b9b:
+  rule: average over the six leave-one-attack-out folds of each fold's best mean AUC
+    (static objective); 96 only if higher, ties keep 24
+  average_over_folds:
+    24: 0.7712858268951859
+    96: 0.7723695514257775
+variants:
+  primary: update
+  ablation: static
+folds:
+  static:
+    h1:
+      C: 16.0
+      gamma: 0.0001220703125
+      mean_auc: 0.7600397006406953
+      q: 0.22950819672131148
+      q_gated: 0.22950819672131148
+    h2:
+      C: 256.0
+      gamma: 3.0517578125e-05
+      mean_auc: 0.7819261013763201
+      q: 0.6721311475409836
+      q_gated: 0.6721311475409836
+    h3:
+      C: 16.0
+      gamma: 0.0001220703125
+      mean_auc: 0.7586150411914278
+      q: 0.6885245901639344
+      q_gated: 0.6885245901639344
+    h4:
+      C: 64.0
+      gamma: 0.0001220703125
+      mean_auc: 0.7588994012996412
+      q: 0.423728813559322
+      q_gated: 0.423728813559322
+    h5:
+      C: 64.0
+      gamma: 0.0001220703125
+      mean_auc: 0.790451794817567
+      q: 0.4074074074074074
+      q_gated: 0.4074074074074074
+    h6:
+      C: 256.0
+      gamma: 3.0517578125e-05
+      mean_auc: 0.7842852692290138
+      q: 0.3559322033898305
+      q_gated: 0.3559322033898305
+    circular:
+      C: 256.0
+      gamma: 3.0517578125e-05
+      mean_auc: 0.7691431706680203
+      q: 0.39344262295081966
+      q_gated: 0.39344262295081966
+  update:
+    h1:
+      C: 4.0
+      gamma: 0.00048828125
+      mean_auc: 0.7557172070258301
+      q: 0.3114754098360656
+      q_gated: 0.3114754098360656
+    h2:
+      C: 256.0
+      gamma: 3.0517578125e-05
+      mean_auc: 0.7762829892039579
+      q: 0.6557377049180327
+      q_gated: 0.6557377049180327
+    h3:
+      C: 256.0
+      gamma: 3.0517578125e-05
+      mean_auc: 0.7530794018920448
+      q: 0.6111111111111112
+      q_gated: 0.6111111111111112
+    h4:
+      C: 64.0
+      gamma: 0.0001220703125
+      mean_auc: 0.7520464195632242
+      q: 0.39344262295081966
+      q_gated: 0.39344262295081966
+    h5:
+      C: 16.0
+      gamma: 0.00048828125
+      mean_auc: 0.7857612272580359
+      q: 0.5573770491803278
+      q_gated: 0.5573770491803278
+    h6:
+      C: 16.0
+      gamma: 0.0001220703125
+      mean_auc: 0.7778610129335345
+      q: 0.5737704918032787
+      q_gated: 0.5737704918032787
+    circular:
+      C: 16.0
+      gamma: 0.0001220703125
+      mean_auc: 0.7645575414839783
+      q: 0.32786885245901637
+      q_gated: 0.32786885245901637
+b1_rule: 'update: at the start of each scored month M, the online days of M - 1 the
+  current model classified benign join the benign set; their attack patterns (fold''s
+  training attacks, child stream 20 + month of rng 20261027) join the attack set;
+  scaling, k-means rule and SVC (frozen C, gamma) refitted [our choice: Jokar step
+  4 without its DT condition]'
+day_score: SVC decision_function (ovr), malicious class column
+household_score: share of online scored days flagged (predicted class = malicious)
+flag_rule: household flagged if score >= q
+kmeans:
+  k_range:
+  - 2
+  - 3
+  - 4
+  rule: 'argmax mean silhouette; ties: smaller k'
+  min_cluster_share: 0.05
+  random_state: 20261027
+min_train_days: 30
+seed: 20261027
+grid:
+  C:
+  - 0.015625
+  - 0.0625
+  - 0.25
+  - 1.0
+  - 4.0
+  - 16.0
+  - 64.0
+  - 256.0
+  - 1024.0
+  - 4096.0
+  gamma:
+  - 7.62939453125e-06
+  - 3.0517578125e-05
+  - 0.0001220703125
+  - 0.00048828125
+  - 0.001953125
+  - 0.0078125
+  - 0.03125
+  - 0.125
+  - 0.5
+  - 2.0
+  - 8.0
+  rule: B9a; edge picks reported, not extended
+gate: transformer gate = engine NTL^_B (lambda_assumed = 0, A3 offline estimate) >
+  0; gated uses q_gated
+primary: ungated (q) unless the gate is open on 95 % of DT-days or fewer

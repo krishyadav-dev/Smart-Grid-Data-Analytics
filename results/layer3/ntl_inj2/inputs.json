@@ -1,0 +1,19 @@
+{
+  "tag": "inj2",
+  "out": "results\\year_2024_inj2",
+  "ideal_meter_households": "results\\layer3\\ntl_inj2\\ideal_meter\\household_daily.parquet",
+  "theft_independence_checks": {
+    "true_kwh_equal_v1": true,
+    "offline_equal_v1": true,
+    "household_gains_equal_v1": true,
+    "dt_gains_equal_v1": true,
+    "feeder_head_gain_equal_v1": true,
+    "consumer_index_equal_rebuilt": true,
+    "dt_true_energy_vs_household_true_kwh_max_rel": 1.2683641861542378e-08,
+    "dt_true_energy_matches_households": true,
+    "passed": true
+  },
+  "time_population_s": 28.9,
+  "write_s": 45.8,
+  "elapsed_s": 75.6
+}

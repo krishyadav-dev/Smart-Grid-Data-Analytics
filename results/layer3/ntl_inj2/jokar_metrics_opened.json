@@ -1,0 +1,11 @@
+{
+  "opened_at": "2026-10-30T16:22:04",
+  "head_commit": "ba36aad",
+  "params_sha256": "66914bd459d4541d1c3cb18813b6f9280a214312d4541d6fb8002e50486c68dd",
+  "scores_of_record_verified": 403,
+  "from_test_run": {
+    "opened_at": "2026-10-30T07:27:51",
+    "head_commit": "7b5d522",
+    "params_sha256": "66914bd459d4541d1c3cb18813b6f9280a214312d4541d6fb8002e50486c68dd"
+  }
+}

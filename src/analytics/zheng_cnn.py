@@ -165,3 +165,53 @@ def train(x: np.ndarray, y: np.ndarray, xv: np.ndarray, yv: np.ndarray, seed: in
     model.load_state_dict(best_state)
     return model, {"best_val_auc": best, "best_epoch": int(max(hist, key=lambda h: h["val_auc"])["epoch"]),
                    "epochs_run": len(hist), "history": hist, "device": str(device)}
+
+
+# --------------------------------------------------------------------------
+# Stage 4 (C1): Zheng's protocol on the full SGCC set (Stage 4 run sheet §5)
+# --------------------------------------------------------------------------
+# Full file (42,372 consumers), Eqs. (1)-(3) applied to the raw series, 80 %
+# training / 20 % test at random, no validation set (Zheng §V-C), a fixed
+# number of epochs, three seeds.  Every other setting as above.
+FULL_SEED = 20261030            # split and first training seed [our choice]
+FULL_TEST_SHARE = 0.20          # Zheng §V-C: 80 % training ratio
+FULL_EPOCHS = 14                # [our choice: rounded mean of the Stage 2 seeds' best epochs 17, 19, 5]
+
+
+def random_split(n: int, test_share: float = FULL_TEST_SHARE, seed: int = FULL_SEED) -> tuple[np.ndarray, np.ndarray]:
+    """(train rows, test rows): one permutation of rng ``seed``; its first
+    round(test_share x n) rows are the test set [our choice of procedure;
+    Zheng states the ratio only]."""
+    perm = np.random.default_rng(seed).permutation(n)
+    k = int(round(test_share * n))
+    return np.sort(perm[k:]), np.sort(perm[:k])
+
+
+def train_fixed(x: np.ndarray, y: np.ndarray, seed: int, epochs: int = FULL_EPOCHS, device=None,
+                log=print) -> tuple[object, dict]:
+    """Train one seed for a fixed number of epochs (no validation set)."""
+    import torch
+    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    torch.manual_seed(seed)
+    np_rng = np.random.default_rng(seed)
+    model = build_model(x.shape[1]).to(device)
+    opt = torch.optim.Adam(model.parameters(), lr=LR)
+    loss_fn = torch.nn.BCEWithLogitsLoss()
+    xt, yt = torch.from_numpy(x), torch.from_numpy(y.astype(np.float32))
+    hist = []
+    for ep in range(1, epochs + 1):
+        t0 = time.perf_counter()
+        model.train()
+        order = np_rng.permutation(len(x))
+        total = 0.0
+        for i in range(0, len(order), BATCH):
+            b = order[i:i + BATCH]
+            xb, yb = xt[b].to(device), yt[b].to(device)
+            opt.zero_grad()
+            loss = loss_fn(model(xb), yb)
+            loss.backward()
+            opt.step()
+            total += float(loss) * len(b)
+        hist.append({"epoch": ep, "train_loss": total / len(x), "seconds": round(time.perf_counter() - t0, 1)})
+        log(f"seed {seed} epoch {ep}: loss {total / len(x):.4f} ({hist[-1]['seconds']} s)")
+    return model, {"epochs": epochs, "history": hist, "device": str(device)}
