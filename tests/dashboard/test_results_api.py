@@ -85,19 +85,37 @@ def test_fault_events_truth_join(tmp_path):
 
 
 def test_theft_numbers_unchanged(client):
-    src = _json(RES / "layer3" / "ntl" / "summary.json")
+    inj2 = (RES / "layer3" / "ntl_inj2" / "summary.json").exists()
+    src = _json(RES / "layer3" / ("ntl_inj2" if inj2 else "ntl") / "summary.json")
     t = client.get("/api/results/theft").json()
+    assert t["injection"] == ("ntl_inj2" if inj2 else "ntl")
     assert t["energy_identity"]["closes"] is True
     assert t["energy_identity"]["residual_kwh"] == src["balance"]["energy_identity_test_window"]["residual_kwh"]
     assert t["jokar"]["macro_energy_theft_h1_h4"]["precision"] < 0.05
     assert sum(t["households_per_dt"].values()) == 8020
-    assert t["zheng"]["mean_and_range"]["auc"]["mean"] == pytest.approx(0.7407, abs=1e-4)
+    zfull = RES / "layer3" / "sgcc_full" / "summary.json"
+    zsrc = _json(zfull if zfull.exists() else RES / "layer3" / "sgcc" / "summary.json")
+    assert t["zheng"]["mean_and_range"]["auc"]["mean"] == zsrc["mean_and_range"]["auc"]["mean"]
+    if inj2:
+        assert t["jokar"]["variant"] == "update" and t["jokar"]["gate"] == src["jokar"]["primary_gate"]
+        assert t["annual_mwh"] == src["balance"]["annual_mwh"]
 
 
-def test_missing_detail_file_degrades(client):
-    d = client.get("/api/results/theft/dt-daily").json()
-    if not (RES / "layer3" / "ntl" / "dt_day.parquet").exists():
-        assert d["available"] is False and "run_layer3_ntl.py" in d["how"]
+def test_missing_detail_files_degrade(tmp_path):
+    """With no git-ignored detail files, every detail view says how to make them."""
+    for d in ("layer3/fault", "layer3/ntl", "layer3/thermal", "layer3/sgcc", "unbalance_scenarios"):
+        (tmp_path / d).mkdir(parents=True)
+    for f in ("layer3/fault/summary.json", "layer3/ntl/summary.json", "layer3/ntl/inputs.json",
+              "layer3/thermal/summary.json", "layer3/sgcc/summary.json", "unbalance_scenarios/summary.json"):
+        shutil.copy(RES / f, tmp_path / f)
+    c = TestClient(create_app(DashboardSettings(results_dir=tmp_path, data_dir=tmp_path / "data",
+                                                web_dist=ROOT / "web" / "__no_build__")))
+    assert c.get("/api/results/theft").json()["injection"] == "ntl"
+    for u in ("/api/results/theft/dt-daily", "/api/results/theft/inspection", "/api/results/faults/bursts/1",
+              "/api/results/grid/daily", "/api/results/grid/day/2024-06-01", "/api/results/thermal/daily",
+              "/api/results/thermal/day/2024-06-01", "/api/results/unbalance/daily", "/api/results/faults/events"):
+        d = c.get(u).json()
+        assert d["available"] is False and d["how"], u
 
 
 def test_thermal_and_unbalance(client):

@@ -19,6 +19,7 @@ class DashboardSettings(BaseSettings):
     feeder_id: str = Field("ieee13_11kv", validation_alias=AliasChoices("SG_DASH_FEEDER_ID", "SG_FEEDER_ID"))
     results_dir: Path = PROJECT_ROOT / "results"
     config_dir: Path = PROJECT_ROOT / "config"
+    data_dir: Path = PROJECT_ROOT / "data"
     web_dist: Path = PROJECT_ROOT / "web" / "dist"
     # Mapbox *public* token (pk.*), URL-restricted in the Mapbox account.  Served to
     # the browser by /api/config; never a secret (sk.*) token.

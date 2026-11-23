@@ -145,64 +145,97 @@ def fault_events(results: Path, config_dir: Path) -> dict:
 
 # --------------------------------------------------------------------------- theft
 
+def _feeder_metrics(f: dict) -> dict:
+    """{window: {estimator: metrics}} -> keep the scalar metrics of each estimator."""
+    return {w: {k: _pick(v, "n", "bias_kwh", "mae_kwh", "corr", "mean_truth_kwh", "mean_estimate_kwh")
+                for k, v in est.items() if isinstance(v, dict) and "n" in v}
+            for w, est in f.items() if isinstance(est, dict)}
+
+
+def _dt_metrics(d: dict) -> dict:
+    return {w: {k: v.get("all_dt_days") for k, v in est.items() if isinstance(v, dict) and "all_dt_days" in v}
+            for w, est in d.items() if isinstance(est, dict)}
+
+
 def theft(results: Path) -> dict:
-    s = load(results / "layer3" / "ntl" / "summary.json")
-    inputs_p = results / "layer3" / "ntl" / "inputs.json"
-    sgcc_p = results / "layer3" / "sgcc" / "summary.json"
+    """Energy balance and Jokar results.  Injection 2 (the Stage 4 fix, ``ntl_inj2``)
+    is shown when present; otherwise the first theft injection (``ntl``)."""
+    inj2 = (results / "layer3" / "ntl_inj2" / "summary.json").exists()
+    nd = results / "layer3" / ("ntl_inj2" if inj2 else "ntl")
+    s = load(nd / "summary.json")
     b, j = s["balance"], s["jokar"]
-    primary = j.get("primary", "ungated")
-    jj = j[primary]
-    lam = {}
-    for lv, d in b.get("lambda_sweep_assumed_true_0", {}).items():
-        lam[lv] = d["jul_dec_test"]["netted"]["all_dt_days"]
+    if inj2:
+        variant = "update"                               # label: "update (B1) primary, static the ablation"
+        gate = j.get("primary_gate", "ungated")
+        jj = j[variant][gate]
+        lam_src = b.get("dt_lambda_band", {})
+    else:
+        variant, gate = "static", j.get("primary", "ungated")
+        jj = j[gate]
+        lam_src = b.get("lambda_sweep_assumed_true_0", {})
+    lam = {lv: d["jul_dec_test"]["netted"]["all_dt_days"] for lv, d in lam_src.items()}
+    we = b["worked_example"]
+    inputs_p = nd / "inputs.json"
+    v1_inputs = results / "layer3" / "ntl" / "inputs.json"
+    per_dt = None
+    for ip in (inputs_p, v1_inputs):
+        if ip.exists() and "consumer_index" in load(ip):
+            per_dt = load(ip)["consumer_index"]["per_dt"]
+            break
     out = {
         "available": True,
-        "source": "results/layer3/ntl/summary.json",
+        "injection": nd.name,
+        "source": f"results/layer3/{nd.name}/summary.json",
+        "label": b.get("label"),
         "window": "test window Jul-Dec 2024 (scored once); Jan-Jun as reference",
         "energy_identity": b["energy_identity_test_window"],
-        "worked_example": b["worked_example"],
+        "worked_example": we.get("engine_estimated", we),
+        "worked_example_true": we.get("true_losses_and_offline"),
+        "worked_example_units": we.get("units", "MWh"),
         "ltech_vs_true_losses": b["ltech_vs_true_losses"],
-        "feeder": b["feeder"],
-        "dt": b["dt"],
+        "feeder": _feeder_metrics(b["feeder"]),
+        "dt": _dt_metrics(b["dt"]),
+        "annual_mwh": b.get("annual_mwh"),
         "lambda_sweep_dt": lam,
         "bottom_up_feeder": s.get("addendum_h", {}).get("bottom_up_feeder"),
-        "jokar": {"label": j["label"], "primary": primary,
-                  "per_fold": {k: _pick(v, "households_scored", "positives", "tp", "fp", "fn", "precision",
-                                        "recall", "f1")
+        "injection_summary": _pick(s.get("injection", {}).get("summary", {}), "households", "thieves",
+                                   "thieves_per_attack", "energy_theft_h1_h4", "tariff_shift_h5_h6"),
+        "jokar": {"label": j["label"], "variant": variant, "gate": gate,
+                  "per_fold": {k: {**_pick(v, "households_scored", "positives", "tp", "fp", "fn", "f1"),
+                                   "precision": _p(v.get("precision")), "recall": _p(v.get("recall"))}
                                for k, v in jj["per_fold"].items() if k != "circular"},
                   "macro_energy_theft_h1_h4": jj["macro_energy_theft_h1_h4"],
                   "macro_tariff_shift_h5_h6": jj["macro_tariff_shift_h5_h6"],
                   "macro_all_six": jj["macro_all_six"],
                   "circular_reference": jj.get("circular_reference"),
                   "recall_by_onset_month": jj.get("recall_by_onset_month"),
+                  "precision_at_budgets": (j[variant].get("precision_at_budgets", {}) or {}).get(
+                      "macro_energy_theft_h1_h4") if inj2 else None,
+                  "b8_note": j.get("b8_note"),
                   "honesty": "Precision is about 2 %: the output is an inspection ranking, not a theft verdict."},
-        "households_per_dt": load(inputs_p)["consumer_index"]["per_dt"] if inputs_p.exists() else None,
+        "households_per_dt": per_dt,
         "zheng": None,
         "dt_daily": None,
     }
-    if sgcc_p.exists():
-        z = load(sgcc_p)
-        out["zheng"] = {"label": z["label"], "pools": z["pools"], "paper": z["zheng_table_iii_80pct"],
-                        "mean_and_range": z["mean_and_range"],
-                        "seeds": {k: v["test"] for k, v in z["seeds"].items()},
-                        "note": "Real SGCC labels; cannot score feeder households (needs 1,034 days, "
-                                "the simulated year has 366)."}
-    dt_day = results / "layer3" / "ntl" / "dt_day.parquet"
-    out["dt_daily"] = {"available": dt_day.exists(), "how": None if dt_day.exists() else "python scripts/run_layer3_ntl.py"}
+    for zp, protocol in ((results / "layer3" / "sgcc_full" / "summary.json", "full"),
+                         (results / "layer3" / "sgcc" / "summary.json", "pools")):
+        if zp.exists():
+            z = load(zp)
+            out["zheng"] = {"label": z["label"], "protocol": protocol, "source": str(zp.relative_to(results.parent)),
+                            "paper": z["zheng_table_iii_80pct"], "mean_and_range": z["mean_and_range"],
+                            "seeds": {k: v["test"] for k, v in z["seeds"].items()},
+                            "note": "Real SGCC labels; cannot score feeder households (needs 1,034 days, "
+                                    "the simulated year has 366)."}
+            break
+    dt_day = nd / "dt_day.parquet"
+    out["dt_daily"] = {"available": dt_day.exists(),
+                       "how": None if dt_day.exists() else f"python scripts/run_layer3_{nd.name}.py balance"}
     return out
 
 
-def theft_dt_daily(results: Path) -> dict:
-    path = results / "layer3" / "ntl" / "dt_day.parquet"
-    if not path.exists():
-        return missing(path, "python scripts/run_layer3_ntl.py")
-    import pandas as pd
-    df = pd.read_parquet(path)
-    df.index = df.index.map(str) if not isinstance(df.index, pd.MultiIndex) else df.index
-    df = df.reset_index()
-    df.columns = ["_".join(map(str, c)) if isinstance(c, tuple) else str(c) for c in df.columns]
-    df = df.astype(object).where(df.notna(), None)
-    return {"available": True, "columns": list(df.columns), "rows": df.to_dict(orient="records")}
+def _p(x):
+    """A {k, n, p, lo, hi} proportion or a bare float -> float."""
+    return x.get("p") if isinstance(x, dict) else x
 
 
 # --------------------------------------------------------------------------- thermal

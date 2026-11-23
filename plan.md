@@ -1,6 +1,12 @@
 # Dashboard and Map Plan (Layer 4)
 
-Status: plan, nothing built yet.  Branch `claude/eager-davinci-utukxv`.
+Status: **P0 report mode built** (backend `src/dashboard/`, web app `web/`); P0.5 roads waits for a Mapbox token; P1-P5 not started.  Branch `claude/eager-davinci-utukxv`.
+
+Built so far:
+
+- Report API (§4.2) plus detail views over the git-ignored files (`src/dashboard/detail.py`): `/api/results/faults/bursts/{event_id}`, `/api/results/theft/inspection`, `/api/results/grid/daily`, `/api/results/grid/day/{day}`, `/api/results/thermal/daily`, `/api/results/thermal/day/{day}`, `/api/results/unbalance/daily`.  Each one reproduces a committed summary in `tests/dashboard/test_detail_api.py` (zone accuracy 0.85, true theft per DT-day, Jokar fold tp/fp, per-meter VU max, thermal peaks).
+- Theft pages use injection 2 (`results/layer3/ntl_inj2`, Stage 4) when present, else injection 1; Zheng uses `sgcc_full` when present.
+- Web app: grid map (day slider, DT metric), faults, energy and theft, transformer thermal, power quality, system; light and dark themes; the map falls back to an SVG drawing of the same layers when no Mapbox token is set.
 
 Decisions so far:
 

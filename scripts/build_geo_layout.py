@@ -25,6 +25,7 @@ PowerShell::
 
     python scripts/build_geo_layout.py                       # schematic
     $env:MAPBOX_TOKEN = "pk...."; python scripts/build_geo_layout.py --mode mapbox
+    python scripts/build_geo_layout.py --mode mapbox        # or MAPBOX_TOKEN=pk.... in .env
 """
 
 from __future__ import annotations
@@ -97,7 +98,7 @@ def cut_path(coords: list, length_m: float) -> list:
 
 
 def circle(lat: float, lon: float, radius_m: float, n: int = 48) -> list:
-    ring = [list(reversed(offset(lat, lon, 360.0 * k / n, radius_m))) for k in range(n)]
+    ring = [[round(x, 7) for x in reversed(offset(lat, lon, 360.0 * k / n, radius_m))] for k in range(n)]
     return ring + [ring[0]]
 
 
@@ -234,12 +235,23 @@ def build(mode: str = "schematic", token: str | None = None) -> dict:
             "features": features}
 
 
+def dotenv_value(path: Path, key: str) -> str | None:
+    """KEY=value from a .env file (the dashboard reads the same file), or None."""
+    if not path.exists():
+        return None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        k, sep, v = line.strip().partition("=")
+        if sep and k.strip() == key and not line.lstrip().startswith("#"):
+            return v.strip().strip("'\"") or None
+    return None
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", choices=("schematic", "mapbox"), default="schematic")
     ap.add_argument("--out", type=Path, default=OUT)
     args = ap.parse_args(argv)
-    token = os.environ.get("MAPBOX_TOKEN")
+    token = os.environ.get("MAPBOX_TOKEN") or dotenv_value(ROOT / ".env", "MAPBOX_TOKEN")
     if args.mode == "mapbox" and not token:
         raise SystemExit("--mode mapbox needs MAPBOX_TOKEN in the environment")
     doc = build(args.mode, token)
