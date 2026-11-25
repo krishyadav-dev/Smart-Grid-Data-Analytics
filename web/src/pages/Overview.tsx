@@ -61,7 +61,7 @@ export default function Overview({ mode, config, layout, meta }: Ctx) {
     return {
       grid: { left: 44, right: 12, top: 16, bottom: 28 },
       tooltip: { trigger: "axis", valueFormatter: (v: number) => (v == null ? "–" : `${fmt.n(v, 1)} ${m.unit}`) },
-      xAxis: monthAxis(days),
+      xAxis: monthAxis(days, 2),
       yAxis: { type: "value", name: m.unit, scale: metric === "hotspot" },
       series: [{
         type: "line", name: dt, data: series[dt], showSymbol: false, lineStyle: { width: 2 }, color: SERIES[mode][0],
@@ -69,7 +69,7 @@ export default function Overview({ mode, config, layout, meta }: Ctx) {
           silent: true, symbol: "none",
           data: [
             { xAxis: day, lineStyle: { color: c.ink2, width: 1, type: "solid" }, label: { show: false } },
-            ...(lim ? [{ yAxis: lim, lineStyle: { color: "#d03b3b", width: 1, type: "solid" }, label: { formatter: metric === "load" ? "rated" : `limit ${lim}`, color: c.muted, fontSize: 10 } }] : []),
+            ...(lim ? [{ yAxis: lim, lineStyle: { color: "#d03b3b", width: 1, type: "solid" }, label: { formatter: metric === "load" ? "rated" : `limit ${lim}`, position: "insideEndTop", color: c.muted, fontSize: 10 } }] : []),
           ],
         },
       }],
@@ -82,7 +82,7 @@ export default function Overview({ mode, config, layout, meta }: Ctx) {
     return {
       grid: { left: 44, right: 12, top: 16, bottom: 28 },
       tooltip: { trigger: "axis", valueFormatter: (v: number) => `${fmt.n(v, 2)} MW` },
-      xAxis: { type: "category", data: d.times, axisLabel: { interval: 15 } },
+      xAxis: { type: "category", data: d.times, axisLabel: { interval: 23 } },
       yAxis: { type: "value", name: "MW", scale: true },
       series: [{ type: "line", name: "Feeder head P", data: d.p_head_mw, showSymbol: false, lineStyle: { width: 2 }, areaStyle: { opacity: 0.08 }, color: SERIES[mode][0] }],
     };

@@ -24,7 +24,32 @@ export function themed(mode: Mode, option: Json): Json {
     if (v === undefined) delete out[k];
     else out[k] = Array.isArray(v) ? v.map((x) => merge(base[k], x)) : merge(base[k], v);
   }
-  return out;
+  return roomForAxisNames(out);
+}
+
+/** Axis names (units) were drawn outside the grid and clipped: x names go under the
+ *  axis, centred, and the grid grows to fit both. */
+function roomForAxisNames(o: Json): Json {
+  if (!o.grid || Array.isArray(o.grid)) return o;
+  const g = { ...o.grid };
+  const list = (a: Json) => (a === undefined ? [] : Array.isArray(a) ? a : [a]);
+  const xs = list(o.xAxis).map((x: Json) => {
+    if (!x.name || x.nameLocation === "start") return x;
+    const y = { ...x, nameLocation: "middle", nameGap: x.nameGap ?? 24 };
+    g.bottom = Math.max(Number(g.bottom ?? 0), y.nameGap + 18);
+    return y;
+  });
+  const ys = list(o.yAxis).map((y: Json) => {
+    if (!y.name || !(y.nameLocation === undefined || y.nameLocation === "end") || y.inverse) return y;
+    g.top = Math.max(Number(g.top ?? 0), 28);
+    // centred on the axis line, a long name runs off the left edge: start it at the axis
+    return y.position === "right" ? y : { ...y, nameTextStyle: { align: "left", ...y.nameTextStyle }, nameGap: y.nameGap ?? 10 };
+  });
+  return {
+    ...o, grid: g,
+    ...(o.xAxis !== undefined ? { xAxis: Array.isArray(o.xAxis) ? xs : xs[0] } : {}),
+    ...(o.yAxis !== undefined ? { yAxis: Array.isArray(o.yAxis) ? ys : ys[0] } : {}),
+  };
 }
 
 type Props = {

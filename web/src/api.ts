@@ -70,11 +70,11 @@ export function dayLabel(d: string): string {
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-/** Category x-axis over ISO days with one label per month. */
-export function monthAxis(days: string[]) {
+/** Category axis over daily dates labelled at month starts; `every` = 2 labels every other month (narrow charts). */
+export function monthAxis(days: string[], every = 1) {
   return {
     type: "category",
     data: days,
-    axisLabel: { interval: 0, formatter: (d: string) => (d.endsWith("-01") ? MONTHS[Number(d.slice(5, 7)) - 1] : "") },
+    axisLabel: { interval: 0, hideOverlap: true, formatter: (d: string) => (d.endsWith("-01") && (Number(d.slice(5, 7)) - 1) % every === 0 ? MONTHS[Number(d.slice(5, 7)) - 1] : "") },
   };
 }

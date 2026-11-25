@@ -260,14 +260,18 @@ export default function FeederMap(p: Props) {
   const [failed, setFailed] = useState<string | null>(null);
   if (p.token && !failed) return <MapboxView {...p} onFail={setFailed} />;
   return (
-    <div className={`mapbox ${p.tall ? "tall" : ""}`}>
-      <SvgFeeder {...p} />
-      <div className="map-notice">
-        <span title="Set MAPBOX_TOKEN=pk… in .env and restart the service for street and satellite base maps.">{failed ?? "Schematic view · no Mapbox token"}</span>
+    <div className={`mapbox schematic ${p.tall ? "tall" : ""}`}>
+      <div className="schematic-draw">
+        <SvgFeeder {...p} />
       </div>
       <div className="map-legend">
-        {p.legend}
-        {p.note && <div className="fine">{p.note}</div>}
+        <div>{p.legend}</div>
+        <div className="fine">
+          {p.note && <div>{p.note}</div>}
+          <div title="Set MAPBOX_TOKEN=pk… in .env and restart the service for street and satellite base maps.">
+            {failed ?? "Schematic view: no Mapbox token set, so no street or satellite base map."}
+          </div>
+        </div>
       </div>
     </div>
   );

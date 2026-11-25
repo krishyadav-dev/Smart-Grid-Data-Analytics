@@ -159,6 +159,16 @@ tbody tr[aria-selected="true"] { background: var(--accent-wash); }
 .map-legend .ramp span { flex: 1; }
 .map-legend .ends { display: flex; justify-content: space-between; color: var(--muted); }
 .map-legend .fine { color: var(--muted); margin-top: 6px; font-size: 11px; line-height: 1.3; }
+/* schematic (no token): legend sits under the drawing instead of over it */
+.mapbox.schematic, .mapbox.schematic.tall { display: flex; flex-direction: column; background: var(--surface); height: auto; }
+.mapbox.schematic .schematic-draw { position: relative; height: 420px; }
+.mapbox.schematic.tall .schematic-draw { height: 470px; }
+.mapbox.schematic .map-legend {
+  position: static; max-width: none; border: 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none;
+  display: flex; gap: 8px 24px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; background: var(--surface-2);
+}
+.mapbox.schematic .map-legend > div:first-child { min-width: 220px; }
+.mapbox.schematic .map-legend .fine { margin-top: 0; max-width: 46ch; text-align: right; }
 .map-notice {
   position: absolute; right: 10px; top: 10px; z-index: 2; max-width: 280px; font-size: 12px; color: var(--ink-2);
   background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px;
@@ -198,4 +208,6 @@ tbody tr[aria-selected="true"] { background: var(--accent-wash); }
   .g2, .g3 { grid-template-columns: 1fr; }
   .span2 { grid-column: auto; }
   .mapbox, .mapbox.tall { height: 380px; }
+  .mapbox.schematic .schematic-draw, .mapbox.schematic.tall .schematic-draw { height: 360px; }
+  .mapbox.schematic .map-legend .fine { text-align: left; }
 }

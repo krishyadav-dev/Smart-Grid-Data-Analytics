@@ -102,7 +102,7 @@ export default function PowerQuality({ mode }: Ctx) {
             ) : <div className="empty">Per-meter 2024 summary not present.</div>}
           </Gate>
         </Card>
-        <Card title="Injected unbalance scenarios" sub={s?.note}>
+        <Card title="Injected unbalance scenarios" sub={s?.note?.replace(/^s and /, "Severity s and ")}>
           <Gate s={sum}>{() => <Chart mode={mode} option={scen} className="chart tall" ariaLabel="VU max against scenario severity" />}</Gate>
         </Card>
       </div>

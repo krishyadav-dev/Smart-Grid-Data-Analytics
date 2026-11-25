@@ -76,7 +76,7 @@ export default function Thermal({ mode, meta }: Ctx) {
     return {
       grid: { left: 70, right: 24, top: 8, bottom: 28 },
       tooltip: { trigger: "axis", valueFormatter: (v: number) => `${fmt.n(v, 0)} h` },
-      xAxis: { type: "value", name: "h" },
+      xAxis: { type: "value", name: "loss of life (hours)" },
       yAxis: { type: "category", data: d.dts, inverse: true, splitLine: { show: false } },
       series: [{ type: "bar", name: "Loss of life 2024", data: tot, barMaxWidth: 12, itemStyle: { borderRadius: [0, 4, 4, 0] }, color: S[0] }],
     };

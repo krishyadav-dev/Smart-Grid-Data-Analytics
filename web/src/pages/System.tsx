@@ -5,6 +5,8 @@ import Chart from "../components/Chart";
 import { Card, Gate, Kpi, PageHead, Pill } from "../components/ui";
 import { SERIES } from "../theme";
 
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 const SOURCES: [string, string][] = [
   ["/api/results/faults/events", "Fault events + fault set (truth)"],
   ["/api/results/grid/daily", "Simulated year state (results/year_2024)"],
@@ -31,14 +33,14 @@ export default function System({ mode, config, layout }: Ctx) {
 
   const lat = useMemo(() => {
     if (!rows.length) return null;
-    const cats = rows.map((r) => `${r.file.replace("bench_", "").slice(0, 8)} · ${r.playback_speed}x`);
+    const cats = rows.map((r) => { const d = r.file.replace("bench_", "").slice(0, 8); return `${Number(d.slice(6, 8))} ${MON[Number(d.slice(4, 6)) - 1]}\n${r.playback_speed}x`; });
     const q = (k: string) => rows.map((r) => r.latency_ms?.total?.[k] ?? null);
     return {
       grid: { left: 52, right: 16, top: 32, bottom: 48 },
       legend: {},
       tooltip: { trigger: "axis", valueFormatter: (v: number) => `${fmt.n(v, 1)} ms` },
-      xAxis: { type: "category", data: cats, axisLabel: { rotate: 0, fontSize: 10 } },
-      yAxis: { type: "value", name: "ms, poll → subscriber" },
+      xAxis: { type: "category", data: cats, axisLabel: { interval: 0, fontSize: 10, lineHeight: 13 } },
+      yAxis: { type: "value", name: "latency (ms)" },
       series: [["p50", 0], ["p95", 1], ["p99", 2]].map(([k, i]) => ({
         type: "bar", name: k, data: q(k as string), barMaxWidth: 14, barGap: "15%", itemStyle: { borderRadius: [4, 4, 0, 0] }, color: SERIES[mode][i as number],
       })),

@@ -65,7 +65,7 @@ export default function Faults({ mode, config, layout, meta }: Ctx) {
     grid: { left: 52, right: 12, top: 28, bottom: 30 },
     legend: { data: ["Phase a", "Phase b", "Phase c"] },
     tooltip: { trigger: "axis", valueFormatter: (v: number) => (kind === "v_pu" ? `${fmt.n(v, 3)} pu` : `${fmt.n(v, 0)} A`) },
-    xAxis: { type: "category", data: burst.data.t_ms, name: "ms", axisLabel: { interval: 19 } },
+    xAxis: { type: "category", data: burst.data.t_ms, name: "time from burst start (ms)", axisLabel: { interval: 19 } },
     yAxis: { type: "value", name: kind === "v_pu" ? "V (pu)" : "I (A)", scale: kind === "v_pu" },
     series: ["a", "b", "c"].map((ph, j) => ({
       type: "line", name: `Phase ${ph}`, data: shown[kind][ph], showSymbol: false, lineStyle: { width: 2 }, color: SERIES[mode][j],
@@ -79,7 +79,7 @@ export default function Faults({ mode, config, layout, meta }: Ctx) {
     if (!s?.zone) return null;
     const zs = Object.keys(s.zone.per_true_zone);
     return {
-      grid: { left: 40, right: 12, top: 16, bottom: 28 },
+      grid: { left: 40, right: 12, top: 16, bottom: 40 },
       tooltip: {
         trigger: "axis",
         formatter: (q: Json) => {
@@ -87,7 +87,7 @@ export default function Faults({ mode, config, layout, meta }: Ctx) {
           return `Zone <b>${z}</b>: ${v.k}/${v.n} (${fmt.pct(v.p, 0)})`;
         },
       },
-      xAxis: { type: "category", data: zs.map((z) => `${z} (n=${s.zone.per_true_zone[z].n})`) },
+      xAxis: { type: "category", data: zs.map((z) => `${z}\nn=${s.zone.per_true_zone[z].n}`), axisLabel: { interval: 0, lineHeight: 14 } },
       yAxis: { type: "value", max: 1, axisLabel: { formatter: (v: number) => `${Math.round(v * 100)}%` } },
       series: [{
         type: "bar", name: "Engine", data: zs.map((z) => p(s.zone.per_true_zone[z])), barMaxWidth: 22,
