@@ -1,0 +1,49 @@
+# Illustrative geographic placement of the Stage B 11 kV feeder (Layer 4 map, plan.md §5.1).
+# NOT a real DISCOM network: the IEEE 13-bus test feeder has line lengths only, so it
+# is laid out here so that it can be drawn on a Mapbox base map of Delhi.
+#
+# scripts/build_geo_layout.py reads this file and writes config/geo_layout.geojson.
+# Segment lengths are never set here: they come from the network data
+# (src/data_source/ieee13_data.py LINE_SEGMENTS x the Stage B length factor
+# (11/4.16)^2, with 632-671 split at 670 as in feeder_model.build_network).
+#
+# anchor: bus 650 (feeder head, Sub_XFMR LV) at the ERA5 grid point the thermal
+# engine already uses for air temperature (scripts/download_era5.py: 28.6 N, 77.2 E).
+anchor:
+  bus: "650"
+  lat: 28.6000
+  lon: 77.2000
+  label: "Illustrative 66/11 kV substation (ERA5 grid point, Delhi)"
+
+# Bearing of each feeder-tree edge, degrees clockwise from north, following the
+# usual IEEE 13-node drawing (650 at the top, the feeder running south).
+# Zero-length elements (transformer XFM-1 633-634, switch 671-692) are drawn with
+# a short display offset so the two buses do not sit on top of each other.
+bearings_deg:
+  "650-632": 180
+  "632-633": 90
+  "633-634": 90
+  "632-645": 270
+  "645-646": 270
+  "632-670": 180
+  "670-671": 180
+  "671-680": 180
+  "671-684": 270
+  "684-652": 180
+  "684-611": 270
+  "671-692": 90
+  "692-675": 90
+
+zero_length_display_m: 60
+
+# DT markers sit on a small ring around their bus (one DT: first angle only).
+dt_ring:
+  radius_m: 90
+  angles_deg: [45, 165, 285]
+
+# DT service-area circles: radius = k * sqrt(households) metres.
+service_area_k_m: 12
+
+# Mapbox mode (--mode mapbox): Directions API profile used to route each line segment
+# along real roads.
+mapbox_profile: walking
